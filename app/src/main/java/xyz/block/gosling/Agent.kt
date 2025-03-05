@@ -268,8 +268,9 @@ class Agent : Service() {
         val url = URL("https://api.openai.com/v1/chat/completions")
         val connection = url.openConnection() as HttpURLConnection
 
-        val sharedPrefs = context.getSharedPreferences("gosling_settings", Context.MODE_PRIVATE)
-        val model = sharedPrefs.getString("selected_model", "gpt-4o") ?: "gpt-4o"
+        // Use the same preferences and keys as SettingsManager
+        val sharedPrefs = context.getSharedPreferences("gosling_prefs", Context.MODE_PRIVATE)
+        val model = sharedPrefs.getString("llm_model", "gpt-4o") ?: "gpt-4o"
         val apiKey = sharedPrefs.getString("api_key", "") ?: ""
 
         return try {

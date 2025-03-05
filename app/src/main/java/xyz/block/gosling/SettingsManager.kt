@@ -12,8 +12,8 @@ class SettingsManager(context: Context) {
         private const val KEY_LLM_MODEL = "llm_model"
         private const val KEY_API_KEY = "api_key"
         private const val KEY_ACCESSIBILITY_ENABLED = "accessibility_enabled"
-        private const val DEFAULT_LLM_MODEL = "gpt-4o"
         private const val KEY_PROCESS_NOTIFICATIONS = "process_notifications"
+        private val DEFAULT_LLM_MODEL = AiModel.AVAILABLE_MODELS.first().identifier
     }
 
     var isFirstTime: Boolean

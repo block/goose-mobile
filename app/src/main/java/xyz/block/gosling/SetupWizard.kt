@@ -325,13 +325,9 @@ private fun LLMConfigStep(
     onApiKeyChange: (String) -> Unit,
     onComplete: () -> Unit
 ) {
-    val models = listOf(
-        "gpt-4o" to "GPT-4 Optimized",
-        "o3-mini" to "O3 Mini",
-        "o3-small" to "O3 Small",
-        "o3-medium" to "O3 Medium",
-        "o3-large" to "O3 Large"
-    )
+    val models = AiModel.AVAILABLE_MODELS.map { 
+        it.identifier to it.displayName 
+    }
 
     var expanded by remember { mutableStateOf(false) }
 
@@ -434,13 +430,9 @@ fun SettingsScreen(
     var shouldProcessNotifications by remember { mutableStateOf(settingsManager.shouldProcessNotifications) }
     var showResetDialog by remember { mutableStateOf(false) }
 
-    val models = listOf(
-        "gpt-4o" to "GPT-4 Optimized",
-        "o3-mini" to "O3 Mini",
-        "o3-small" to "O3 Small",
-        "o3-medium" to "O3 Medium",
-        "o3-large" to "O3 Large"
-    )
+    val models = AiModel.AVAILABLE_MODELS.map { 
+        it.identifier to it.displayName 
+    }
 
     var expanded by remember { mutableStateOf(false) }
 

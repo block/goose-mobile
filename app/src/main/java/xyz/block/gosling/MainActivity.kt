@@ -118,12 +118,14 @@ class MainActivity : ComponentActivity() {
         isAccessibilityEnabled = isEnabled
         Log.d("Gosling", "MainActivity: Updated accessibility state on resume: $isEnabled")
 
+
         // Start services if overlay permission was just granted
         if (Settings.canDrawOverlays(this)) {
             startForegroundService(Intent(this, Agent::class.java))
             startService(Intent(this, OverlayService::class.java))
         }
     }
+
 
     /**
      * Step 2: Handle the asynchronous response from mMCP tool call
@@ -172,6 +174,12 @@ class MainActivity : ComponentActivity() {
                     Log.d("Gosling", "mMCP unknown response code: $resultCode")
                 }
             }
+        }
+
+        // Start services if overlay permission was just granted
+        if (Settings.canDrawOverlays(this)) {
+            startForegroundService(Intent(this, Agent::class.java))
+            startService(Intent(this, OverlayService::class.java))
         }
     }
 

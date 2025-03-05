@@ -205,19 +205,69 @@ fun MainContent(
             isAccessibilityEnabled = isAccessibilityEnabled
         )
     } else if (showSettings) {
-        // Step 1: Trigger mMCP action when settings page is shown
-        // This launches the target activity asynchronously - we won't get an immediate response
-        // Instead, the response will come back through onActivityResult
+        // Step 0: Discover available mMCP tools
         val context = LocalContext.current
-        val activity = context as ComponentActivity
+        val packageManager = context.packageManager
+        val queryIntent = Intent("com.example.mMCP.ACTION_TOOL_ADVERTISE")
+        val availableTools = packageManager.queryIntentActivities(queryIntent, 0)
+        
+        println("\nStep 0: Discovering available mMCP tools...")
+        availableTools.forEach { resolveInfo ->
+            val activityInfo = resolveInfo.activityInfo
+            println("\nFound mMCP provider:")
+            println("- Package: ${activityInfo.packageName}")
+            println("- Activity: ${activityInfo.name}")
+            
+            try {
+                // Get the activity's metadata bundle
+                val ai = packageManager.getActivityInfo(
+                    android.content.ComponentName(activityInfo.packageName, activityInfo.name),
+                    android.content.pm.PackageManager.GET_META_DATA
+                )
+                
+                println("- Metadata bundle: ${ai.metaData}")
+                
+                val manifest = ai.metaData?.getString("mMCP_manifest")
+                if (manifest != null) {
+                    try {
+                        // Parse the manifest JSON to show available tools
+                        val jsonObject = org.json.JSONObject(manifest)
+                        val instructions = jsonObject.getString("instructions")
+                        val tools = jsonObject.getJSONArray("tools")
+                        
+                        println("- Instructions: $instructions")
+                        println("- Available Tools:")
+                        
+                        for (i in 0 until tools.length()) {
+                            val tool = tools.getJSONObject(i)
+                            println("  * Tool: ${tool.getString("name")}")
+                            println("    Description: ${tool.getString("description")}")
+                            println("    Parameters: ${tool.getJSONObject("parameters")}")
+                        }
+                    } catch (e: Exception) {
+                        println("- Error parsing manifest JSON: ${e.message}")
+                        e.printStackTrace()
+                    }
+                } else {
+                    println("- No mMCP_manifest found in metadata")
+                    println("- Available metadata keys: ${ai.metaData?.keySet()?.joinToString(", ")}")
+                }
+            } catch (e: Exception) {
+                println("- Error reading activity metadata: ${e.message}")
+                e.printStackTrace()
+            }
+            println("----------------------------------------")
+        }
+        
+        // Step 1: Trigger mMCP action when settings page is shown
         val intent = Intent("com.example.mMCP.ACTION_TOOL_CALL").apply {
             setPackage(context.packageName)
             putExtra("tool_name", "hello_world")
             putExtra("parameters", "{}")
         }
-        // The requestCode (1001) helps us identify which callback is for our mMCP call
+        val activity = context as ComponentActivity
         activity.startActivityForResult(intent, 1001)
-        println("Step 1: Initiated mMCP action - waiting for callback...")
+        println("\nStep 1: Initiated mMCP action - waiting for callback...")
         
         SettingsScreen(
             settingsManager = settingsManager,

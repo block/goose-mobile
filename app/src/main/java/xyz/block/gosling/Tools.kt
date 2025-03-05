@@ -1,9 +1,9 @@
 package xyz.block.gosling
 
-import android.content.Context
-import android.content.Intent
 import android.accessibilityservice.AccessibilityService
 import android.accessibilityservice.GestureDescription
+import android.content.Context
+import android.content.Intent
 import android.graphics.Path
 import android.graphics.Rect
 import android.os.Bundle
@@ -31,26 +31,37 @@ annotation class ParameterDef(
     val required: Boolean = true
 )
 
+data class ToolCall(
+    val name: String,
+    val arguments: JSONObject
+)
 
 object ToolHandler {
     /**
      * Helper function to perform a gesture using the Accessibility API
      */
-    private fun performGesture(gesture: GestureDescription, accessibilityService: AccessibilityService): Boolean {
+    private fun performGesture(
+        gesture: GestureDescription,
+        accessibilityService: AccessibilityService
+    ): Boolean {
         var gestureResult = false
         val countDownLatch = java.util.concurrent.CountDownLatch(1)
 
-        accessibilityService.dispatchGesture(gesture, object : AccessibilityService.GestureResultCallback() {
-            override fun onCompleted(gestureDescription: GestureDescription) {
-                gestureResult = true
-                countDownLatch.countDown()
-            }
+        accessibilityService.dispatchGesture(
+            gesture,
+            object : AccessibilityService.GestureResultCallback() {
+                override fun onCompleted(gestureDescription: GestureDescription) {
+                    gestureResult = true
+                    countDownLatch.countDown()
+                }
 
-            override fun onCancelled(gestureDescription: GestureDescription) {
-                gestureResult = false
-                countDownLatch.countDown()
-            }
-        }, null)
+                override fun onCancelled(gestureDescription: GestureDescription) {
+                    gestureResult = false
+                    countDownLatch.countDown()
+                }
+            },
+            null
+        )
 
         try {
             countDownLatch.await(2000, java.util.concurrent.TimeUnit.MILLISECONDS)
@@ -63,15 +74,15 @@ object ToolHandler {
 
     private fun serializeNodeHierarchy(node: AccessibilityNodeInfo, clean: Boolean): JSONObject {
         val json = JSONObject()
-        
+
         try {
             json.put("class", node.className)
             json.put("package", node.packageName)
-            
+
             node.text?.toString()?.takeIf { it.isNotEmpty() }?.let {
                 json.put("text", it)
             }
-            
+
             node.contentDescription?.toString()?.takeIf { it.isNotEmpty() }?.let {
                 json.put("content-desc", it)
             }
@@ -133,7 +144,7 @@ object ToolHandler {
     fun getUiHierarchy(accessibilityService: AccessibilityService, args: JSONObject): String {
         val clean = args.optBoolean("clean", false)
         val root = JSONObject()
-        
+
         try {
             val activeWindow = accessibilityService.rootInActiveWindow
             if (activeWindow != null) {
@@ -150,7 +161,7 @@ object ToolHandler {
         } catch (e: Exception) {
             root.put("error", "Failed to get UI hierarchy: ${e.message}")
         }
-        
+
         return root.toString(2)
     }
 
@@ -179,12 +190,14 @@ object ToolHandler {
         val packageName = args.getString("package_name")
         val launchIntent = context.packageManager.getLaunchIntentForPackage(packageName)
             ?: return "Error: App $packageName not found."
-            
-        launchIntent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK or 
-                            Intent.FLAG_ACTIVITY_CLEAR_TASK or 
-                            Intent.FLAG_ACTIVITY_CLEAR_TOP or 
-                            Intent.FLAG_ACTIVITY_RESET_TASK_IF_NEEDED)
-                            
+
+        launchIntent.addFlags(
+            Intent.FLAG_ACTIVITY_NEW_TASK or
+                    Intent.FLAG_ACTIVITY_CLEAR_TASK or
+                    Intent.FLAG_ACTIVITY_CLEAR_TOP or
+                    Intent.FLAG_ACTIVITY_RESET_TASK_IF_NEEDED
+        )
+
         context.startActivity(launchIntent)
         return "Started app: $packageName"
     }
@@ -265,7 +278,13 @@ object ToolHandler {
         swipePath.lineTo(endX.toFloat(), endY.toFloat())
 
         val gestureBuilder = GestureDescription.Builder()
-        gestureBuilder.addStroke(GestureDescription.StrokeDescription(swipePath, 0, duration.toLong()))
+        gestureBuilder.addStroke(
+            GestureDescription.StrokeDescription(
+                swipePath,
+                0,
+                duration.toLong()
+            )
+        )
 
         val swipeResult = performGesture(gestureBuilder.build(), accessibilityService)
         return if (swipeResult) {
@@ -313,7 +332,8 @@ object ToolHandler {
             AccessibilityNodeInfo.ACTION_ARGUMENT_SET_TEXT_CHARSEQUENCE,
             textToEnter
         )
-        val setTextResult = focusedNode.performAction(AccessibilityNodeInfo.ACTION_SET_TEXT, arguments)
+        val setTextResult =
+            focusedNode.performAction(AccessibilityNodeInfo.ACTION_SET_TEXT, arguments)
 
         if (shouldSubmit && setTextResult) {
             Runtime.getRuntime().exec(arrayOf("input", "keyevent", "KEYCODE_ENTER"))
@@ -390,7 +410,7 @@ object ToolHandler {
 
                         tool.parameters.forEach { param ->
                             properties[param.name] = mapOf(
-                                "type" to when (param.type.toLowerCase()) {
+                                "type" to when (param.type.lowercase(Locale.getDefault())) {
                                     "integer" -> "string" // Use string for integers
                                     "boolean" -> "boolean"
                                     "string" -> "string"
@@ -432,41 +452,53 @@ object ToolHandler {
         }
     }
 
+
     /**
      * Call a tool by name with provided arguments
      */
-    fun callTool(toolCall: JSONObject, context: Context, accessibilityService: AccessibilityService?, provider: ModelProvider): String {
-        val functionName: String
-        val arguments = JSONObject()
+//    fun callTool(
+//        toolCall: JSONObject,
+//        context: Context,
+//        accessibilityService: AccessibilityService?,
+//        provider: ModelProvider
+//    ): String {
+//        val functionName: String
+//        val arguments = JSONObject()
+//
+//        when (provider) {
+//            ModelProvider.OPENAI -> {
+//                val functionObject = toolCall.getJSONObject("function")
+//                functionName = functionObject.getString("name")
+//                val argumentsString = functionObject.optString("arguments", "{}")
+//                val parsedArgs = JSONObject(argumentsString)
+//
+//                parsedArgs.keys().forEach { key ->
+//                    arguments.put(key, parsedArgs.get(key))
+//                }
+//            }
+//
+//            ModelProvider.GEMINI -> {
+//                functionName = toolCall.getString("name")
+//                val paramsArray = toolCall.optJSONArray("parameters") ?: JSONArray()
+//                for (i in 0 until paramsArray.length()) {
+//                    val param = paramsArray.getJSONObject(i)
+//                    arguments.put(param.getString("name"), param.get("value"))
+//                }
+//            }
+//        }
+//    }
 
-        when (provider) {
-            ModelProvider.OPENAI -> {
-                val functionObject = toolCall.getJSONObject("function")
-                functionName = functionObject.getString("name")
-                val argumentsString = functionObject.optString("arguments", "{}")
-                val parsedArgs = JSONObject(argumentsString)
-
-                parsedArgs.keys().forEach { key ->
-                    arguments.put(key, parsedArgs.get(key))
-                }
-            }
-
-            ModelProvider.GEMINI -> {
-                functionName = toolCall.getString("name")
-                val paramsArray = toolCall.optJSONArray("parameters") ?: JSONArray()
-                for (i in 0 until paramsArray.length()) {
-                    val param = paramsArray.getJSONObject(i)
-                    arguments.put(param.getString("name"), param.get("value"))
-                }
-            }
-        }
-
+    fun callTool(
+        toolCall: ToolCall,
+        context: Context,
+        accessibilityService: AccessibilityService?
+    ): String {
         val toolMethod = ToolHandler::class.java.methods
             .firstOrNull {
                 it.isAnnotationPresent(Tool::class.java) &&
-                        it.getAnnotation(Tool::class.java).name == functionName
+                        it.getAnnotation(Tool::class.java).name == toolCall.name
             }
-            ?: return "Unknown tool call: $functionName"
+            ?: return "Unknown tool call: ${toolCall.name}"
 
         val toolAnnotation = toolMethod.getAnnotation(Tool::class.java)
 
@@ -476,25 +508,48 @@ object ToolHandler {
                     return "Accessibility service not available."
                 }
                 if (toolAnnotation.requiresContext) {
-                    return toolMethod.invoke(ToolHandler, accessibilityService, context, arguments) as String
+                    return toolMethod.invoke(
+                        ToolHandler,
+                        accessibilityService,
+                        context,
+                        toolCall.arguments
+                    ) as String
                 }
-                return toolMethod.invoke(ToolHandler, accessibilityService, arguments) as String
+                return toolMethod.invoke(
+                    ToolHandler,
+                    accessibilityService,
+                    toolCall.arguments
+                ) as String
             }
-            if (toolAnnotation.requiresContext) {
-                return toolMethod.invoke(ToolHandler, context, arguments) as String
+            if (toolAnnotation != null && toolAnnotation.requiresContext) {
+                return toolMethod.invoke(ToolHandler, context, toolCall.arguments) as String
             }
-            return toolMethod.invoke(ToolHandler, arguments) as String
+            return toolMethod.invoke(ToolHandler, toolCall.arguments) as String
         } catch (e: Exception) {
-            "Error executing $functionName: ${e.message}"
+            "Error executing ${toolCall.name}: ${e.message}"
         }
     }
+
+    fun fromJson(json: JSONObject): ToolCall {
+        return when {
+            json.has("function") -> {
+                val functionObject = json.getJSONObject("function")
+                ToolCall(
+                    name = functionObject.getString("name"),
+                    arguments = JSONObject(functionObject.optString("arguments", "{}"))
+                )
+            }
+
+            json.has("functionCall") -> {
+                val functionCall = json.getJSONObject("functionCall")
+                ToolCall(
+                    name = functionCall.getString("name"),
+                    arguments = functionCall.getJSONObject("args")
+                )
+            }
+
+            else -> throw IllegalArgumentException("Unknown tool call format")
+        }
+    }
+
 }
-
-fun getToolDefinitions(provider: ModelProvider): List<Map<String, Any>> = ToolHandler.getToolDefinitions(provider)
-
-fun callTool(
-    provider: ModelProvider,
-    toolCall: JSONObject,
-    context: Context,
-    accessibilityService: AccessibilityService?
-): String = ToolHandler.callTool(toolCall, context, accessibilityService, provider)

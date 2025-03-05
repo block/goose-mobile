@@ -14,9 +14,16 @@ import android.util.DisplayMetrics
 import android.util.Log
 import android.view.WindowManager
 import androidx.core.app.NotificationCompat
-import kotlinx.coroutines.*
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.SupervisorJob
+import kotlinx.coroutines.delay
+import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 import org.json.JSONArray
 import org.json.JSONObject
+import xyz.block.gosling.ToolHandler.callTool
+import xyz.block.gosling.ToolHandler.getToolDefinitions
 import java.net.HttpURLConnection
 import java.net.URL
 
@@ -96,10 +103,15 @@ class Agent : Service() {
         val content: Any?,
         val tool_call_id: String? = null,
         val name: String? = null,
-        val tool_calls: List<Map<String, Any>>? = null
+        val tool_calls: List<ToolCall>? = null
     )
 
-    suspend fun processCommand(userInput: String, context: Context, isNotificationReply: Boolean, onStatusUpdate: (String) -> Unit): String {
+    suspend fun processCommand(
+        userInput: String,
+        context: Context,
+        isNotificationReply: Boolean,
+        onStatusUpdate: (String) -> Unit
+    ): String {
         val availableIntents = IntentScanner.getAvailableIntents(context)
         val installedApps = availableIntents.joinToString("\n") { it.formatForLLM() }
 
@@ -110,7 +122,8 @@ class Agent : Service() {
         val width = displayMetrics.widthPixels
         val height = displayMetrics.heightPixels
 
-        val role = if (isNotificationReply) "helping the user process android notifications" else "managing the users android phone"
+        val role =
+            if (isNotificationReply) "helping the user process android notifications" else "managing the users android phone"
 
         val systemMessage = """
             You are an assistant $role. The user does not have access to the phone. 
@@ -175,7 +188,7 @@ class Agent : Service() {
                 } catch (e: AgentException) {
                     lastError = e
                     retryCount++
-                    
+
                     if (retryCount >= maxRetries) {
                         onStatusUpdate("Failed after $maxRetries attempts: ${e.message}")
                         return@withContext "Failed: ${e.message}"
@@ -184,24 +197,49 @@ class Agent : Service() {
                 }
 
                 try {
-                    val assistantMessage = response.getJSONArray("choices").getJSONObject(0).getJSONObject("message")
-                    val assistantReply = assistantMessage.optString("content", "Ok")
+                    val (assistantReply, toolCalls) = when {
+                        response.has("choices") -> {
+                            val assistantMessage = response.getJSONArray("choices").getJSONObject(0)
+                                .getJSONObject("message")
+                            val content = assistantMessage.optString("content", "Ok")
+                            val tools = assistantMessage.optJSONArray("tool_calls")?.let {
+                                List(it.length()) { i -> ToolHandler.fromJson(it.getJSONObject(i)) }
+                            }
+                            Pair(content, tools)
+                        }
+
+                        response.has("candidates") -> {
+                            val candidate = response.getJSONArray("candidates").getJSONObject(0)
+                            val content = candidate.getJSONObject("content")
+                            val text = content.getJSONArray("parts").getJSONObject(0)
+                                .optString("text", "Ok")
+
+                            val tools = content.optJSONArray("parts")?.let { parts ->
+                                List(parts.length()) { i ->
+                                    val part = parts.getJSONObject(i)
+                                    if (part.has("functionCall")) {
+                                        ToolHandler.fromJson(part)
+                                    } else null
+                                }.filterNotNull()
+                            }
+                            Pair(text, tools)
+                        }
+
+                        else -> Pair("Unknown response format", null)
+                    }
+                    //val assistantMessage = response.getJSONArray("choices").getJSONObject(0).getJSONObject("message")
+                    //val assistantReply = assistantMessage.optString("content", "Ok")
 
                     onStatusUpdate(assistantReply)
 
-                    val settings = SettingsManager(context)
-                    val model = AiModel.fromIdentifier(settings.llmModel)
-                    val toolResults = parseAndExecuteTool(model.provider, response, context)
-
+                    val toolResults = executeTools(toolCalls, context)
                     if (toolResults.isEmpty()) break
 
                     messages.add(
                         Message(
                             role = "assistant",
-                            content = assistantMessage.optString("content"),
-                            tool_calls = assistantMessage.optJSONArray("tool_calls")?.let {
-                                List(it.length()) { i -> jsonObjectToMap(it.getJSONObject(i)) }
-                            }
+                            content = assistantReply,
+                            tool_calls = toolCalls
                         )
                     )
 
@@ -244,7 +282,7 @@ class Agent : Service() {
                 
                 Please analyze this notification and take appropriate action if needed.
             """.trimIndent()
-            
+
             processCommand(
                 prompt,
                 this@Agent,
@@ -263,7 +301,8 @@ class Agent : Service() {
             .setOngoing(true)
             .build()
 
-        val notificationManager = getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
+        val notificationManager =
+            getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
         notificationManager.notify(NOTIFICATION_ID, notification)
     }
 
@@ -276,17 +315,17 @@ class Agent : Service() {
             ModelProvider.OPENAI -> URL("https://api.openai.com/v1/chat/completions")
             ModelProvider.GEMINI -> URL("https://generativelanguage.googleapis.com/v1beta/models/${model.identifier}:generateContent?key=$apiKey")
         }
-        
+
         val connection = url.openConnection() as HttpURLConnection
 
         return try {
             connection.requestMethod = "POST"
             connection.setRequestProperty("Content-Type", "application/json")
-            
+
             if (model.provider == ModelProvider.OPENAI) {
                 connection.setRequestProperty("Authorization", "Bearer $apiKey")
             }
-            
+
             connection.doOutput = true
 
             val requestBody = when (model.provider) {
@@ -305,13 +344,15 @@ class Agent : Service() {
                         put("tools", getToolDefinitions(model.provider).toJSONArray())
                     }
                 }
+
                 ModelProvider.GEMINI -> {
                     val combinedText = messages.joinToString("\n") {
                         "${it.role}: ${it.content}"
                     }
 
                     // Create proper JSON structure - following Google's example
-                    val toolsDefinitions = getToolDefinitions(model.provider) as List<Map<String, Any>>
+                    val toolsDefinitions =
+                        getToolDefinitions(model.provider)
                     val toolsArray = JSONArray()
 
                     for (toolDef in toolsDefinitions) {
@@ -344,16 +385,19 @@ class Agent : Service() {
             val message = when {
                 e.message?.contains("Unable to resolve host") == true -> {
                     // Check network connectivity
-                    val connectivityManager = context.getSystemService(Context.CONNECTIVITY_SERVICE) as android.net.ConnectivityManager
+                    val connectivityManager =
+                        context.getSystemService(Context.CONNECTIVITY_SERVICE) as android.net.ConnectivityManager
                     val network = connectivityManager.activeNetwork
-                    val capabilities = network?.let { connectivityManager.getNetworkCapabilities(it) }
-                    
+                    val capabilities =
+                        network?.let { connectivityManager.getNetworkCapabilities(it) }
+
                     if (network == null || capabilities == null) {
                         "Network error: No active network connection"
                     } else {
                         "Network error: DNS resolution failed. Will retry with new connection..."
                     }
                 }
+
                 e.message?.contains("timeout") == true -> "Request timed out. Please try again."
                 else -> "Error calling LLM: ${e.message}"
             }
@@ -363,28 +407,42 @@ class Agent : Service() {
         }
     }
 
-    private fun parseAndExecuteTool(provider: ModelProvider, response: JSONObject, context: Context): List<Map<String, String>> {
-        val assistantMessage = response.getJSONArray("choices")
-            .getJSONObject(0)
-            .getJSONObject("message")
 
-        val toolCalls = assistantMessage.optJSONArray("tool_calls") ?: return emptyList()
-        val toolResults = mutableListOf<Map<String, String>>()
+//    private fun parseAndExecuteTool(provider: ModelProvider, response: JSONObject, context: Context): List<Map<String, String>> {
+//        val assistantMessage = response.getJSONArray("choices")
+//            .getJSONObject(0)
+//            .getJSONObject("message")
+//
+//        val toolCalls = assistantMessage.optJSONArray("tool_calls") ?: return emptyList()
+//        val toolResults = mutableListOf<Map<String, String>>()
+//
+//        for (i in 0 until toolCalls.length()) {
+//            val toolCall = toolCalls.getJSONObject(i)
+//            val toolCallId = toolCall.getString("id")
+//
+//            val result = callTool(
+//                provider,
+//                toolCall,
+//                context,
+//                GoslingAccessibilityService.getInstance()
+//            )
+//            toolResults.add(mapOf("tool_call_id" to toolCallId, "output" to result))
+//        }
+//    }
 
-        for (i in 0 until toolCalls.length()) {
-            val toolCall = toolCalls.getJSONObject(i)
-            val toolCallId = toolCall.getString("id")
+    private fun executeTools(
+        toolCalls: List<ToolCall>?,
+        context: Context
+    ): List<Map<String, String>> {
+        if (toolCalls == null) return emptyList()
 
-            val result = callTool(
-                provider,
-                toolCall,
-                context,
-                GoslingAccessibilityService.getInstance()
+        return toolCalls.map { toolCall ->
+            val result = callTool(toolCall, context, GoslingAccessibilityService.getInstance())
+            mapOf(
+                "tool_call_id" to toolCall.name,
+                "output" to result
             )
-            toolResults.add(mapOf("tool_call_id" to toolCallId, "output" to result))
         }
-
-        return toolResults
     }
 
     private fun messageToJson(message: Message): JSONObject {
@@ -462,6 +520,7 @@ class Agent : Service() {
                     @Suppress("UNCHECKED_CAST")
                     json.put(key, convertMapToJson(value as Map<String, Any>))
                 }
+
                 is List<*> -> {
                     val jsonArray = JSONArray()
                     for (item in value) {
@@ -470,11 +529,13 @@ class Agent : Service() {
                                 @Suppress("UNCHECKED_CAST")
                                 jsonArray.put(convertMapToJson(item as Map<String, Any>))
                             }
+
                             else -> jsonArray.put(item)
                         }
                     }
                     json.put(key, jsonArray)
                 }
+
                 else -> json.put(key, value)
             }
         }

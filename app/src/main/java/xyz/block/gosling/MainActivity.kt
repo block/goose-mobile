@@ -5,6 +5,7 @@ import android.Manifest
 import android.content.Context
 import android.content.Intent
 import android.content.pm.PackageManager
+import android.net.Uri
 import android.os.Build
 import android.os.Bundle
 import android.provider.Settings
@@ -61,10 +62,19 @@ class MainActivity : ComponentActivity() {
         settingsManager = SettingsManager(this)
         isAccessibilityEnabled = settingsManager.isAccessibilityEnabled
 
-        // Start the Agent service
-        startForegroundService(Intent(this, Agent::class.java))
-
-        startService(Intent(this, OverlayService::class.java))
+        // Check for overlay permission
+        if (!Settings.canDrawOverlays(this)) {
+            // If not granted, request it
+            val intent = Intent(
+                Settings.ACTION_MANAGE_OVERLAY_PERMISSION,
+                Uri.parse("package:$packageName")
+            )
+            startActivity(intent)
+        } else {
+            // Start services only if we have overlay permission
+            startForegroundService(Intent(this, Agent::class.java))
+            startService(Intent(this, OverlayService::class.java))
+        }
 
         // Register the launcher for accessibility settings
         accessibilitySettingsLauncher = registerForActivityResult(
@@ -107,6 +117,12 @@ class MainActivity : ComponentActivity() {
         settingsManager.isAccessibilityEnabled = isEnabled
         isAccessibilityEnabled = isEnabled
         Log.d("Gosling", "MainActivity: Updated accessibility state on resume: $isEnabled")
+
+        // Start services if overlay permission was just granted
+        if (Settings.canDrawOverlays(this)) {
+            startForegroundService(Intent(this, Agent::class.java))
+            startService(Intent(this, OverlayService::class.java))
+        }
     }
 
     override fun onDestroy() {

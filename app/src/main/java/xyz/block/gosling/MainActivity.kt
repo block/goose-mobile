@@ -64,6 +64,8 @@ class MainActivity : ComponentActivity() {
         // Start the Agent service
         startForegroundService(Intent(this, Agent::class.java))
 
+        startService(Intent(this, OverlayService::class.java))
+
         // Register the launcher for accessibility settings
         accessibilitySettingsLauncher = registerForActivityResult(
             ActivityResultContracts.StartActivityForResult()

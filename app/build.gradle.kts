@@ -37,7 +37,7 @@ android {
     buildFeatures {
         compose = true
     }
-    
+
     lint {
         disable += setOf("ProtectedPermissions")
         abortOnError = false  // Optional: prevents build failures due to other lint issues
@@ -54,6 +54,8 @@ dependencies {
     implementation(libs.androidx.ui.tooling.preview)
     implementation(libs.androidx.material3)
     implementation("androidx.compose.material:material-icons-extended")
+    implementation("androidx.lifecycle:lifecycle-runtime-ktx:2.5.1")
+    implementation("androidx.savedstate:savedstate:1.2.0")
     testImplementation(libs.junit)
     androidTestImplementation(libs.androidx.junit)
     androidTestImplementation(libs.androidx.espresso.core)

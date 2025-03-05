@@ -10,6 +10,7 @@
     <uses-permission android:name="android.permission.FOREGROUND_SERVICE" />
     <uses-permission android:name="android.permission.FOREGROUND_SERVICE_DATA_SYNC" />
     <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
+    <uses-permission android:name="android.permission.SYSTEM_ALERT_WINDOW" />
 
     <queries>
         <intent>
@@ -39,12 +40,12 @@
 
         <activity
             android:name=".AssistantActivity"
+            android:excludeFromRecents="true"
             android:exported="true"
-            android:theme="@style/Theme.Transparent"
             android:label="Gosling Assistant"
             android:launchMode="singleTask"
-            android:excludeFromRecents="true"
             android:showOnLockScreen="true"
+            android:theme="@style/Theme.Transparent"
             android:turnScreenOn="true">
             <intent-filter>
                 <action android:name="android.intent.action.ASSIST" />
@@ -54,8 +55,8 @@
 
         <service
             android:name=".AssistantService"
-            android:permission="android.permission.BIND_VOICE_INTERACTION"
-            android:exported="true">
+            android:exported="true"
+            android:permission="android.permission.BIND_VOICE_INTERACTION">
             <meta-data
                 android:name="android.voice_interaction"
                 android:resource="@xml/assistant_service" />
@@ -66,14 +67,14 @@
 
         <service
             android:name=".SessionService"
-            android:permission="android.permission.BIND_VOICE_INTERACTION"
-            android:exported="true" />
+            android:exported="true"
+            android:permission="android.permission.BIND_VOICE_INTERACTION" />
 
         <service
             android:name=".GoslingAccessibilityService"
-            android:permission="android.permission.BIND_ACCESSIBILITY_SERVICE"
+            android:exported="false"
             android:foregroundServiceType="dataSync"
-            android:exported="false">
+            android:permission="android.permission.BIND_ACCESSIBILITY_SERVICE">
             <intent-filter>
                 <action android:name="android.accessibilityservice.AccessibilityService" />
             </intent-filter>
@@ -84,9 +85,12 @@
 
         <service
             android:name=".Agent"
-            android:foregroundServiceType="dataSync"
             android:enabled="true"
-            android:exported="false" />
+            android:exported="false"
+            android:foregroundServiceType="dataSync" />
+        <service
+            android:name=".OverlayService"
+            android:foregroundServiceType="dataSync" />
 
     </application>
 </manifest>

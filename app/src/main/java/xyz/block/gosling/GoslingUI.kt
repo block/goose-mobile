@@ -1,42 +1,55 @@
+import android.Manifest
+import android.app.Activity
 import android.content.ComponentName
 import android.content.Context
 import android.content.Intent
 import android.content.ServiceConnection
+import android.content.pm.PackageManager
 import android.os.Bundle
 import android.os.IBinder
 import android.speech.RecognitionListener
 import android.speech.RecognizerIntent
 import android.speech.SpeechRecognizer
+import android.util.Log
 import androidx.compose.foundation.Image
-import androidx.compose.foundation.background
-import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.foundation.text.BasicTextField
-import androidx.compose.material3.*
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.Mic
 import androidx.compose.material.icons.filled.Keyboard
-import androidx.compose.runtime.*
+import androidx.compose.material.icons.filled.Mic
+import androidx.compose.material3.Button
+import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
+import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.OutlinedTextField
+import androidx.compose.material3.OutlinedTextFieldDefaults
+import androidx.compose.material3.Surface
+import androidx.compose.material3.Text
+import androidx.compose.runtime.Composable
+import androidx.compose.runtime.DisposableEffect
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.clip
-import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.res.painterResource
-import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.unit.sp
-import androidx.core.content.ContextCompat
-import xyz.block.gosling.R
-import android.Manifest
-import android.app.Activity
-import android.content.pm.PackageManager
-import android.util.Log
-import androidx.compose.ui.text.TextStyle
 import androidx.core.app.ActivityCompat
+import androidx.core.content.ContextCompat
 import kotlinx.coroutines.async
 import kotlinx.coroutines.launch
 import xyz.block.gosling.Agent
-import xyz.block.gosling.ui.theme.LocalGoslingColors
+import xyz.block.gosling.OverlayService
+import xyz.block.gosling.R
 
 @Composable
 fun GoslingUI(
@@ -173,9 +186,11 @@ fun GoslingUI(
                     override fun onReadyForSpeech(params: Bundle?) {
                         inputText = "Listening..."
                     }
+
                     override fun onBeginningOfSpeech() {
                         inputText = "Listening..."
                     }
+
                     override fun onRmsChanged(rmsdB: Float) {}
                     override fun onBufferReceived(buffer: ByteArray?) {}
                     override fun onEndOfSpeech() {}
@@ -188,6 +203,10 @@ fun GoslingUI(
         } else {
             speechRecognizer?.destroy()
         }
+    }
+
+    LaunchedEffect(outputText) {
+        OverlayService.getInstance()?.updateOverlayText(outputText)
     }
 
     Box(
@@ -212,9 +231,9 @@ fun GoslingUI(
                     verticalAlignment = Alignment.CenterVertically
                 ) {
                     IconButton(
-                        onClick = { 
+                        onClick = {
                             isVoiceMode = !isVoiceMode
-                            isOutputMode = false 
+                            isOutputMode = false
                         },
                     ) {
                         Icon(

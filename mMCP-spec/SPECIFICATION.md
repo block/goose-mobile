@@ -1,60 +1,55 @@
 # mMCP SPEC (Mobile Model Context Protocol)
 
-THIS IS VERY MUCH A WIP/DRAFT AT THIS POINT - DON'T TAKE IT TOO LITERALLY YET.
-
 ## Overview
 
-mMCP leverages Android’s Intent system to enable apps to **advertise**, **discover**, and **invoke** modular “tools” dynamically. Each tool is defined by a JSON-like manifest that specifies:
-- **Name & Description:** A unique identifier and a brief explanation of the tool.
-- **Input Parameters:** A JSON schema detailing the required inputs.
-- **Return Format:** A JSON schema describing the expected output.
+mMCP enables apps to advertise available tools and instructions to AI models through Android's Intent system. This allows for dynamic discovery and invocation of functionality across apps.
 
-mMCP uses two primary Intent actions:
-- **Advertisement:**  
-  `com.example.mMCP.ACTION_TOOL_ADVERTISE`  
-  Used by apps to publish their available tools.
+## Core Components
 
-- **Invocation:**  
-  `com.example.mMCP.ACTION_TOOL_CALL`  
-  Used by apps to call an advertised tool.
+### 1. Tool Definition
 
-This unified approach allows one or more apps to expose functionality and dynamically discover/invoke tools.
+A tool is defined by three key components:
+- **name**: Unique identifier for the tool
+- **description**: Human-readable description of the tool's functionality
+- **parameters**: JSON Schema defining the expected inputs
 
----
-
-## Tool Manifest Format
-
-Each tool is defined by a manifest with these properties:
-- **name:** Unique identifier (e.g., `"hello_world"`).
-- **description:** A brief explanation of what the tool does.
-- **parameters:** A JSON schema detailing expected inputs (can be empty if none).
-- **return:** A JSON schema for the expected output.
-
-**Example Manifest:**
-
-```json
-{
-  "appDescription": "HelloWorld App",
-  "protocolVersion": "1.0",
-  "tools": [
-    {
-      "name": "hello_world",
-      "description": "Returns a 'Hello, World!' message.",
-      "parameters": {},
-      "return": {
-        "message": "String"
-      }
-    }
-  ]
-}
+Example Tool:
+```rust
+let pdf_tool = Tool::new(
+    "pdf_tool",
+    indoc! {r#"
+        Process PDF files to extract text and images.
+        Supports operations:
+        - extract_text: Extract all text content from the PDF
+        - extract_images: Extract and save embedded images to PNG files
+    "#},
+    json!({
+        "type": "object",
+        "required": ["path", "operation"],
+        "properties": {
+            "path": {
+                "type": "string",
+                "description": "Path to the PDF file"
+            },
+            "operation": {
+                "type": "string",
+                "enum": ["extract_text", "extract_images"],
+                "description": "Operation to perform on the PDF"
+            }
+        }
+    }),
+);
 ```
 
-1. Advertising Tools
-   To advertise tools, include an activity (or service) with:
+### 2. App Advertisement
 
-An Intent filter for the advertisement action.
-A <meta-data> element containing the tool manifest.
+Apps advertise their capabilities through an Intent with:
+- Action: `com.example.mMCP.ACTION_TOOL_ADVERTISE`
+- Meta-data containing:
+  - **instructions**: A string providing general context about the app
+  - **tools**: Array of available tools
 
+Example manifest entry:
 ```xml
 <activity android:name=".ToolAdvertiserActivity">
     <intent-filter>
@@ -64,111 +59,73 @@ A <meta-data> element containing the tool manifest.
     <meta-data
         android:name="mMCP_manifest"
         android:value='{
-          "appDescription": "HelloWorld App",
-          "protocolVersion": "1.0",
+          "instructions": "This app provides PDF processing capabilities",
           "tools": [
             {
-              "name": "hello_world",
-              "description": "Returns a Hello, World! message",
-              "parameters": {},
-              "return": {"message": "String"}
+              "name": "pdf_tool",
+              "description": "Process PDF files to extract text and images...",
+              "parameters": {
+                "type": "object",
+                "required": ["path", "operation"],
+                "properties": {
+                  "path": {
+                    "type": "string",
+                    "description": "Path to the PDF file"
+                  },
+                  "operation": {
+                    "type": "string",
+                    "enum": ["extract_text", "extract_images"],
+                    "description": "Operation to perform on the PDF"
+                  }
+                }
+              }
             }
           ]
         }' />
 </activity>
 ```
 
-2. Invoking Tools
-   To invoke a tool, create an Intent with the invocation action and include extras that specify:
+### 3. Tool Invocation
 
-"tool_name": The name of the tool to call.
-"parameters": A JSON string (or Bundle) with the required parameters.
-Invocation Example (Kotlin):
+Tools are invoked using an Intent with:
+- Action: `com.example.mMCP.ACTION_TOOL_CALL`
+- Extras:
+  - `tool_name`: Name of the tool to call
+  - `parameters`: JSON string containing the tool parameters
 
+Example invocation:
 ```kotlin
-// Initiate a call to the 'hello_world' tool.
 val callIntent = Intent("com.example.mMCP.ACTION_TOOL_CALL").apply {
-putExtra("tool_name", "hello_world")
-// For hello_world, no parameters are required. Include parameters as needed.
-putExtra("parameters", "{}")
+    putExtra("tool_name", "pdf_tool")
+    putExtra("parameters", """
+        {
+            "path": "/storage/docs/example.pdf",
+            "operation": "extract_text"
+        }
+    """)
 }
 startActivityForResult(callIntent, TOOL_CALL_REQUEST_CODE)
 ```
 
+### 4. Tool Discovery
 
-3. Handling Tool Calls (Advertiser Side)
-   The same component that advertises the tool also handles its invocation. The component must:
-
-Check the incoming Intent's action.
-Verify the tool name.
-Execute the tool’s logic.
-Return a result.
-ToolAdvertiserActivity Example (Kotlin):
+Tools can be discovered by querying the PackageManager for activities that advertise the mMCP intent:
 
 ```kotlin
-class ToolAdvertiserActivity : AppCompatActivity() {
-
-    override fun onCreate(savedInstanceState: Bundle?) {
-        super.onCreate(savedInstanceState)
-        // Check the incoming intent's action.
-        when (intent.action) {
-            "com.example.mMCP.ACTION_TOOL_CALL" -> handleToolCall(intent)
-            // Optionally, add cases for other actions if needed.
-        }
-    }
-    
-    private fun handleToolCall(intent: Intent) {
-        val toolName = intent.getStringExtra("tool_name")
-        if (toolName == "hello_world") {
-            // Execute hello_world tool logic.
-            val resultJson = "{\"message\": \"Hello, World!\"}"
-            val resultIntent = Intent().apply {
-                putExtra("result", resultJson)
-            }
-            setResult(Activity.RESULT_OK, resultIntent)
-        } else {
-            // Tool not found; return an error.
-            setResult(Activity.RESULT_CANCELED)
-        }
-        finish()
-    }
-}
-```
-
-
-4. Discovering Available Tools
-   An app can discover advertised tools by querying the PackageManager for activities that support the advertisement action. The following snippet shows how to extract tool names from the manifest meta-data.
-
-Discovery Example (Kotlin):
-
-```kotlin
-
-fun discoverTools(): List<String> {
+fun discoverTools(): List<ToolInfo> {
     val queryIntent = Intent("com.example.mMCP.ACTION_TOOL_ADVERTISE")
-    val resolveInfoList = packageManager.queryIntentActivities(queryIntent, 0)
-    val toolList = mutableListOf<String>()
-    
-    resolveInfoList.forEach { info ->
-        val metaData = info.activityInfo.metaData?.getString("mMCP_manifest")
-        metaData?.let {
-            // Parse the JSON manifest to extract tool names.
-            // For this example, if "hello_world" is found in the JSON, add it to the list.
-            if (it.contains("\"hello_world\"")) {
-                toolList.add("hello_world")
-            }
+    return packageManager
+        .queryIntentActivities(queryIntent, 0)
+        .mapNotNull { info ->
+            info.activityInfo.metaData
+                ?.getString("mMCP_manifest")
+                ?.let { Json.decodeFromString(it) }
         }
-    }
-    return toolList
 }
 ```
 
+## Protocol Version
 
-5. Running a Hello World Example
-   In your Android project, add the ToolAdvertiserActivity and update your AndroidManifest.xml to include the advertisement intent filter along with a meta-data element that contains the tool manifest for the hello_world tool.
-   In your main (or launch) activity, modify the onCreate method so that it immediately performs two actions: first, discover available tools by querying the PackageManager for activities that advertise the mMCP intent; second, if the hello_world tool is found, invoke it using an Intent (via startActivityForResult) that specifies the tool name and any required parameters.
-   Override onActivityResult to capture and log the result from the tool invocation.
-   Run the app on an emulator or device; since no graphical user interface is used, all actions will execute immediately, and you can verify that the hello_world tool has been discovered and executed correctly by checking the log output for the expected JSON response (for example, a message stating "Hello, World!").
+Current version: 1.0
 
-
-
-
+The protocol version should be checked when discovering tools to ensure compatibility.

@@ -109,6 +109,15 @@ class MainActivity : ComponentActivity() {
         Log.d("Gosling", "MainActivity: Updated accessibility state on resume: $isEnabled")
     }
 
+    override fun onActivityResult(requestCode: Int, resultCode: Int, data: Intent?) {
+        super.onActivityResult(requestCode, resultCode, data)
+        if (requestCode == 1001 && resultCode == RESULT_OK) {
+            val result = data?.getStringExtra("result")
+            Log.d("Gosling", "mMCP result: $result")
+            // TODO: Handle the result
+        }
+    }
+
     override fun onDestroy() {
         super.onDestroy()
         GoslingApplication.isMainActivityRunning = false
@@ -192,8 +201,10 @@ fun MainScreen(modifier: Modifier = Modifier) {
     val context = LocalContext.current
     val goslingColors = LocalGoslingColors.current
     val settingsManager = remember { SettingsManager(context) }
+    val activity = context as ComponentActivity
 
     var isAccessibilityEnabled by remember { mutableStateOf(settingsManager.isAccessibilityEnabled) }
+    var mmcpResult by remember { mutableStateOf<String?>(null) }
 
     Column(
         modifier = modifier
@@ -247,6 +258,25 @@ fun MainScreen(modifier: Modifier = Modifier) {
 
         // Gosling UI
         if (isAccessibilityEnabled) {
+            // Test mMCP Button
+            Button(
+                onClick = {
+                    val intent = Intent("com.example.mMCP.ACTION_TOOL_CALL").apply {
+                        setPackage(context.packageName)
+                        putExtra("tool_name", "hello_world")
+                        putExtra("parameters", "{}")
+                    }
+                    activity.startActivityForResult(intent, 1001)
+                },
+                modifier = Modifier.fillMaxWidth()
+            ) {
+                Text("Test mMCP Hello World")
+            }
+            
+            mmcpResult?.let {
+                Text("mMCP Result: $it")
+            }
+
             GoslingUI(context = context)
         }
     }

@@ -171,12 +171,10 @@ class Agent : Service() {
         return withContext(scope.coroutineContext) {
             var retryCount = 0
             val maxRetries = 3
-            var lastError: Exception? = null
 
             while (true) {
-                var response: JSONObject? = null
+                var response: JSONObject?
                 try {
-                    // Add exponential backoff delay for retries
                     if (retryCount > 0) {
                         val delayMs = (Math.pow(2.0, retryCount.toDouble()) * 1000).toLong()
                         delay(delayMs)
@@ -184,9 +182,8 @@ class Agent : Service() {
                     }
 
                     response = callLlm(messages, context)
-                    retryCount = 0 // Reset retry count on successful call
+                    retryCount = 0
                 } catch (e: AgentException) {
-                    lastError = e
                     retryCount++
 
                     if (retryCount >= maxRetries) {
@@ -227,8 +224,6 @@ class Agent : Service() {
 
                         else -> Pair("Unknown response format", null)
                     }
-                    //val assistantMessage = response.getJSONArray("choices").getJSONObject(0).getJSONObject("message")
-                    //val assistantReply = assistantMessage.optString("content", "Ok")
 
                     onStatusUpdate(assistantReply)
 
@@ -406,29 +401,6 @@ class Agent : Service() {
             connection.disconnect()
         }
     }
-
-
-//    private fun parseAndExecuteTool(provider: ModelProvider, response: JSONObject, context: Context): List<Map<String, String>> {
-//        val assistantMessage = response.getJSONArray("choices")
-//            .getJSONObject(0)
-//            .getJSONObject("message")
-//
-//        val toolCalls = assistantMessage.optJSONArray("tool_calls") ?: return emptyList()
-//        val toolResults = mutableListOf<Map<String, String>>()
-//
-//        for (i in 0 until toolCalls.length()) {
-//            val toolCall = toolCalls.getJSONObject(i)
-//            val toolCallId = toolCall.getString("id")
-//
-//            val result = callTool(
-//                provider,
-//                toolCall,
-//                context,
-//                GoslingAccessibilityService.getInstance()
-//            )
-//            toolResults.add(mapOf("tool_call_id" to toolCallId, "output" to result))
-//        }
-//    }
 
     private fun executeTools(
         toolCalls: List<ToolCall>?,

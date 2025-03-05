@@ -452,42 +452,6 @@ object ToolHandler {
         }
     }
 
-
-    /**
-     * Call a tool by name with provided arguments
-     */
-//    fun callTool(
-//        toolCall: JSONObject,
-//        context: Context,
-//        accessibilityService: AccessibilityService?,
-//        provider: ModelProvider
-//    ): String {
-//        val functionName: String
-//        val arguments = JSONObject()
-//
-//        when (provider) {
-//            ModelProvider.OPENAI -> {
-//                val functionObject = toolCall.getJSONObject("function")
-//                functionName = functionObject.getString("name")
-//                val argumentsString = functionObject.optString("arguments", "{}")
-//                val parsedArgs = JSONObject(argumentsString)
-//
-//                parsedArgs.keys().forEach { key ->
-//                    arguments.put(key, parsedArgs.get(key))
-//                }
-//            }
-//
-//            ModelProvider.GEMINI -> {
-//                functionName = toolCall.getString("name")
-//                val paramsArray = toolCall.optJSONArray("parameters") ?: JSONArray()
-//                for (i in 0 until paramsArray.length()) {
-//                    val param = paramsArray.getJSONObject(i)
-//                    arguments.put(param.getString("name"), param.get("value"))
-//                }
-//            }
-//        }
-//    }
-
     fun callTool(
         toolCall: ToolCall,
         context: Context,

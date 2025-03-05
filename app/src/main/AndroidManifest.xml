@@ -55,7 +55,7 @@
 
         <!-- mMCP Tool Advertisement -->
         <activity
-            android:name=".ToolAdvertiserActivity"
+            android:name=".ExampleMMCPTools"
             android:exported="true">
             <intent-filter>
                 <action android:name="com.example.mMCP.ACTION_TOOL_ADVERTISE" />

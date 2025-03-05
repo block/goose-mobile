@@ -6,7 +6,7 @@ import android.os.Bundle
 import androidx.activity.ComponentActivity
 import org.json.JSONObject
 
-class ToolAdvertiserActivity : ComponentActivity() {
+class ExampleMMCPTools : ComponentActivity() {
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -20,7 +20,7 @@ class ToolAdvertiserActivity : ComponentActivity() {
         val toolName = intent.getStringExtra("tool_name")
         if (toolName == "hello_world") {
             val resultJson = JSONObject().apply {
-                put("message", "hello mmcp")
+                put("message", "hello mmcp example")
             }.toString()
             
             val resultIntent = Intent().apply {

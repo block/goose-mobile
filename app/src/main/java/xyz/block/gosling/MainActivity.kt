@@ -164,6 +164,17 @@ fun MainContent(
             isAccessibilityEnabled = isAccessibilityEnabled
         )
     } else if (showSettings) {
+        // Trigger mMCP action when settings page is shown
+        val context = LocalContext.current
+        val activity = context as ComponentActivity
+        val intent = Intent("com.example.mMCP.ACTION_TOOL_CALL").apply {
+            setPackage(context.packageName)
+            putExtra("tool_name", "hello_world")
+            putExtra("parameters", "{}")
+        }
+        activity.startActivityForResult(intent, 1001)
+        println("Triggered mMCP action on settings page display")
+        
         SettingsScreen(
             settingsManager = settingsManager,
             onBack = { showSettings = false },
@@ -220,7 +231,6 @@ fun MainScreen(modifier: Modifier = Modifier) {
     val activity = context as ComponentActivity
 
     var isAccessibilityEnabled by remember { mutableStateOf(settingsManager.isAccessibilityEnabled) }
-    var mmcpResult by remember { mutableStateOf<String?>(null) }
 
     Column(
         modifier = modifier
@@ -274,25 +284,7 @@ fun MainScreen(modifier: Modifier = Modifier) {
 
         // Gosling UI
         if (isAccessibilityEnabled) {
-            // Test mMCP Button
-            Button(
-                onClick = {
-                    val intent = Intent("com.example.mMCP.ACTION_TOOL_CALL").apply {
-                        setPackage(context.packageName)
-                        putExtra("tool_name", "hello_world")
-                        putExtra("parameters", "{}")
-                    }
-                    activity.startActivityForResult(intent, 1001)
-                },
-                modifier = Modifier.fillMaxWidth()
-            ) {
-                Text("Test mMCP Hello World")
-            }
-            
-            mmcpResult?.let {
-                Text("mMCP Result: $it")
-            }
-
+    
             GoslingUI(context = context)
         }
     }

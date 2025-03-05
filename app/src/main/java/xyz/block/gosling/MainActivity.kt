@@ -1,6 +1,5 @@
 package xyz.block.gosling
 
-import GoslingUI
 import android.Manifest
 import android.content.Context
 import android.content.Intent
@@ -93,7 +92,10 @@ class MainActivity : ComponentActivity() {
 
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
             if (checkSelfPermission(Manifest.permission.POST_NOTIFICATIONS) != PackageManager.PERMISSION_GRANTED) {
-                requestPermissions(arrayOf(Manifest.permission.POST_NOTIFICATIONS), REQUEST_NOTIFICATION_PERMISSION)
+                requestPermissions(
+                    arrayOf(Manifest.permission.POST_NOTIFICATIONS),
+                    REQUEST_NOTIFICATION_PERMISSION
+                )
             }
         }
     }

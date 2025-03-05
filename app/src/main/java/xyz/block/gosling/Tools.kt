@@ -1,18 +1,13 @@
 package xyz.block.gosling
 
-import android.content.Context
-import android.content.Intent
-import android.provider.AlarmClock
 import android.accessibilityservice.AccessibilityService
 import android.accessibilityservice.GestureDescription
+import android.content.Context
+import android.content.Intent
 import android.graphics.Path
 import android.graphics.Rect
-import android.os.Build
 import android.os.Bundle
-import android.os.Handler
-import android.os.Looper
 import android.view.accessibility.AccessibilityNodeInfo
-import androidx.annotation.RequiresApi
 import org.json.JSONArray
 import org.json.JSONObject
 
@@ -40,21 +35,28 @@ object ToolHandler {
     /**
      * Helper function to perform a gesture using the Accessibility API
      */
-    private fun performGesture(gesture: GestureDescription, accessibilityService: AccessibilityService): Boolean {
+    private fun performGesture(
+        gesture: GestureDescription,
+        accessibilityService: AccessibilityService
+    ): Boolean {
         var gestureResult = false
         val countDownLatch = java.util.concurrent.CountDownLatch(1)
 
-        accessibilityService.dispatchGesture(gesture, object : AccessibilityService.GestureResultCallback() {
-            override fun onCompleted(gestureDescription: GestureDescription) {
-                gestureResult = true
-                countDownLatch.countDown()
-            }
+        accessibilityService.dispatchGesture(
+            gesture,
+            object : AccessibilityService.GestureResultCallback() {
+                override fun onCompleted(gestureDescription: GestureDescription) {
+                    gestureResult = true
+                    countDownLatch.countDown()
+                }
 
-            override fun onCancelled(gestureDescription: GestureDescription) {
-                gestureResult = false
-                countDownLatch.countDown()
-            }
-        }, null)
+                override fun onCancelled(gestureDescription: GestureDescription) {
+                    gestureResult = false
+                    countDownLatch.countDown()
+                }
+            },
+            null
+        )
 
         try {
             countDownLatch.await(2000, java.util.concurrent.TimeUnit.MILLISECONDS)
@@ -67,15 +69,15 @@ object ToolHandler {
 
     private fun serializeNodeHierarchy(node: AccessibilityNodeInfo, clean: Boolean): JSONObject {
         val json = JSONObject()
-        
+
         try {
             json.put("class", node.className)
             json.put("package", node.packageName)
-            
+
             node.text?.toString()?.takeIf { it.isNotEmpty() }?.let {
                 json.put("text", it)
             }
-            
+
             node.contentDescription?.toString()?.takeIf { it.isNotEmpty() }?.let {
                 json.put("content-desc", it)
             }
@@ -104,11 +106,7 @@ object ToolHandler {
             val children = JSONArray()
             for (i in 0 until node.childCount) {
                 node.getChild(i)?.let { childNode ->
-                    try {
-                        children.put(serializeNodeHierarchy(childNode, clean))
-                    } finally {
-                        childNode.recycle()
-                    }
+                    children.put(serializeNodeHierarchy(childNode, clean))
                 }
             }
             if (children.length() > 0) {
@@ -137,24 +135,20 @@ object ToolHandler {
     fun getUiHierarchy(accessibilityService: AccessibilityService, args: JSONObject): String {
         val clean = args.optBoolean("clean", false)
         val root = JSONObject()
-        
+
         try {
             val activeWindow = accessibilityService.rootInActiveWindow
             if (activeWindow != null) {
-                try {
-                    root.put("package", activeWindow.packageName)
-                    root.put("class", activeWindow.className)
-                    root.put("nodes", serializeNodeHierarchy(activeWindow, clean))
-                } finally {
-                    activeWindow.recycle()
-                }
+                root.put("package", activeWindow.packageName)
+                root.put("class", activeWindow.className)
+                root.put("nodes", serializeNodeHierarchy(activeWindow, clean))
             } else {
                 root.put("error", "No active window found")
             }
         } catch (e: Exception) {
             root.put("error", "Failed to get UI hierarchy: ${e.message}")
         }
-        
+
         return root.toString(2)
     }
 
@@ -183,12 +177,14 @@ object ToolHandler {
         val packageName = args.getString("package_name")
         val launchIntent = context.packageManager.getLaunchIntentForPackage(packageName)
             ?: return "Error: App $packageName not found."
-            
-        launchIntent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK or 
-                            Intent.FLAG_ACTIVITY_CLEAR_TASK or 
-                            Intent.FLAG_ACTIVITY_CLEAR_TOP or 
-                            Intent.FLAG_ACTIVITY_RESET_TASK_IF_NEEDED)
-                            
+
+        launchIntent.addFlags(
+            Intent.FLAG_ACTIVITY_NEW_TASK or
+                    Intent.FLAG_ACTIVITY_CLEAR_TASK or
+                    Intent.FLAG_ACTIVITY_CLEAR_TOP or
+                    Intent.FLAG_ACTIVITY_RESET_TASK_IF_NEEDED
+        )
+
         context.startActivity(launchIntent)
         return "Started app: $packageName"
     }
@@ -269,7 +265,13 @@ object ToolHandler {
         swipePath.lineTo(endX.toFloat(), endY.toFloat())
 
         val gestureBuilder = GestureDescription.Builder()
-        gestureBuilder.addStroke(GestureDescription.StrokeDescription(swipePath, 0, duration.toLong()))
+        gestureBuilder.addStroke(
+            GestureDescription.StrokeDescription(
+                swipePath,
+                0,
+                duration.toLong()
+            )
+        )
 
         val swipeResult = performGesture(gestureBuilder.build(), accessibilityService)
         return if (swipeResult) {
@@ -307,8 +309,6 @@ object ToolHandler {
             ?: return "Error: No input field is currently focused"
 
         if (!focusedNode.isEditable) {
-            focusedNode.recycle()
-            rootNode.recycle()
             return "Error: The focused element is not an editable text field"
         }
 
@@ -317,14 +317,12 @@ object ToolHandler {
             AccessibilityNodeInfo.ACTION_ARGUMENT_SET_TEXT_CHARSEQUENCE,
             textToEnter
         )
-        val setTextResult = focusedNode.performAction(AccessibilityNodeInfo.ACTION_SET_TEXT, arguments)
+        val setTextResult =
+            focusedNode.performAction(AccessibilityNodeInfo.ACTION_SET_TEXT, arguments)
 
         if (shouldSubmit && setTextResult) {
             Runtime.getRuntime().exec(arrayOf("input", "keyevent", "KEYCODE_ENTER"))
         }
-
-        focusedNode.recycle()
-        rootNode.recycle()
 
         return if (setTextResult) {
             "Entered text: \"$textToEnter\"${if (shouldSubmit) " and submitted" else ""}"
@@ -361,8 +359,8 @@ object ToolHandler {
                 mapOf(
                     "type" to "function",
                     "function" to mapOf(
-                        "name" to tool.name,
-                        "description" to tool.description
+                        "name" to tool?.name,
+                        "description" to tool?.description
                     ).let {
                         if (parametersMap != null)
                             it + ("parameters" to parametersMap)
@@ -375,7 +373,11 @@ object ToolHandler {
     /**
      * Call a tool by name with provided arguments
      */
-    fun callTool(toolCall: JSONObject, context: Context, accessibilityService: AccessibilityService?): String {
+    fun callTool(
+        toolCall: JSONObject,
+        context: Context,
+        accessibilityService: AccessibilityService?
+    ): String {
         val functionObject = toolCall.getJSONObject("function")
         val functionName = functionObject.getString("name")
         val argumentsString = functionObject.optString("arguments", "{}")
@@ -384,7 +386,7 @@ object ToolHandler {
         val toolMethod = ToolHandler::class.java.methods
             .firstOrNull {
                 it.isAnnotationPresent(Tool::class.java) &&
-                        it.getAnnotation(Tool::class.java).name == functionName
+                        it?.getAnnotation(Tool::class.java)?.name == functionName
             }
             ?: return "Unknown tool call: $functionName"
 
@@ -396,7 +398,12 @@ object ToolHandler {
                     return "Accessibility service not available."
                 }
                 if (toolAnnotation.requiresContext) {
-                    return toolMethod.invoke(ToolHandler, accessibilityService, context, arguments) as String
+                    return toolMethod.invoke(
+                        ToolHandler,
+                        accessibilityService,
+                        context,
+                        arguments
+                    ) as String
                 }
                 return toolMethod.invoke(ToolHandler, accessibilityService, arguments) as String
             }
@@ -412,4 +419,8 @@ object ToolHandler {
 
 fun getToolDefinitions(): List<Map<String, Any>> = ToolHandler.getToolDefinitions()
 
-fun callTool(toolCall: JSONObject, context: Context, accessibilityService: AccessibilityService?): String = ToolHandler.callTool(toolCall, context, accessibilityService)
+fun callTool(
+    toolCall: JSONObject,
+    context: Context,
+    accessibilityService: AccessibilityService?
+): String = ToolHandler.callTool(toolCall, context, accessibilityService)

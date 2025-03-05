@@ -56,7 +56,6 @@ fun SettingsScreen(
     var showResetDialog by remember { mutableStateOf(false) }
     var expanded by remember { mutableStateOf(false) }
 
-    // Function to check assistant status
     fun checkAssistantStatus() {
         val settingSecure = Settings.Secure.getString(
             context.contentResolver,
@@ -79,13 +78,22 @@ fun SettingsScreen(
                     checkAssistantStatus()
                 }
             }
-            
+
             override fun onActivityPaused(activity: android.app.Activity) {}
             override fun onActivityStarted(activity: android.app.Activity) {}
             override fun onActivityDestroyed(activity: android.app.Activity) {}
-            override fun onActivitySaveInstanceState(activity: android.app.Activity, outState: android.os.Bundle) {}
+            override fun onActivitySaveInstanceState(
+                activity: android.app.Activity,
+                outState: android.os.Bundle
+            ) {
+            }
+
             override fun onActivityStopped(activity: android.app.Activity) {}
-            override fun onActivityCreated(activity: android.app.Activity, savedInstanceState: android.os.Bundle?) {}
+            override fun onActivityCreated(
+                activity: android.app.Activity,
+                savedInstanceState: android.os.Bundle?
+            ) {
+            }
         }
 
         activity?.application?.registerActivityLifecycleCallbacks(lifecycleObserver)
@@ -213,7 +221,7 @@ fun SettingsScreen(
                             )
                             Switch(
                                 checked = shouldProcessNotifications,
-                                onCheckedChange = { 
+                                onCheckedChange = {
                                     shouldProcessNotifications = it
                                     settingsManager.shouldProcessNotifications = it
                                 }

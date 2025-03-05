@@ -89,11 +89,7 @@ class GoslingAccessibilityService : AccessibilityService() {
                     packageName = packageName,
                     title = "",
                     content = rawText,
-                    context = "",
-                    image = null,
-                    timestamp = parcelableData.`when`,
                     category = parcelableData.category ?: "",
-                    actions = emptyList()
                 )
                 return
             }
@@ -122,18 +118,12 @@ class GoslingAccessibilityService : AccessibilityService() {
                 packageName = packageName,
                 title = title,
                 content = content,
-                context = context,
-                image = image,
-                timestamp = parcelableData.`when`,
                 category = parcelableData.category ?: "",
-                actions = actions
             )
         }
     }
 
-    override fun onInterrupt() {
-        // Handle interruptions if needed
-    }
+    override fun onInterrupt() {}
 
     override fun onDestroy() {
         super.onDestroy()

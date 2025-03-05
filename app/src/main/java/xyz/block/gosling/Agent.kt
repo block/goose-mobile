@@ -6,19 +6,23 @@ import android.app.PendingIntent
 import android.app.Service
 import android.content.Context
 import android.content.Intent
-import android.graphics.Bitmap
 import android.os.Binder
-import android.os.Build
 import android.os.IBinder
 import android.util.DisplayMetrics
 import android.util.Log
 import android.view.WindowManager
 import androidx.core.app.NotificationCompat
-import kotlinx.coroutines.*
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.SupervisorJob
+import kotlinx.coroutines.delay
+import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 import org.json.JSONArray
 import org.json.JSONObject
 import java.net.HttpURLConnection
 import java.net.URL
+import kotlin.math.pow
 
 class AgentException(message: String) : Exception(message)
 
@@ -79,16 +83,14 @@ class Agent : Service() {
     }
 
     private fun createNotificationChannel() {
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
-            val name = "Gosling Agent"
-            val descriptionText = "Handles network operations and command processing"
-            val importance = NotificationManager.IMPORTANCE_LOW
-            val channel = NotificationChannel(NOTIFICATION_CHANNEL_ID, name, importance).apply {
-                description = descriptionText
-            }
-            val notificationManager = getSystemService(NotificationManager::class.java)
-            notificationManager.createNotificationChannel(channel)
+        val name = "Gosling Agent"
+        val descriptionText = "Handles network operations and command processing"
+        val importance = NotificationManager.IMPORTANCE_LOW
+        val channel = NotificationChannel(NOTIFICATION_CHANNEL_ID, name, importance).apply {
+            description = descriptionText
         }
+        val notificationManager = getSystemService(NotificationManager::class.java)
+        notificationManager.createNotificationChannel(channel)
     }
 
     data class Message(
@@ -99,18 +101,25 @@ class Agent : Service() {
         val tool_calls: List<Map<String, Any>>? = null
     )
 
-    suspend fun processCommand(userInput: String, context: Context, isNotificationReply: Boolean, onStatusUpdate: (String) -> Unit): String {
+    suspend fun processCommand(
+        userInput: String,
+        context: Context,
+        isNotificationReply: Boolean,
+        onStatusUpdate: (String) -> Unit
+    ): String {
         val availableIntents = IntentScanner.getAvailableIntents(context)
         val installedApps = availableIntents.joinToString("\n") { it.formatForLLM() }
 
         val windowManager = context.getSystemService(Context.WINDOW_SERVICE) as WindowManager
         val displayMetrics = DisplayMetrics()
+        @Suppress("DEPRECATION")
         windowManager.defaultDisplay.getMetrics(displayMetrics)
 
         val width = displayMetrics.widthPixels
         val height = displayMetrics.heightPixels
 
-        val role = if (isNotificationReply) "helping the user process android notifications" else "managing the users android phone"
+        val role =
+            if (isNotificationReply) "helping the user process android notifications" else "managing the users android phone"
 
         val systemMessage = """
             You are an assistant $role. The user does not have access to the phone. 
@@ -158,14 +167,13 @@ class Agent : Service() {
         return withContext(scope.coroutineContext) {
             var retryCount = 0
             val maxRetries = 3
-            var lastError: Exception? = null
 
             while (true) {
-                var response: JSONObject? = null
+                var response: JSONObject?
                 try {
                     // Add exponential backoff delay for retries
                     if (retryCount > 0) {
-                        val delayMs = (Math.pow(2.0, retryCount.toDouble()) * 1000).toLong()
+                        val delayMs = (2.0.pow(retryCount.toDouble()) * 1000).toLong()
                         delay(delayMs)
                         onStatusUpdate("Retrying... (attempt ${retryCount + 1})")
                     }
@@ -173,9 +181,8 @@ class Agent : Service() {
                     response = callLlm(messages, context)
                     retryCount = 0 // Reset retry count on successful call
                 } catch (e: AgentException) {
-                    lastError = e
                     retryCount++
-                    
+
                     if (retryCount >= maxRetries) {
                         onStatusUpdate("Failed after $maxRetries attempts: ${e.message}")
                         return@withContext "Failed: ${e.message}"
@@ -184,7 +191,8 @@ class Agent : Service() {
                 }
 
                 try {
-                    val assistantMessage = response.getJSONArray("choices").getJSONObject(0).getJSONObject("message")
+                    val assistantMessage =
+                        response.getJSONArray("choices").getJSONObject(0).getJSONObject("message")
                     val assistantReply = assistantMessage.optString("content", "Ok")
 
                     onStatusUpdate(assistantReply)
@@ -225,11 +233,7 @@ class Agent : Service() {
         packageName: String,
         title: String,
         content: String,
-        context: String,
-        image: Bitmap?,
-        timestamp: Long,
         category: String,
-        actions: List<String>
     ) {
         scope.launch {
             val prompt = """
@@ -241,7 +245,7 @@ class Agent : Service() {
                 
                 Please analyze this notification and take appropriate action if needed.
             """.trimIndent()
-            
+
             processCommand(
                 prompt,
                 this@Agent,
@@ -260,7 +264,8 @@ class Agent : Service() {
             .setOngoing(true)
             .build()
 
-        val notificationManager = getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
+        val notificationManager =
+            getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
         notificationManager.notify(NOTIFICATION_ID, notification)
     }
 
@@ -306,16 +311,19 @@ class Agent : Service() {
             val message = when {
                 e.message?.contains("Unable to resolve host") == true -> {
                     // Check network connectivity
-                    val connectivityManager = context.getSystemService(Context.CONNECTIVITY_SERVICE) as android.net.ConnectivityManager
+                    val connectivityManager =
+                        context.getSystemService(Context.CONNECTIVITY_SERVICE) as android.net.ConnectivityManager
                     val network = connectivityManager.activeNetwork
-                    val capabilities = network?.let { connectivityManager.getNetworkCapabilities(it) }
-                    
+                    val capabilities =
+                        network?.let { connectivityManager.getNetworkCapabilities(it) }
+
                     if (network == null || capabilities == null) {
                         "Network error: No active network connection"
                     } else {
                         "Network error: DNS resolution failed. Will retry with new connection..."
                     }
                 }
+
                 e.message?.contains("timeout") == true -> "Request timed out. Please try again."
                 else -> "Error calling LLM: ${e.message}"
             }
@@ -325,7 +333,10 @@ class Agent : Service() {
         }
     }
 
-    private fun parseAndExecuteTool(response: JSONObject, context: Context): List<Map<String, String>> {
+    private fun parseAndExecuteTool(
+        response: JSONObject,
+        context: Context
+    ): List<Map<String, String>> {
         val assistantMessage = response.getJSONArray("choices")
             .getJSONObject(0)
             .getJSONObject("message")
@@ -355,7 +366,7 @@ class Agent : Service() {
         message.tool_calls?.let {
             val toolCallsJson = JSONArray()
             it.forEach { toolCall ->
-                toolCallsJson.put((toolCall as Map<String, Any>).toJSONObject())
+                toolCallsJson.put(toolCall.toJSONObject())
             }
             json.put("tool_calls", toolCallsJson)
         }
@@ -409,5 +420,4 @@ class Agent : Service() {
             }
         }
     }
-
 }

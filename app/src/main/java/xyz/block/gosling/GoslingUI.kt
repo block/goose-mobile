@@ -1,3 +1,5 @@
+package xyz.block.gosling
+
 import android.Manifest
 import android.app.Activity
 import android.content.ComponentName
@@ -47,9 +49,6 @@ import androidx.core.app.ActivityCompat
 import androidx.core.content.ContextCompat
 import kotlinx.coroutines.async
 import kotlinx.coroutines.launch
-import xyz.block.gosling.Agent
-import xyz.block.gosling.OverlayService
-import xyz.block.gosling.R
 
 @Composable
 fun GoslingUI(

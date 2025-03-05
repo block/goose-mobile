@@ -1,7 +1,6 @@
 package xyz.block.gosling
 
 import android.content.Context
-import android.content.SharedPreferences
 
 class SettingsManager(context: Context) {
     private val prefs = context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
@@ -35,8 +34,4 @@ class SettingsManager(context: Context) {
     var shouldProcessNotifications: Boolean
         get() = prefs.getBoolean(KEY_PROCESS_NOTIFICATIONS, false)
         set(value) = prefs.edit().putBoolean(KEY_PROCESS_NOTIFICATIONS, value).apply()
-
-    fun hasValidConfig(): Boolean {
-        return llmModel.isNotEmpty() && apiKey.isNotEmpty()
-    }
 } 

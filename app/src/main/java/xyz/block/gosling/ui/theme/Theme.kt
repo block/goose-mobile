@@ -2,16 +2,15 @@ package xyz.block.gosling.ui.theme
 
 import android.os.Build
 import androidx.compose.foundation.isSystemInDarkTheme
-import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.material3.*
+import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.darkColorScheme
+import androidx.compose.material3.dynamicDarkColorScheme
+import androidx.compose.material3.dynamicLightColorScheme
+import androidx.compose.material3.lightColorScheme
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
-import androidx.compose.runtime.staticCompositionLocalOf
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
-import androidx.compose.ui.text.TextStyle
-import androidx.compose.ui.unit.dp
-import androidx.compose.ui.unit.sp
 
 // Base colors
 val primaryColor = Color(0xFF7A7EFB)  // Purple
@@ -28,23 +27,6 @@ val darkTertiaryColor = Color(0xFF9A9DFC)
 val darkErrorColor = Color(0xFFCF6679)
 val darkSurfaceColor = Color(0xFF121212)
 val darkOutlineColor = Color(0xFF919191)
-
-// Extended color palette for the app
-class GoslingColors(
-    val primaryBackground: Color,
-    val secondaryButton: Color,
-    val inputBackground: Color,
-    val primaryText: Color,
-)
-
-val LocalGoslingColors = staticCompositionLocalOf {
-    GoslingColors(
-        primaryBackground = primaryColor,
-        secondaryButton = secondaryColor,
-        inputBackground = surfaceColor,
-        primaryText = Color.White,
-    )
-}
 
 private val DarkColorScheme = darkColorScheme(
     primary = darkPrimaryColor,
@@ -104,18 +86,6 @@ private val LightColorScheme = lightColorScheme(
     surfaceTint = primaryColor
 )
 
-private val Typography = Typography(
-    bodyLarge = TextStyle(fontSize = 16.sp),
-    titleLarge = TextStyle(fontSize = 20.sp)
-)
-
-private val Shapes = Shapes(
-    small = RoundedCornerShape(4.dp),
-    medium = RoundedCornerShape(8.dp),
-    large = RoundedCornerShape(16.dp),
-    extraLarge = RoundedCornerShape(24.dp)
-)
-
 @Composable
 fun GoslingTheme(
     darkTheme: Boolean = isSystemInDarkTheme(),
@@ -127,22 +97,14 @@ fun GoslingTheme(
             val context = LocalContext.current
             if (darkTheme) dynamicDarkColorScheme(context) else dynamicLightColorScheme(context)
         }
+
         darkTheme -> DarkColorScheme
         else -> LightColorScheme
     }
 
-    val goslingColors = GoslingColors(
-        primaryBackground = if (darkTheme) darkPrimaryColor else primaryColor,
-        secondaryButton = if (darkTheme) darkSecondaryColor else secondaryColor,
-        inputBackground = if (darkTheme) darkSurfaceColor else surfaceColor,
-        primaryText = if (darkTheme) Color.White else Color.Black,
-    )
-
-    CompositionLocalProvider(LocalGoslingColors provides goslingColors) {
+    CompositionLocalProvider {
         MaterialTheme(
             colorScheme = colorScheme,
-            typography = Typography,
-            shapes = Shapes,
             content = content
         )
     }

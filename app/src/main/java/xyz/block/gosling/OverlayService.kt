@@ -7,20 +7,19 @@ import android.app.Service
 import android.content.Context
 import android.content.Intent
 import android.graphics.PixelFormat
-import android.os.Build
 import android.os.IBinder
 import android.view.Gravity
 import android.view.LayoutInflater
 import android.view.MotionEvent
-import android.view.View
 import android.view.WindowManager
 import android.widget.LinearLayout
 import android.widget.TextView
+import java.lang.ref.WeakReference
 
 class OverlayService : Service() {
     companion object {
-        private var instance: OverlayService? = null
-        fun getInstance(): OverlayService? = instance
+        private var instance: WeakReference<OverlayService>? = null
+        fun getInstance(): OverlayService? = instance?.get()
     }
 
     private lateinit var windowManager: WindowManager
@@ -34,21 +33,24 @@ class OverlayService : Service() {
 
     override fun onCreate() {
         super.onCreate()
-        instance = this
+        instance = WeakReference(this)
         windowManager = getSystemService(Context.WINDOW_SERVICE) as WindowManager
 
         // Inflate the overlay view
+        val tempParent = LinearLayout(this).apply {
+            layoutParams = WindowManager.LayoutParams(
+                WindowManager.LayoutParams.MATCH_PARENT,
+                WindowManager.LayoutParams.MATCH_PARENT
+            )
+        }
         overlayView = LayoutInflater.from(this)
-            .inflate(R.layout.overlay_layout, null) as LinearLayout
+            .inflate(R.layout.overlay_layout, tempParent, false) as LinearLayout
         overlayText = overlayView?.findViewById(R.id.overlay_text)
 
         params = WindowManager.LayoutParams(
             WindowManager.LayoutParams.WRAP_CONTENT,
             WindowManager.LayoutParams.WRAP_CONTENT,
-            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O)
-                WindowManager.LayoutParams.TYPE_APPLICATION_OVERLAY
-            else
-                WindowManager.LayoutParams.TYPE_PHONE,
+            WindowManager.LayoutParams.TYPE_APPLICATION_OVERLAY,
             WindowManager.LayoutParams.FLAG_NOT_FOCUSABLE or
                     WindowManager.LayoutParams.FLAG_LAYOUT_IN_SCREEN,
             PixelFormat.TRANSLUCENT
@@ -68,12 +70,24 @@ class OverlayService : Service() {
                     initialTouchY = event.rawY
                     true
                 }
+
                 MotionEvent.ACTION_MOVE -> {
                     params.x = initialX + (event.rawX - initialTouchX).toInt()
                     params.y = initialY + (event.rawY - initialTouchY).toInt()
                     windowManager.updateViewLayout(overlayView, params)
                     true
                 }
+
+                MotionEvent.ACTION_UP -> {
+                    // If the touch hasn't moved much, consider it a click
+                    if (kotlin.math.abs(event.rawX - initialTouchX) < 10 &&
+                        kotlin.math.abs(event.rawY - initialTouchY) < 10
+                    ) {
+                        view.performClick()
+                    }
+                    true
+                }
+
                 else -> false
             }
         }
@@ -88,6 +102,7 @@ class OverlayService : Service() {
 
     override fun onDestroy() {
         overlayView?.let { windowManager.removeView(it) }
+        instance?.clear()
         instance = null
         super.onDestroy()
     }
@@ -96,32 +111,23 @@ class OverlayService : Service() {
 
     private fun createNotification(): Notification {
         val channelId = "overlay_service_channel"
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
-            val channel = NotificationChannel(
-                channelId,
-                "Overlay Service",
-                NotificationManager.IMPORTANCE_LOW
-            )
-            val notificationManager =
-                getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
-            notificationManager.createNotificationChannel(channel)
-        }
-        return if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
-            Notification.Builder(this, channelId)
-                .setContentTitle("Overlay Running")
-                .setContentText("Your overlay is active")
-                .setSmallIcon(R.mipmap.ic_launcher).build()
-        } else {
-            Notification.Builder(this)
-                .setContentTitle("Overlay Running")
-                .setContentText("Your overlay is active")
-                .setSmallIcon(R.mipmap.ic_launcher).build()
-        }
+        val channel = NotificationChannel(
+            channelId,
+            "Overlay Service",
+            NotificationManager.IMPORTANCE_LOW
+        )
+        val notificationManager =
+            getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
+        notificationManager.createNotificationChannel(channel)
+        return Notification.Builder(this, channelId)
+            .setContentTitle("Overlay Running")
+            .setContentText("Your overlay is active")
+            .setSmallIcon(R.mipmap.ic_launcher).build()
     }
 
     fun updateOverlayText(text: String?) {
         if (text.isNullOrBlank() || text == "null") return
-        
+
         overlayText?.post {
             overlayText?.text = text
         }

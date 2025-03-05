@@ -125,12 +125,53 @@ class MainActivity : ComponentActivity() {
         }
     }
 
+    /**
+     * Step 2: Handle the asynchronous response from mMCP tool call
+     * 
+     * This method is called by Android when the mMCP activity completes.
+     * The flow is:
+     * 1. Our startActivityForResult() initiates the call
+     * 2. Target activity processes the mMCP request
+     * 3. Target calls setResult() with response data
+     * 4. Android system calls this method with the results
+     *
+     * Flow diagram:
+     * Our App                          Target mMCP Activity
+     *    |                                    |
+     *    |---startActivityForResult(1001)---->|  Step 1: Initial call
+     *    |                                    |
+     *    |          [waiting...]             |  
+     *    |                                    |
+     *    |                              [processes tool_name]
+     *    |                              [with parameters]
+     *    |                                    |
+     *    |                            [prepares response]
+     *    |                                    |
+     *    |<--setResult(OK/CANCEL + data)-----|  Step 2: Sets response
+     *    |                                    |
+     *    |--onActivityResult() called--------|  Step 3: We get callback
+     *    |                                    |
+     */
     override fun onActivityResult(requestCode: Int, resultCode: Int, data: Intent?) {
         super.onActivityResult(requestCode, resultCode, data)
-        if (requestCode == 1001 && resultCode == RESULT_OK) {
-            val result = data?.getStringExtra("result")
-            Log.d("Gosling", "mMCP result: $result")
-            // TODO: Handle the result
+        if (requestCode == 1001) {
+            println("Step 2: Received mMCP callback response")
+            when (resultCode) {
+                RESULT_OK -> {
+                    val result = data?.getStringExtra("result")
+                    println("mMCP success response: $result")
+                    Log.d("Gosling", "mMCP success response: $result")
+                }
+                RESULT_CANCELED -> {
+                    val error = data?.getStringExtra("error")
+                    println("mMCP error response: $error")
+                    Log.d("Gosling", "mMCP error response: $error")
+                }
+                else -> {
+                    println("mMCP unknown response code: $resultCode")
+                    Log.d("Gosling", "mMCP unknown response code: $resultCode")
+                }
+            }
         }
     }
 
@@ -164,7 +205,9 @@ fun MainContent(
             isAccessibilityEnabled = isAccessibilityEnabled
         )
     } else if (showSettings) {
-        // Trigger mMCP action when settings page is shown
+        // Step 1: Trigger mMCP action when settings page is shown
+        // This launches the target activity asynchronously - we won't get an immediate response
+        // Instead, the response will come back through onActivityResult
         val context = LocalContext.current
         val activity = context as ComponentActivity
         val intent = Intent("com.example.mMCP.ACTION_TOOL_CALL").apply {
@@ -172,8 +215,9 @@ fun MainContent(
             putExtra("tool_name", "hello_world")
             putExtra("parameters", "{}")
         }
+        // The requestCode (1001) helps us identify which callback is for our mMCP call
         activity.startActivityForResult(intent, 1001)
-        println("Triggered mMCP action on settings page display")
+        println("Step 1: Initiated mMCP action - waiting for callback...")
         
         SettingsScreen(
             settingsManager = settingsManager,

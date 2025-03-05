@@ -9,25 +9,18 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.text.KeyboardOptions
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.filled.ArrowBack
-import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.ExposedDropdownMenuBox
 import androidx.compose.material3.ExposedDropdownMenuDefaults
-import androidx.compose.material3.Icon
-import androidx.compose.material3.IconButton
 import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Text
-import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
@@ -40,7 +33,6 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.unit.dp
-import androidx.compose.material3.Switch
 
 enum class SetupStep {
     WELCOME,
@@ -325,8 +317,8 @@ private fun LLMConfigStep(
     onApiKeyChange: (String) -> Unit,
     onComplete: () -> Unit
 ) {
-    val models = AiModel.AVAILABLE_MODELS.map { 
-        it.identifier to it.displayName 
+    val models = AiModel.AVAILABLE_MODELS.map {
+        it.identifier to it.displayName
     }
 
     var expanded by remember { mutableStateOf(false) }
@@ -417,180 +409,180 @@ private fun LLMConfigStep(
     }
 }
 
-@OptIn(ExperimentalMaterial3Api::class)
-@Composable
-fun SettingsScreen(
-    settingsManager: SettingsManager,
-    onBack: () -> Unit,
-    openAccessibilitySettings: () -> Unit,
-    isAccessibilityEnabled: Boolean
-) {
-    var llmModel by remember { mutableStateOf(settingsManager.llmModel) }
-    var apiKey by remember { mutableStateOf(settingsManager.apiKey) }
-    var shouldProcessNotifications by remember { mutableStateOf(settingsManager.shouldProcessNotifications) }
-    var showResetDialog by remember { mutableStateOf(false) }
-
-    val models = AiModel.AVAILABLE_MODELS.map { 
-        it.identifier to it.displayName 
-    }
-
-    var expanded by remember { mutableStateOf(false) }
-
-    Column(
-        modifier = Modifier
-            .fillMaxSize()
-            .padding(16.dp),
-        horizontalAlignment = Alignment.CenterHorizontally,
-        verticalArrangement = Arrangement.spacedBy(16.dp)
-    ) {
-        Row(
-            modifier = Modifier.fillMaxWidth(),
-            horizontalArrangement = Arrangement.SpaceBetween,
-            verticalAlignment = Alignment.CenterVertically
-        ) {
-            IconButton(onClick = onBack) {
-                Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back")
-            }
-            Text(
-                text = "Settings",
-                style = MaterialTheme.typography.titleLarge
-            )
-            Box(modifier = Modifier.width(48.dp))
-        }
-
-        // Conditional Settings Section
-        Column(
-            modifier = Modifier.fillMaxWidth(),
-            horizontalAlignment = Alignment.CenterHorizontally,
-            verticalArrangement = Arrangement.spacedBy(16.dp)
-        ) {
-            if (isAccessibilityEnabled) {
-                Text(
-                    text = "Notification Processing",
-                    style = MaterialTheme.typography.titleLarge
-                )
-                Text(
-                    text = "Allow Gosling to analyze and respond to notifications from other apps",
-                    style = MaterialTheme.typography.bodyMedium
-                )
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.SpaceBetween,
-                    verticalAlignment = Alignment.CenterVertically
-                ) {
-                    Text(
-                        text = "Process notifications",
-                        style = MaterialTheme.typography.bodyLarge
-                    )
-                    Switch(
-                        checked = shouldProcessNotifications,
-                        onCheckedChange = { 
-                            shouldProcessNotifications = it
-                            settingsManager.shouldProcessNotifications = it
-                        }
-                    )
-                }
-            } else {
-                Text(
-                    text = "Accessibility Permissions",
-                    style = MaterialTheme.typography.titleLarge
-                )
-                Text(
-                    text = "Gosling needs accessibility permissions to interact with other apps and help you with tasks.",
-                    style = MaterialTheme.typography.bodyMedium
-                )
-                Button(
-                    onClick = openAccessibilitySettings,
-                    modifier = Modifier.fillMaxWidth(),
-                    enabled = !isAccessibilityEnabled,
-                    colors = ButtonDefaults.buttonColors(
-                        containerColor = if (isAccessibilityEnabled)
-                            MaterialTheme.colorScheme.secondary
-                        else
-                            MaterialTheme.colorScheme.primary
-                    )
-                ) {
-                    Text(if (isAccessibilityEnabled) "Accessibility Enabled" else "Enable Accessibility")
-                }
-            }
-        }
-
-        // Model Selection Dropdown
-        ExposedDropdownMenuBox(
-            expanded = expanded,
-            onExpandedChange = { expanded = it }
-        ) {
-            OutlinedTextField(
-                value = models.find { it.first == llmModel }?.second ?: llmModel,
-                onValueChange = {},
-                readOnly = true,
-                label = { Text("LLM Model") },
-                trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = expanded) },
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .menuAnchor()
-            )
-
-            ExposedDropdownMenu(
-                expanded = expanded,
-                onDismissRequest = { expanded = false }
-            ) {
-                models.forEach { (modelId, displayName) ->
-                    DropdownMenuItem(
-                        text = { Text(displayName) },
-                        onClick = {
-                            llmModel = modelId
-                            settingsManager.llmModel = modelId
-                            expanded = false
-                        }
-                    )
-                }
-            }
-        }
-
-        OutlinedTextField(
-            value = apiKey,
-            onValueChange = {
-                apiKey = it
-                settingsManager.apiKey = it
-            },
-            label = { Text("API Key") },
-            visualTransformation = PasswordVisualTransformation(),
-            keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Password),
-            modifier = Modifier.fillMaxWidth()
-        )
-
-        Button(
-            onClick = { showResetDialog = true },
-            modifier = Modifier.fillMaxWidth(),
-            colors = ButtonDefaults.buttonColors(
-                containerColor = MaterialTheme.colorScheme.error
-            )
-        ) {
-            Text("Clear saved settings")
-        }
-    }
-
-    if (showResetDialog) {
-        AlertDialog(
-            onDismissRequest = { showResetDialog = false },
-            title = { Text("Reset Setup") },
-            text = { Text("This will reset all settings and show the setup wizard again. Are you sure?") },
-            confirmButton = {
-                TextButton(
-                    onClick = {
-                        settingsManager.isFirstTime = true
-                        showResetDialog = false
-                    }
-                ) {
-                    Text("Reset")
-                }
-            },
-            dismissButton = {
-                TextButton(onClick = { showResetDialog = false }) {
-                    Text("Cancel")
-                }
-            }
-        )
-    }
-} 
+//@OptIn(ExperimentalMaterial3Api::class)
+//@Composable
+//fun SettingsScreen(
+//    settingsManager: SettingsManager,
+//    onBack: () -> Unit,
+//    openAccessibilitySettings: () -> Unit,
+//    isAccessibilityEnabled: Boolean
+//) {
+//    var llmModel by remember { mutableStateOf(settingsManager.llmModel) }
+//    var apiKey by remember { mutableStateOf(settingsManager.apiKey) }
+//    var shouldProcessNotifications by remember { mutableStateOf(settingsManager.shouldProcessNotifications) }
+//    var showResetDialog by remember { mutableStateOf(false) }
+//
+//    val models = AiModel.AVAILABLE_MODELS.map {
+//        it.identifier to it.displayName
+//    }
+//
+//    var expanded by remember { mutableStateOf(false) }
+//
+//    Column(
+//        modifier = Modifier
+//            .fillMaxSize()
+//            .padding(16.dp),
+//        horizontalAlignment = Alignment.CenterHorizontally,
+//        verticalArrangement = Arrangement.spacedBy(16.dp)
+//    ) {
+//        Row(
+//            modifier = Modifier.fillMaxWidth(),
+//            horizontalArrangement = Arrangement.SpaceBetween,
+//            verticalAlignment = Alignment.CenterVertically
+//        ) {
+//            IconButton(onClick = onBack) {
+//                Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back")
+//            }
+//            Text(
+//                text = "Settings",
+//                style = MaterialTheme.typography.titleLarge
+//            )
+//            Box(modifier = Modifier.width(48.dp))
+//        }
+//
+//        // Conditional Settings Section
+//        Column(
+//            modifier = Modifier.fillMaxWidth(),
+//            horizontalAlignment = Alignment.CenterHorizontally,
+//            verticalArrangement = Arrangement.spacedBy(16.dp)
+//        ) {
+//            if (isAccessibilityEnabled) {
+//                Text(
+//                    text = "Notification Processing",
+//                    style = MaterialTheme.typography.titleLarge
+//                )
+//                Text(
+//                    text = "Allow Gosling to analyze and respond to notifications from other apps",
+//                    style = MaterialTheme.typography.bodyMedium
+//                )
+//                Row(
+//                    modifier = Modifier.fillMaxWidth(),
+//                    horizontalArrangement = Arrangement.SpaceBetween,
+//                    verticalAlignment = Alignment.CenterVertically
+//                ) {
+//                    Text(
+//                        text = "Process notifications",
+//                        style = MaterialTheme.typography.bodyLarge
+//                    )
+//                    Switch(
+//                        checked = shouldProcessNotifications,
+//                        onCheckedChange = {
+//                            shouldProcessNotifications = it
+//                            settingsManager.shouldProcessNotifications = it
+//                        }
+//                    )
+//                }
+//            } else {
+//                Text(
+//                    text = "Accessibility Permissions",
+//                    style = MaterialTheme.typography.titleLarge
+//                )
+//                Text(
+//                    text = "Gosling needs accessibility permissions to interact with other apps and help you with tasks.",
+//                    style = MaterialTheme.typography.bodyMedium
+//                )
+//                Button(
+//                    onClick = openAccessibilitySettings,
+//                    modifier = Modifier.fillMaxWidth(),
+//                    enabled = !isAccessibilityEnabled,
+//                    colors = ButtonDefaults.buttonColors(
+//                        containerColor = if (isAccessibilityEnabled)
+//                            MaterialTheme.colorScheme.secondary
+//                        else
+//                            MaterialTheme.colorScheme.primary
+//                    )
+//                ) {
+//                    Text(if (isAccessibilityEnabled) "Accessibility Enabled" else "Enable Accessibility")
+//                }
+//            }
+//        }
+//
+//        // Model Selection Dropdown
+//        ExposedDropdownMenuBox(
+//            expanded = expanded,
+//            onExpandedChange = { expanded = it }
+//        ) {
+//            OutlinedTextField(
+//                value = models.find { it.first == llmModel }?.second ?: llmModel,
+//                onValueChange = {},
+//                readOnly = true,
+//                label = { Text("LLM Model") },
+//                trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = expanded) },
+//                modifier = Modifier
+//                    .fillMaxWidth()
+//                    .menuAnchor()
+//            )
+//
+//            ExposedDropdownMenu(
+//                expanded = expanded,
+//                onDismissRequest = { expanded = false }
+//            ) {
+//                models.forEach { (modelId, displayName) ->
+//                    DropdownMenuItem(
+//                        text = { Text(displayName) },
+//                        onClick = {
+//                            llmModel = modelId
+//                            settingsManager.llmModel = modelId
+//                            expanded = false
+//                        }
+//                    )
+//                }
+//            }
+//        }
+//
+//        OutlinedTextField(
+//            value = apiKey,
+//            onValueChange = {
+//                apiKey = it
+//                settingsManager.apiKey = it
+//            },
+//            label = { Text("API Key") },
+//            visualTransformation = PasswordVisualTransformation(),
+//            keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Password),
+//            modifier = Modifier.fillMaxWidth()
+//        )
+//
+//        Button(
+//            onClick = { showResetDialog = true },
+//            modifier = Modifier.fillMaxWidth(),
+//            colors = ButtonDefaults.buttonColors(
+//                containerColor = MaterialTheme.colorScheme.error
+//            )
+//        ) {
+//            Text("Clear saved settings")
+//        }
+//    }
+//
+//    if (showResetDialog) {
+//        AlertDialog(
+//            onDismissRequest = { showResetDialog = false },
+//            title = { Text("Reset Setup") },
+//            text = { Text("This will reset all settings and show the setup wizard again. Are you sure?") },
+//            confirmButton = {
+//                TextButton(
+//                    onClick = {
+//                        settingsManager.isFirstTime = true
+//                        showResetDialog = false
+//                    }
+//                ) {
+//                    Text("Reset")
+//                }
+//            },
+//            dismissButton = {
+//                TextButton(onClick = { showResetDialog = false }) {
+//                    Text("Cancel")
+//                }
+//            }
+//        )
+//    }
+//}

@@ -1,18 +1,15 @@
 package xyz.block.gosling
 
-import GoslingUI
-import android.app.ActivityManager
-import android.content.Context
 import android.content.Intent
 import android.graphics.Color
 import android.graphics.drawable.ColorDrawable
 import android.os.Bundle
-import android.speech.SpeechRecognizer
-import android.util.Log
 import android.view.Gravity
 import android.view.WindowManager
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
+import androidx.compose.runtime.mutableStateListOf
+import androidx.compose.runtime.remember
 
 class AssistantActivity : ComponentActivity() {
     private var isVoiceInteraction = false
@@ -42,9 +39,13 @@ class AssistantActivity : ComponentActivity() {
         isVoiceInteraction = intent?.action == Intent.ACTION_ASSIST
 
         setContent {
+            val messages = remember { mutableStateListOf<ChatMessage>() }
             GoslingUI(
                 context = this,
-                startVoice = isVoiceInteraction
+                startVoice = isVoiceInteraction,
+                messages = messages,
+                onMessageAdded = { messages.add(it) },
+                onMessageRemoved = { messages.remove(it) }
             )
         }
     }

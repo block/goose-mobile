@@ -1,13 +1,9 @@
 package xyz.block.gosling
 
-import android.content.ComponentName
 import android.content.Context
 import android.content.Intent
 import android.content.pm.PackageManager
 import android.content.pm.ResolveInfo
-import android.util.Log
-import android.provider.AlarmClock.ACTION_SET_ALARM
-import android.provider.MediaStore.ACTION_IMAGE_CAPTURE
 
 object IntentScanner {
     fun getAvailableIntents(context: Context): List<IntentDefinition> {
@@ -29,15 +25,19 @@ object IntentScanner {
         )
 
         for (intent in commonIntents) {
-            val resolvedActivities = packageManager.queryIntentActivities(intent, PackageManager.MATCH_DEFAULT_ONLY)
+            val resolvedActivities =
+                packageManager.queryIntentActivities(intent, PackageManager.MATCH_DEFAULT_ONLY)
 
             for (resolveInfo in resolvedActivities) {
                 val packageName = resolveInfo.activityInfo.packageName
-                val appLabel = packageManager.getApplicationLabel(resolveInfo.activityInfo.applicationInfo).toString()
+                val appLabel =
+                    packageManager.getApplicationLabel(resolveInfo.activityInfo.applicationInfo)
+                        .toString()
                 val actionName = intent.action ?: "UNKNOWN_ACTION"
 
-                val parameters = extractExtrasForAction(packageName, actionName)
-                val newAction = IntentActionDefinition(actionName, parameters.first, parameters.second)
+                val parameters = extractExtrasForAction(actionName)
+                val newAction =
+                    IntentActionDefinition(actionName, parameters.first, parameters.second)
 
                 appLabels[packageName] = appLabel
                 intentActions.getOrPut(packageName) { mutableListOf() }.add(newAction)
@@ -79,8 +79,9 @@ object IntentScanner {
     }
 
 
-
-    private fun extractExtrasForAction(packageName: String, action: String): Pair<List<String>, List<String>> {
+    private fun extractExtrasForAction(
+        action: String
+    ): Pair<List<String>, List<String>> {
         val requiredExtras = mutableListOf<String>()
         val optionalExtras = mutableListOf<String>()
 

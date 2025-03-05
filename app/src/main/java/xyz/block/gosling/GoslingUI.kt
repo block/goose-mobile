@@ -1,3 +1,5 @@
+package xyz.block.gosling
+
 import android.Manifest
 import android.app.Activity
 import android.content.ComponentName
@@ -16,14 +18,20 @@ import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Keyboard
 import androidx.compose.material.icons.filled.Mic
 import androidx.compose.material3.Button
+import androidx.compose.material3.Card
+import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
@@ -47,15 +55,21 @@ import androidx.core.app.ActivityCompat
 import androidx.core.content.ContextCompat
 import kotlinx.coroutines.async
 import kotlinx.coroutines.launch
-import xyz.block.gosling.Agent
-import xyz.block.gosling.OverlayService
-import xyz.block.gosling.R
+
+data class ChatMessage(
+    val text: String,
+    val isUser: Boolean,
+    val timestamp: Long = System.currentTimeMillis()
+)
 
 @Composable
 fun GoslingUI(
     context: Context,
     modifier: Modifier = Modifier,
-    startVoice: Boolean = false
+    startVoice: Boolean = false,
+    messages: List<ChatMessage>,
+    onMessageAdded: (ChatMessage) -> Unit,
+    onMessageRemoved: (ChatMessage) -> Unit
 ) {
     var isVoiceMode by remember { mutableStateOf(startVoice) }
     var inputText by remember { mutableStateOf("") }
@@ -65,6 +79,14 @@ fun GoslingUI(
 
     var speechRecognizer by remember { mutableStateOf<SpeechRecognizer?>(null) }
     val scope = rememberCoroutineScope()
+    val listState = rememberLazyListState()
+
+    // Scroll to bottom when returning to app
+    LaunchedEffect(GoslingApplication.isMainActivityRunning) {
+        if (GoslingApplication.isMainActivityRunning && messages.isNotEmpty()) {
+            listState.animateScrollToItem(0)
+        }
+    }
 
     val serviceConnection = remember {
         object : ServiceConnection {
@@ -105,25 +127,77 @@ fun GoslingUI(
 
     fun executeCommand(input: String) {
         scope.launch {
+            onMessageAdded(ChatMessage(text = input, isUser = true))
             isOutputMode = true
             outputText = "Thinking..."
+            onMessageAdded(ChatMessage(text = "Thinking...", isUser = false))
             try {
                 val service = boundService
                 if (service == null) {
                     outputText = "Error: Service not connected"
+                    onMessageRemoved(messages.last()) // Remove "Thinking..." message
+                    onMessageAdded(
+                        ChatMessage(
+                            text = "Error: Service not connected",
+                            isUser = false
+                        )
+                    )
                     return@launch
                 }
 
                 val response = async {
                     service.processCommand(input, context, isNotificationReply = false) { status ->
-                        outputText = status
+                        outputText = when (status) {
+                            is AgentStatus.Processing -> status.message
+                            is AgentStatus.Success -> status.message
+                            is AgentStatus.Error -> "Error: ${status.message}"
+                        }
+                        // Only add meaningful status updates
+                        if (outputText.isNotBlank() &&
+                            outputText != "Thinking..." &&
+                            outputText != "Processing..." &&
+                            messages.lastOrNull()?.text != outputText
+                        ) {
+                            if (messages.lastOrNull()?.text == "Thinking...") {
+                                onMessageRemoved(messages.last())
+                            }
+                            onMessageAdded(ChatMessage(text = outputText, isUser = false))
+                            // Scroll to bottom after adding message
+                            scope.launch {
+                                listState.animateScrollToItem(messages.size - 1)
+                            }
+                        }
                         Log.d("Agent", "Status update: $status")
+                        OverlayService.getInstance()?.updateStatus(status)
                     }
                 }.await()
-                outputText += "\n" + response
+
+                // Only add the final response if it's not empty and not a duplicate
+                if (response.isNotBlank() && messages.lastOrNull()?.text != response) {
+                    // Remove the last message if it was a thinking or processing message
+                    if (messages.lastOrNull()?.text == "Thinking..." ||
+                        messages.lastOrNull()?.text == "Processing..."
+                    ) {
+                        onMessageRemoved(messages.last())
+                    }
+                    onMessageAdded(ChatMessage(text = response, isUser = false))
+                    // Scroll to bottom after adding final response
+                    scope.launch {
+                        listState.animateScrollToItem(messages.size - 1)
+                    }
+                }
             } catch (e: Exception) {
                 Log.e("Agent", "Error executing command", e)
-                outputText += "\n\nError: ${e.message ?: "Unknown error occurred"}\n\nPlease check your internet connection and try again."
+                val errorMessage =
+                    "Error: ${e.message ?: "Unknown error occurred"}\nPlease check your internet connection and try again."
+                if (messages.lastOrNull()?.text == "Thinking...") {
+                    onMessageRemoved(messages.last()) // Remove "Thinking..." message
+                }
+                onMessageAdded(ChatMessage(text = errorMessage, isUser = false))
+                // Scroll to bottom after error message
+                scope.launch {
+                    listState.animateScrollToItem(messages.size - 1)
+                }
             }
             inputText = ""
         }
@@ -205,68 +279,94 @@ fun GoslingUI(
         }
     }
 
-    LaunchedEffect(outputText) {
-        OverlayService.getInstance()?.updateOverlayText(outputText)
-    }
-
     Box(
-        modifier = modifier.fillMaxWidth()
+        modifier = modifier.fillMaxSize()
     ) {
-        Surface(
-            modifier = Modifier
-                .fillMaxWidth(),
-            color = MaterialTheme.colorScheme.surfaceContainer,
-            shape = RoundedCornerShape(topStart = 16.dp, topEnd = 16.dp)
+        Column(
+            modifier = Modifier.fillMaxSize()
         ) {
-            Column(
+            // Chat messages
+            Box(
                 modifier = Modifier
+                    .weight(1f)
                     .fillMaxWidth()
-                    .padding(16.dp),
-                horizontalAlignment = Alignment.CenterHorizontally,
-                verticalArrangement = Arrangement.spacedBy(16.dp)
+                    .padding(bottom = 8.dp)
             ) {
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.SpaceBetween,
-                    verticalAlignment = Alignment.CenterVertically
+                LazyColumn(
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .padding(horizontal = 16.dp),
+                    state = listState,
+                    verticalArrangement = Arrangement.spacedBy(8.dp, alignment = Alignment.Bottom),
+                    reverseLayout = true
                 ) {
-                    IconButton(
-                        onClick = {
-                            isVoiceMode = !isVoiceMode
-                            isOutputMode = false
-                        },
-                    ) {
-                        Icon(
-                            imageVector = if (isVoiceMode) Icons.Filled.Keyboard else Icons.Filled.Mic,
-                            contentDescription = if (isVoiceMode) "Switch to Keyboard" else "Switch to Voice",
-                            tint = MaterialTheme.colorScheme.onSurface
-                        )
-                    }
-                    Image(
-                        painter = painterResource(id = R.drawable.gosling),
-                        contentDescription = "Gosling Icon",
-                        modifier = Modifier.size(64.dp)
-                    )
-                }
-
-                if (isOutputMode) {
-                    Column(
-                        modifier = Modifier.fillMaxWidth(),
-                        verticalArrangement = Arrangement.spacedBy(16.dp)
-                    ) {
-                        Text(
-                            text = outputText,
-                            modifier = Modifier.fillMaxWidth(),
-                            style = MaterialTheme.typography.bodyLarge
-                        )
-                        Button(
-                            onClick = { isOutputMode = false },
-                            modifier = Modifier.fillMaxWidth(),
+                    items(messages.asReversed()) { message ->
+                        Card(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .padding(
+                                    start = if (message.isUser) 32.dp else 0.dp,
+                                    end = if (!message.isUser) 32.dp else 0.dp
+                                ),
+                            shape = RoundedCornerShape(12.dp),
+                            colors = CardDefaults.cardColors(
+                                containerColor = if (message.isUser)
+                                    MaterialTheme.colorScheme.primaryContainer
+                                else
+                                    MaterialTheme.colorScheme.secondaryContainer
+                            )
                         ) {
-                            Text("New Request")
+                            Text(
+                                text = message.text,
+                                modifier = Modifier.padding(12.dp),
+                                style = MaterialTheme.typography.bodyLarge,
+                                color = if (message.isUser)
+                                    MaterialTheme.colorScheme.onPrimaryContainer
+                                else
+                                    MaterialTheme.colorScheme.onSecondaryContainer
+                            )
                         }
                     }
-                } else {
+                }
+            }
+
+            // Bottom input panel
+            Surface(
+                modifier = Modifier.fillMaxWidth(),
+                color = MaterialTheme.colorScheme.surfaceContainer,
+                shape = RoundedCornerShape(topStart = 16.dp, topEnd = 16.dp)
+            ) {
+                Column(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(16.dp),
+                    horizontalAlignment = Alignment.CenterHorizontally,
+                    verticalArrangement = Arrangement.spacedBy(16.dp)
+                ) {
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        IconButton(
+                            onClick = {
+                                isVoiceMode = !isVoiceMode
+                                isOutputMode = false
+                            },
+                        ) {
+                            Icon(
+                                imageVector = if (isVoiceMode) Icons.Filled.Keyboard else Icons.Filled.Mic,
+                                contentDescription = if (isVoiceMode) "Switch to Keyboard" else "Switch to Voice",
+                                tint = MaterialTheme.colorScheme.onSurface
+                            )
+                        }
+                        Image(
+                            painter = painterResource(id = R.drawable.gosling),
+                            contentDescription = "Gosling Icon",
+                            modifier = Modifier.size(48.dp)
+                        )
+                    }
+
                     if (isVoiceMode) {
                         Text(
                             text = inputText.ifEmpty { "Listening..." },

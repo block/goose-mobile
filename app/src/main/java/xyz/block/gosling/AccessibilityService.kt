@@ -8,7 +8,6 @@ import android.app.NotificationManager
 import android.app.PendingIntent
 import android.content.Intent
 import android.graphics.Bitmap
-import android.os.Build
 import android.view.accessibility.AccessibilityEvent
 import androidx.core.app.NotificationCompat
 
@@ -36,11 +35,8 @@ class GoslingAccessibilityService : AccessibilityService() {
                     AccessibilityServiceInfo.FLAG_RETRIEVE_INTERACTIVE_WINDOWS
             notificationTimeout = 100
         }
-        
-        // Update the service info
-        serviceInfo = info
 
-        // Start as foreground service
+        serviceInfo = info
         startForegroundService()
     }
 
@@ -65,82 +61,69 @@ class GoslingAccessibilityService : AccessibilityService() {
     }
 
     private fun createNotificationChannel() {
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
-            val name = "Gosling Service"
-            val descriptionText = "Keeps Gosling running in background"
-            val importance = NotificationManager.IMPORTANCE_LOW
-            val channel = NotificationChannel(NOTIFICATION_CHANNEL_ID, name, importance).apply {
-                description = descriptionText
-            }
-            val notificationManager = getSystemService(NotificationManager::class.java)
-            notificationManager.createNotificationChannel(channel)
+        val name = "Gosling Service"
+        val descriptionText = "Keeps Gosling running in background"
+        val importance = NotificationManager.IMPORTANCE_LOW
+        val channel = NotificationChannel(NOTIFICATION_CHANNEL_ID, name, importance).apply {
+            description = descriptionText
         }
+        val notificationManager = getSystemService(NotificationManager::class.java)
+        notificationManager.createNotificationChannel(channel)
     }
 
     override fun onAccessibilityEvent(event: AccessibilityEvent) {
-        if (event.eventType == AccessibilityEvent.TYPE_NOTIFICATION_STATE_CHANGED) {
-            if (!SettingsManager(this).shouldProcessNotifications) return
+        if (event.eventType != AccessibilityEvent.TYPE_NOTIFICATION_STATE_CHANGED) return
+        if (!SettingsManager(this).shouldProcessNotifications) return
 
-            val notification = event.parcelableData
-            val agent = Agent.getInstance() ?: return
-            val parcelableData = event.parcelableData
-            if (parcelableData is Notification) {
-                val packageName = event.packageName?.toString() ?: return
-                if (packageName == "xyz.block.gosling") return
+        val agent = Agent.getInstance() ?: return
+        val parcelableData = event.parcelableData
+        if (parcelableData is Notification) {
+            val packageName = event.packageName?.toString() ?: return
+            if (packageName == "xyz.block.gosling") return
 
-                val rawText = event.text?.joinToString(" ") ?: ""
-                val extras = parcelableData.extras
+            val rawText = event.text.joinToString(" ")
+            val extras = parcelableData.extras
 
-                if (extras == null) {
-                    agent.handleNotification(
-                        packageName = packageName,
-                        title = "",
-                        content = rawText,
-                        context = "",
-                        image = null,
-                        timestamp = parcelableData.`when`,
-                        category = parcelableData.category ?: "",
-                        actions = emptyList()
-                    )
-                    return
-                }
-
-                val title = extras.getString(Notification.EXTRA_TITLE_BIG)
-                    ?: extras.getString(Notification.EXTRA_TITLE)
-                    ?: ""
-
-                val content = extras.getCharSequence(Notification.EXTRA_BIG_TEXT)?.toString()
-                    ?: extras.getCharSequence(Notification.EXTRA_TEXT)?.toString()
-                    ?: rawText
-
-                val context = extras.getCharSequence(Notification.EXTRA_SUB_TEXT)?.toString()
-                    ?: extras.getCharSequence(Notification.EXTRA_SUMMARY_TEXT)?.toString()
-                    ?: ""
-
-                val largeIcon = extras.getParcelable<Bitmap>(Notification.EXTRA_LARGE_ICON)
-                val picture = extras.getParcelable<Bitmap>(Notification.EXTRA_PICTURE)
-                val image = picture ?: largeIcon
-
-                val actions = parcelableData.actions?.map { action ->
-                    action.title.toString()
-                } ?: emptyList()
-
+            if (extras == null) {
                 agent.handleNotification(
                     packageName = packageName,
-                    title = title,
-                    content = content,
-                    context = context,
-                    image = image,
-                    timestamp = parcelableData.`when`,
+                    title = "",
+                    content = rawText,
                     category = parcelableData.category ?: "",
-                    actions = actions
                 )
+                return
             }
+
+            val title = extras.getString(Notification.EXTRA_TITLE_BIG)
+                ?: extras.getString(Notification.EXTRA_TITLE)
+                ?: ""
+
+            val content = extras.getCharSequence(Notification.EXTRA_BIG_TEXT)?.toString()
+                ?: extras.getCharSequence(Notification.EXTRA_TEXT)?.toString()
+                ?: rawText
+
+            val context = extras.getCharSequence(Notification.EXTRA_SUB_TEXT)?.toString()
+                ?: extras.getCharSequence(Notification.EXTRA_SUMMARY_TEXT)?.toString()
+                ?: ""
+
+            val largeIcon = extras.getParcelable<Bitmap>(Notification.EXTRA_LARGE_ICON)
+            val picture = extras.getParcelable<Bitmap>(Notification.EXTRA_PICTURE)
+            val image = picture ?: largeIcon
+
+            val actions = parcelableData.actions?.map { action ->
+                action.title.toString()
+            } ?: emptyList()
+
+            agent.handleNotification(
+                packageName = packageName,
+                title = title,
+                content = content,
+                category = parcelableData.category ?: "",
+            )
         }
     }
-    override fun onInterrupt() {
-        // Handle interruptions if needed
-    }
+
+    override fun onInterrupt() {}
 
     override fun onDestroy() {
         super.onDestroy()

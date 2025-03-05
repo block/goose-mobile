@@ -1,10 +1,10 @@
 package xyz.block.gosling
 
-import GoslingUI
 import android.Manifest
 import android.content.Context
 import android.content.Intent
 import android.content.pm.PackageManager
+import android.net.Uri
 import android.os.Build
 import android.os.Bundle
 import android.provider.Settings
@@ -14,29 +14,23 @@ import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
 import androidx.activity.result.ActivityResultLauncher
 import androidx.activity.result.contract.ActivityResultContracts
-import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material3.Badge
-import androidx.compose.material3.Button
-import androidx.compose.material3.ButtonDefaults
-import androidx.compose.material3.Card
-import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateListOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
@@ -45,26 +39,63 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
 import xyz.block.gosling.ui.theme.GoslingTheme
-import xyz.block.gosling.ui.theme.LocalGoslingColors
 
 class MainActivity : ComponentActivity() {
     companion object {
         private const val REQUEST_NOTIFICATION_PERMISSION = 1234
+        private const val PREFS_NAME = "GoslingPrefs"
+        private const val MESSAGES_KEY = "chat_messages"
     }
 
     private lateinit var settingsManager: SettingsManager
     private lateinit var accessibilitySettingsLauncher: ActivityResultLauncher<Intent>
     private var isAccessibilityEnabled by mutableStateOf(false)
+    private val sharedPreferences by lazy { getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE) }
+
+    internal fun saveMessages(messages: List<ChatMessage>) {
+        val json = messages.map { message ->
+            """{"text":"${message.text}","isUser":${message.isUser},"timestamp":${message.timestamp}}"""
+        }.joinToString(",", "[", "]")
+        sharedPreferences.edit().putString(MESSAGES_KEY, json).apply()
+    }
+
+    internal fun loadMessages(): List<ChatMessage> {
+        val json = sharedPreferences.getString(MESSAGES_KEY, "[]") ?: "[]"
+        return try {
+            json.removeSurrounding("[", "]")
+                .split("},{")
+                .filter { it.isNotEmpty() }
+                .map { messageStr ->
+                    val cleanStr = messageStr.removeSurrounding("{", "}")
+                    val parts = cleanStr.split(",")
+                    val text = parts[0].split(":")[1].trim('"')
+                    val isUser = parts[1].split(":")[1].toBoolean()
+                    val timestamp = parts[2].split(":")[1].toLong()
+                    ChatMessage(text, isUser, timestamp)
+                }
+        } catch (e: Exception) {
+            emptyList()
+        }
+    }
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         settingsManager = SettingsManager(this)
         isAccessibilityEnabled = settingsManager.isAccessibilityEnabled
 
-        // Start the Agent service
-        startForegroundService(Intent(this, Agent::class.java))
-
-        startService(Intent(this, OverlayService::class.java))
+        // Check for overlay permission
+        if (!Settings.canDrawOverlays(this)) {
+            // If not granted, request it
+            val intent = Intent(
+                Settings.ACTION_MANAGE_OVERLAY_PERMISSION,
+                Uri.parse("package:$packageName")
+            )
+            startActivity(intent)
+        } else {
+            // Start services only if we have overlay permission
+            startForegroundService(Intent(this, Agent::class.java))
+            startService(Intent(this, OverlayService::class.java))
+        }
 
         // Register the launcher for accessibility settings
         accessibilitySettingsLauncher = registerForActivityResult(
@@ -93,7 +124,10 @@ class MainActivity : ComponentActivity() {
 
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
             if (checkSelfPermission(Manifest.permission.POST_NOTIFICATIONS) != PackageManager.PERMISSION_GRANTED) {
-                requestPermissions(arrayOf(Manifest.permission.POST_NOTIFICATIONS), REQUEST_NOTIFICATION_PERMISSION)
+                requestPermissions(
+                    arrayOf(Manifest.permission.POST_NOTIFICATIONS),
+                    REQUEST_NOTIFICATION_PERMISSION
+                )
             }
         }
     }
@@ -101,17 +135,31 @@ class MainActivity : ComponentActivity() {
     override fun onResume() {
         super.onResume()
         GoslingApplication.isMainActivityRunning = true
+        OverlayService.getInstance()?.updateOverlayVisibility()
 
         // Check and save accessibility permission state
         val isEnabled = checkAccessibilityPermission(this)
         settingsManager.isAccessibilityEnabled = isEnabled
         isAccessibilityEnabled = isEnabled
         Log.d("Gosling", "MainActivity: Updated accessibility state on resume: $isEnabled")
+
+        // Start services if overlay permission was just granted
+        if (Settings.canDrawOverlays(this)) {
+            startForegroundService(Intent(this, Agent::class.java))
+            startService(Intent(this, OverlayService::class.java))
+        }
+    }
+
+    override fun onPause() {
+        super.onPause()
+        GoslingApplication.isMainActivityRunning = false
+        OverlayService.getInstance()?.updateOverlayVisibility()
     }
 
     override fun onDestroy() {
         super.onDestroy()
         GoslingApplication.isMainActivityRunning = false
+        OverlayService.getInstance()?.updateOverlayVisibility()
     }
 
     private fun openAccessibilitySettings() {
@@ -129,9 +177,21 @@ fun MainContent(
 ) {
     var showSetup by remember { mutableStateOf(settingsManager.isFirstTime) }
     var showSettings by remember { mutableStateOf(false) }
+    val context = LocalContext.current
+    val activity = context as MainActivity
+    val messages = remember {
+        mutableStateListOf<ChatMessage>().apply {
+            addAll(activity.loadMessages())
+        }
+    }
+
+    // Effect to save messages when they change
+    LaunchedEffect(messages.size) {
+        activity.saveMessages(messages)
+    }
 
     if (showSetup) {
-        SetupWizard(
+        Onboarding(
             onSetupComplete = { showSetup = false },
             modifier = modifier,
             settingsManager = settingsManager,
@@ -146,17 +206,18 @@ fun MainContent(
             isAccessibilityEnabled = isAccessibilityEnabled
         )
     } else {
-        Box(
+        Column(
             modifier = modifier.fillMaxSize()
         ) {
             // Settings button in top-right corner with badge
             Box(
                 modifier = Modifier
-                    .align(Alignment.TopEnd)
+                    .fillMaxWidth()
                     .padding(8.dp)
             ) {
                 IconButton(
-                    onClick = { showSettings = true }
+                    onClick = { showSettings = true },
+                    modifier = Modifier.align(Alignment.TopEnd)
                 ) {
                     Icon(
                         Icons.Default.Settings,
@@ -175,79 +236,19 @@ fun MainContent(
                 }
             }
 
-            // Main UI content aligned to bottom
+            // Main UI content
             Box(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .align(Alignment.BottomCenter)
+                    .weight(1f)
             ) {
-                GoslingUI(context = LocalContext.current)
-            }
-        }
-    }
-}
-
-@Composable
-fun MainScreen(modifier: Modifier = Modifier) {
-    val context = LocalContext.current
-    val goslingColors = LocalGoslingColors.current
-    val settingsManager = remember { SettingsManager(context) }
-
-    var isAccessibilityEnabled by remember { mutableStateOf(settingsManager.isAccessibilityEnabled) }
-
-    Column(
-        modifier = modifier
-            .fillMaxSize()
-            .padding(16.dp),
-        horizontalAlignment = Alignment.CenterHorizontally,
-        verticalArrangement = Arrangement.spacedBy(16.dp)
-    ) {
-        Text(
-            text = "Gosling Assistant Setup",
-            style = MaterialTheme.typography.headlineMedium
-        )
-
-        // Accessibility Permission Card
-        Card(
-            modifier = Modifier.fillMaxWidth(),
-            shape = RoundedCornerShape(8.dp),
-            colors = CardDefaults.cardColors(
-                containerColor = goslingColors.inputBackground
-            )
-        ) {
-            Column(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(16.dp),
-                horizontalAlignment = Alignment.Start
-            ) {
-                Text(
-                    text = "Accessibility Permissions",
-                    style = MaterialTheme.typography.titleMedium
+                GoslingUI(
+                    context = LocalContext.current,
+                    messages = messages,
+                    onMessageAdded = { messages.add(it) },
+                    onMessageRemoved = { messages.remove(it) }
                 )
-                Spacer(modifier = Modifier.height(8.dp))
-                Text(
-                    text = "Allow Gosling to interact with other apps",
-                    style = MaterialTheme.typography.bodyMedium
-                )
-                Spacer(modifier = Modifier.height(8.dp))
-                Button(
-                    onClick = {
-                        openAccessibilitySettings(context)
-                        isAccessibilityEnabled = settingsManager.isAccessibilityEnabled
-                    },
-                    colors = ButtonDefaults.buttonColors(
-                        containerColor = if (isAccessibilityEnabled) goslingColors.secondaryButton else goslingColors.primaryBackground
-                    )
-                ) {
-                    Text(if (isAccessibilityEnabled) "Accessibility Enabled" else "Enable Accessibility")
-                }
             }
-        }
-
-        // Gosling UI
-        if (isAccessibilityEnabled) {
-            GoslingUI(context = context)
         }
     }
 }
@@ -260,9 +261,4 @@ fun checkAccessibilityPermission(context: Context): Boolean {
     val isEnabled = enabledServices?.contains(context.packageName) == true
     Log.d("Gosling", "Accessibility check: $enabledServices, enabled: $isEnabled")
     return isEnabled
-}
-
-fun openAccessibilitySettings(context: Context) {
-    val intent = Intent(Settings.ACTION_ACCESSIBILITY_SETTINGS)
-    context.startActivity(intent)
 }

@@ -114,10 +114,11 @@ class OverlayService : Service() {
 
         // Set up button click listener
         overlayButton?.setOnClickListener {
-            val intent = Intent(this, MainActivity::class.java).apply {
-                addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+            val activityManager = getSystemService(Context.ACTIVITY_SERVICE) as android.app.ActivityManager
+            val tasks = activityManager.getRunningTasks(1)
+            if (tasks.isNotEmpty() && tasks[0].topActivity?.packageName == packageName) {
+                activityManager.moveTaskToFront(tasks[0].id, android.app.ActivityManager.MOVE_TASK_WITH_HOME)
             }
-            startActivity(intent)
         }
 
         // Set up cancel button click listener
@@ -186,7 +187,10 @@ class OverlayService : Service() {
         currentStatus = displayText
         overlayText?.post {
             overlayText?.text = displayText.take(600)
-            android.util.Log.d("Gosling", "Setting button visibility to: ${if (isDone) "VISIBLE" else "GONE"}")
+            android.util.Log.d(
+                "Gosling",
+                "Setting button visibility to: ${if (isDone) "VISIBLE" else "GONE"}"
+            )
             overlayButton?.visibility = if (isDone) View.VISIBLE else View.GONE
             overlayCancelButton?.visibility = if (!isDone) View.VISIBLE else View.GONE
             android.util.Log.d("Gosling", "Button visibility is now: ${overlayButton?.visibility}")

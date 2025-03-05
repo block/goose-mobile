@@ -15,6 +15,7 @@ import androidx.activity.enableEdgeToEdge
 import androidx.activity.result.ActivityResultLauncher
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
@@ -27,7 +28,9 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateListOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
@@ -40,11 +43,40 @@ import xyz.block.gosling.ui.theme.GoslingTheme
 class MainActivity : ComponentActivity() {
     companion object {
         private const val REQUEST_NOTIFICATION_PERMISSION = 1234
+        private const val PREFS_NAME = "GoslingPrefs"
+        private const val MESSAGES_KEY = "chat_messages"
     }
 
     private lateinit var settingsManager: SettingsManager
     private lateinit var accessibilitySettingsLauncher: ActivityResultLauncher<Intent>
     private var isAccessibilityEnabled by mutableStateOf(false)
+    private val sharedPreferences by lazy { getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE) }
+
+    internal fun saveMessages(messages: List<ChatMessage>) {
+        val json = messages.map { message ->
+            """{"text":"${message.text}","isUser":${message.isUser},"timestamp":${message.timestamp}}"""
+        }.joinToString(",", "[", "]")
+        sharedPreferences.edit().putString(MESSAGES_KEY, json).apply()
+    }
+
+    internal fun loadMessages(): List<ChatMessage> {
+        val json = sharedPreferences.getString(MESSAGES_KEY, "[]") ?: "[]"
+        return try {
+            json.removeSurrounding("[", "]")
+                .split("},{")
+                .filter { it.isNotEmpty() }
+                .map { messageStr ->
+                    val cleanStr = messageStr.removeSurrounding("{", "}")
+                    val parts = cleanStr.split(",")
+                    val text = parts[0].split(":")[1].trim('"')
+                    val isUser = parts[1].split(":")[1].toBoolean()
+                    val timestamp = parts[2].split(":")[1].toLong()
+                    ChatMessage(text, isUser, timestamp)
+                }
+        } catch (e: Exception) {
+            emptyList()
+        }
+    }
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -145,6 +177,18 @@ fun MainContent(
 ) {
     var showSetup by remember { mutableStateOf(settingsManager.isFirstTime) }
     var showSettings by remember { mutableStateOf(false) }
+    val context = LocalContext.current
+    val activity = context as MainActivity
+    val messages = remember {
+        mutableStateListOf<ChatMessage>().apply {
+            addAll(activity.loadMessages())
+        }
+    }
+
+    // Effect to save messages when they change
+    LaunchedEffect(messages.size) {
+        activity.saveMessages(messages)
+    }
 
     if (showSetup) {
         Onboarding(
@@ -162,17 +206,18 @@ fun MainContent(
             isAccessibilityEnabled = isAccessibilityEnabled
         )
     } else {
-        Box(
+        Column(
             modifier = modifier.fillMaxSize()
         ) {
             // Settings button in top-right corner with badge
             Box(
                 modifier = Modifier
-                    .align(Alignment.TopEnd)
+                    .fillMaxWidth()
                     .padding(8.dp)
             ) {
                 IconButton(
-                    onClick = { showSettings = true }
+                    onClick = { showSettings = true },
+                    modifier = Modifier.align(Alignment.TopEnd)
                 ) {
                     Icon(
                         Icons.Default.Settings,
@@ -191,13 +236,18 @@ fun MainContent(
                 }
             }
 
-            // Main UI content aligned to bottom
+            // Main UI content
             Box(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .align(Alignment.BottomCenter)
+                    .weight(1f)
             ) {
-                GoslingUI(context = LocalContext.current)
+                GoslingUI(
+                    context = LocalContext.current,
+                    messages = messages,
+                    onMessageAdded = { messages.add(it) },
+                    onMessageRemoved = { messages.remove(it) }
+                )
             }
         }
     }

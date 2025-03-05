@@ -11,7 +11,9 @@ import android.os.IBinder
 import android.view.Gravity
 import android.view.LayoutInflater
 import android.view.MotionEvent
+import android.view.View
 import android.view.WindowManager
+import android.widget.Button
 import android.widget.LinearLayout
 import android.widget.TextView
 import java.lang.ref.WeakReference
@@ -23,13 +25,17 @@ class OverlayService : Service() {
     }
 
     private lateinit var windowManager: WindowManager
-    private var overlayView: LinearLayout? = null
+    private var overlayView: View? = null
     private var overlayText: TextView? = null
+    private var overlayButton: Button? = null
+    private var overlayCancelButton: Button? = null
     private lateinit var params: WindowManager.LayoutParams
     private var initialX: Int = 0
     private var initialY: Int = 0
     private var initialTouchX: Float = 0f
     private var initialTouchY: Float = 0f
+    private var currentStatus: String = "Ready"
+    private var isPerformingAction: Boolean = false
 
     override fun onCreate() {
         super.onCreate()
@@ -44,20 +50,29 @@ class OverlayService : Service() {
             )
         }
         overlayView = LayoutInflater.from(this)
-            .inflate(R.layout.overlay_layout, tempParent, false) as LinearLayout
+            .inflate(R.layout.overlay_layout, tempParent, false)
         overlayText = overlayView?.findViewById(R.id.overlay_text)
+        overlayButton = overlayView?.findViewById(R.id.overlay_button)
+        overlayCancelButton = overlayView?.findViewById(R.id.overlay_cancel_button)
 
         params = WindowManager.LayoutParams(
             WindowManager.LayoutParams.WRAP_CONTENT,
             WindowManager.LayoutParams.WRAP_CONTENT,
             WindowManager.LayoutParams.TYPE_APPLICATION_OVERLAY,
             WindowManager.LayoutParams.FLAG_NOT_FOCUSABLE or
-                    WindowManager.LayoutParams.FLAG_LAYOUT_IN_SCREEN,
+                    WindowManager.LayoutParams.FLAG_LAYOUT_IN_SCREEN or
+                    WindowManager.LayoutParams.FLAG_LAYOUT_NO_LIMITS or
+                    WindowManager.LayoutParams.FLAG_NOT_TOUCH_MODAL or
+                    WindowManager.LayoutParams.FLAG_SHOW_WHEN_LOCKED or
+                    WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON or
+                    WindowManager.LayoutParams.FLAG_LOCAL_FOCUS_MODE or
+                    WindowManager.LayoutParams.FLAG_HARDWARE_ACCELERATED,
             PixelFormat.TRANSLUCENT
         ).apply {
             gravity = Gravity.TOP or Gravity.START
             x = 16
             y = 150  // Position it higher up
+            windowAnimations = 0  // Disable animations to prevent z-order issues during transitions
         }
 
         // Set up touch listener for dragging
@@ -92,7 +107,28 @@ class OverlayService : Service() {
             }
         }
 
+        // Set up click listener to show current status
+        overlayView?.setOnClickListener {
+            updateStatus(AgentStatus.Processing(currentStatus))
+        }
+
+        // Set up button click listener
+        overlayButton?.setOnClickListener {
+            val intent = Intent(this, MainActivity::class.java).apply {
+                addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+            }
+            startActivity(intent)
+        }
+
+        // Set up cancel button click listener
+        overlayCancelButton?.setOnClickListener {
+            Agent.getInstance()?.cancel()
+            updateStatus(AgentStatus.Success("Agent cancelled"))
+        }
+
+        // Add the view and update its visibility based on app state
         windowManager.addView(overlayView, params)
+        updateOverlayVisibility()
     }
 
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
@@ -125,11 +161,56 @@ class OverlayService : Service() {
             .setSmallIcon(R.mipmap.ic_launcher).build()
     }
 
-    fun updateOverlayText(text: String?) {
-        if (text.isNullOrBlank() || text == "null") return
-
-        overlayText?.post {
-            overlayText?.text = text
+    fun updateStatus(status: AgentStatus) {
+        // Convert status to display text and determine button visibility
+        val (displayText, isDone) = when (status) {
+            is AgentStatus.Processing -> Pair(status.message, false)
+            is AgentStatus.Success -> Pair(status.message, true)
+            is AgentStatus.Error -> Pair(status.message, true)
         }
+
+        android.util.Log.d("Gosling", "updateStatus called with status: $status, isDone: $isDone")
+
+        // Ignore null, empty, or "null" string messages
+        if (displayText.isBlank() || displayText.contains("null") || displayText.trim().isEmpty()) {
+            android.util.Log.d("Gosling", "Ignoring empty or null message")
+            return
+        }
+
+        // Ignore generic processing/thinking messages
+        if (displayText == "Processing..." || displayText == "Thinking...") {
+            android.util.Log.d("Gosling", "Ignoring generic processing message")
+            return
+        }
+
+        currentStatus = displayText
+        overlayText?.post {
+            overlayText?.text = displayText.take(600)
+            android.util.Log.d("Gosling", "Setting button visibility to: ${if (isDone) "VISIBLE" else "GONE"}")
+            overlayButton?.visibility = if (isDone) View.VISIBLE else View.GONE
+            overlayCancelButton?.visibility = if (!isDone) View.VISIBLE else View.GONE
+            android.util.Log.d("Gosling", "Button visibility is now: ${overlayButton?.visibility}")
+            android.util.Log.d("Gosling", "Button reference exists: ${overlayButton != null}")
+        }
+        updateOverlayVisibility()
+    }
+
+    fun updateOverlayVisibility() {
+        overlayView?.post {
+            val shouldShow = !GoslingApplication.isMainActivityRunning && !isPerformingAction
+            val newVisibility = if (shouldShow) View.VISIBLE else View.GONE
+            android.util.Log.d(
+                "Gosling",
+                "updateOverlayVisibility: isMainActivityRunning=${GoslingApplication.isMainActivityRunning}, isPerformingAction=$isPerformingAction, shouldShow=$shouldShow"
+            )
+            overlayView?.visibility = newVisibility
+            android.util.Log.d("Gosling", "Overlay visibility set to: $newVisibility")
+        }
+    }
+
+    fun setPerformingAction(performing: Boolean) {
+        android.util.Log.d("Gosling", "setPerformingAction: $performing")
+        isPerformingAction = performing
+        updateOverlayVisibility()
     }
 }

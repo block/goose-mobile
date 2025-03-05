@@ -133,23 +133,26 @@ object ToolHandler {
         requiresAccessibility = true
     )
     fun getUiHierarchy(accessibilityService: AccessibilityService, args: JSONObject): String {
-        val clean = args.optBoolean("clean", false)
-        val root = JSONObject()
-
         try {
-            val activeWindow = accessibilityService.rootInActiveWindow
-            if (activeWindow != null) {
-                root.put("package", activeWindow.packageName)
-                root.put("class", activeWindow.className)
-                root.put("nodes", serializeNodeHierarchy(activeWindow, clean))
-            } else {
-                root.put("error", "No active window found")
-            }
-        } catch (e: Exception) {
-            root.put("error", "Failed to get UI hierarchy: ${e.message}")
-        }
+            val clean = args.optBoolean("clean", false)
+            val root = JSONObject()
 
-        return root.toString(2)
+            try {
+                val activeWindow = accessibilityService.rootInActiveWindow
+                if (activeWindow != null) {
+                    root.put("package", activeWindow.packageName)
+                    root.put("class", activeWindow.className)
+                    root.put("nodes", serializeNodeHierarchy(activeWindow, clean))
+                } else {
+                    root.put("error", "No active window found")
+                }
+            } catch (e: Exception) {
+                root.put("error", "Failed to get UI hierarchy: ${e.message}")
+            }
+
+            return root.toString(2)
+        } finally {
+        }
     }
 
     @Tool(
@@ -294,40 +297,43 @@ object ToolHandler {
         requiresAccessibility = true
     )
     fun enterText(accessibilityService: AccessibilityService, args: JSONObject): String {
-        val text = args.getString("text")
+        try {
+            val text = args.getString("text")
 
-        val (textToEnter, shouldSubmit) = if (text.endsWith("---")) {
-            Pair(text.substring(0, text.length - 3), false)
-        } else {
-            Pair(text, true)
-        }
+            val (textToEnter, shouldSubmit) = if (text.endsWith("---")) {
+                Pair(text.substring(0, text.length - 3), false)
+            } else {
+                Pair(text, true)
+            }
 
-        val rootNode = accessibilityService.rootInActiveWindow
-            ?: return "Error: Unable to access active window"
+            val rootNode = accessibilityService.rootInActiveWindow
+                ?: return "Error: Unable to access active window"
 
-        val focusedNode = rootNode.findFocus(AccessibilityNodeInfo.FOCUS_INPUT)
-            ?: return "Error: No input field is currently focused"
+            val focusedNode = rootNode.findFocus(AccessibilityNodeInfo.FOCUS_INPUT)
+                ?: return "Error: No input field is currently focused"
 
-        if (!focusedNode.isEditable) {
-            return "Error: The focused element is not an editable text field"
-        }
+            if (!focusedNode.isEditable) {
+                return "Error: The focused element is not an editable text field"
+            }
 
-        val arguments = Bundle()
-        arguments.putCharSequence(
-            AccessibilityNodeInfo.ACTION_ARGUMENT_SET_TEXT_CHARSEQUENCE,
-            textToEnter
-        )
-        val setTextResult =
-            focusedNode.performAction(AccessibilityNodeInfo.ACTION_SET_TEXT, arguments)
+            val arguments = Bundle()
+            arguments.putCharSequence(
+                AccessibilityNodeInfo.ACTION_ARGUMENT_SET_TEXT_CHARSEQUENCE,
+                textToEnter
+            )
+            val setTextResult =
+                focusedNode.performAction(AccessibilityNodeInfo.ACTION_SET_TEXT, arguments)
 
-        if (shouldSubmit && setTextResult) {
-            Runtime.getRuntime().exec(arrayOf("input", "keyevent", "KEYCODE_ENTER"))
-        }
+            if (shouldSubmit && setTextResult) {
+                Runtime.getRuntime().exec(arrayOf("input", "keyevent", "KEYCODE_ENTER"))
+            }
 
-        return if (setTextResult) {
-            "Entered text: \"$textToEnter\"${if (shouldSubmit) " and submitted" else ""}"
-        } else {
-            "Failed to enter text"
+            return if (setTextResult) {
+                "Entered text: \"$textToEnter\"${if (shouldSubmit) " and submitted" else ""}"
+            } else {
+                "Failed to enter text"
+            }
+        } finally {
         }
     }
 
@@ -392,6 +398,11 @@ object ToolHandler {
 
         val toolAnnotation = toolMethod.getAnnotation(Tool::class.java)
 
+        OverlayService.getInstance()?.setPerformingAction(true)
+
+        //Delay to let the overlay hide...
+        Thread.sleep(100)
+
         return try {
             if (toolAnnotation != null && toolAnnotation.requiresAccessibility) {
                 if (accessibilityService == null) {
@@ -410,9 +421,13 @@ object ToolHandler {
             if (toolAnnotation != null && toolAnnotation.requiresContext) {
                 return toolMethod.invoke(ToolHandler, context, arguments) as String
             }
-            return toolMethod.invoke(ToolHandler) as String
+            val result = toolMethod.invoke(ToolHandler) as String
+
+            return result
         } catch (e: Exception) {
             "Error executing $functionName: ${e.message}"
+        } finally {
+            OverlayService.getInstance()?.setPerformingAction(false)
         }
     }
 }

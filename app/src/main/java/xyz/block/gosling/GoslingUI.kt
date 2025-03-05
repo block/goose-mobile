@@ -115,8 +115,13 @@ fun GoslingUI(
 
                 val response = async {
                     service.processCommand(input, context, isNotificationReply = false) { status ->
-                        outputText = status
+                        outputText = when (status) {
+                            is AgentStatus.Processing -> status.message
+                            is AgentStatus.Success -> status.message
+                            is AgentStatus.Error -> "Error: ${status.message}"
+                        }
                         Log.d("Agent", "Status update: $status")
+                        OverlayService.getInstance()?.updateStatus(status)
                     }
                 }.await()
                 outputText += "\n" + response
@@ -202,10 +207,6 @@ fun GoslingUI(
         } else {
             speechRecognizer?.destroy()
         }
-    }
-
-    LaunchedEffect(outputText) {
-        OverlayService.getInstance()?.updateOverlayText(outputText)
     }
 
     Box(

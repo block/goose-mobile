@@ -103,6 +103,7 @@ class MainActivity : ComponentActivity() {
     override fun onResume() {
         super.onResume()
         GoslingApplication.isMainActivityRunning = true
+        OverlayService.getInstance()?.updateOverlayVisibility()
 
         // Check and save accessibility permission state
         val isEnabled = checkAccessibilityPermission(this)
@@ -117,9 +118,16 @@ class MainActivity : ComponentActivity() {
         }
     }
 
+    override fun onPause() {
+        super.onPause()
+        GoslingApplication.isMainActivityRunning = false
+        OverlayService.getInstance()?.updateOverlayVisibility()
+    }
+
     override fun onDestroy() {
         super.onDestroy()
         GoslingApplication.isMainActivityRunning = false
+        OverlayService.getInstance()?.updateOverlayVisibility()
     }
 
     private fun openAccessibilitySettings() {

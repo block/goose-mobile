@@ -15,6 +15,7 @@ import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
 import androidx.activity.result.ActivityResultLauncher
 import androidx.activity.result.contract.ActivityResultContracts
+import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -36,6 +37,7 @@ import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -43,14 +45,30 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.window.Dialog
 import xyz.block.gosling.ui.theme.GoslingTheme
 import xyz.block.gosling.ui.theme.LocalGoslingColors
 
 class MainActivity : ComponentActivity() {
     companion object {
         private const val REQUEST_NOTIFICATION_PERMISSION = 1234
+
+        fun checkAccessibilityPermission(context: Context): Boolean {
+            val enabledServices = Settings.Secure.getString(
+                context.contentResolver,
+                Settings.Secure.ENABLED_ACCESSIBILITY_SERVICES
+            )
+            val isEnabled = enabledServices?.contains(context.packageName) == true
+            Log.d("Gosling", "Accessibility check: $enabledServices, enabled: $isEnabled")
+            return isEnabled
+        }
+
+        fun openAccessibilitySettings(context: Context) {
+            context.startActivity(Intent(Settings.ACTION_ACCESSIBILITY_SETTINGS))
+        }
     }
 
     private lateinit var settingsManager: SettingsManager
@@ -162,42 +180,145 @@ fun MainContent(
             isAccessibilityEnabled = isAccessibilityEnabled
         )
     } else {
-        Box(
-            modifier = modifier.fillMaxSize()
+        HomeScreen(
+            modifier = modifier,
+            onSettingsClick = { showSettings = true },
+            isAccessibilityEnabled = isAccessibilityEnabled
+        )
+    }
+}
+
+@Composable
+fun HomeScreen(
+    modifier: Modifier = Modifier,
+    onSettingsClick: () -> Unit,
+    isAccessibilityEnabled: Boolean
+) {
+    val context = LocalContext.current
+    var showOptionsMenu by remember { mutableStateOf(false) }
+
+    Box(
+        modifier = modifier
+            .fillMaxSize()
+            .pointerInput(Unit) {
+                detectTapGestures(
+                    onLongPress = { showOptionsMenu = true }
+                )
+            }
+    ) {
+        // Time at the top
+        Column(
+            modifier = Modifier
+                .align(Alignment.TopCenter)
+                .padding(top = 48.dp),
+            horizontalAlignment = Alignment.CenterHorizontally
         ) {
-            // Settings button in top-right corner with badge
-            Box(
-                modifier = Modifier
-                    .align(Alignment.TopEnd)
-                    .padding(8.dp)
+            Text(
+                text = java.text.SimpleDateFormat("HH:mm", java.util.Locale.getDefault()).format(java.util.Date()),
+                style = MaterialTheme.typography.displayLarge
+            )
+            Text(
+                text = java.text.SimpleDateFormat("EEE, MMM d", java.util.Locale.getDefault()).format(java.util.Date()),
+                style = MaterialTheme.typography.titleMedium,
+                modifier = Modifier.padding(top = 8.dp)
+            )
+        }
+
+        // Settings button in top-right corner with badge
+        Box(
+            modifier = Modifier
+                .align(Alignment.TopEnd)
+                .padding(8.dp)
+        ) {
+            IconButton(
+                onClick = onSettingsClick
             ) {
-                IconButton(
-                    onClick = { showSettings = true }
+                Icon(
+                    Icons.Default.Settings,
+                    contentDescription = "Settings",
+                    tint = MaterialTheme.colorScheme.onSurface
+                )
+            }
+            if (!isAccessibilityEnabled) {
+                Badge(
+                    modifier = Modifier
+                        .align(Alignment.TopEnd),
+                    containerColor = MaterialTheme.colorScheme.error
                 ) {
-                    Icon(
-                        Icons.Default.Settings,
-                        contentDescription = "Settings",
-                        tint = MaterialTheme.colorScheme.onSurface
-                    )
-                }
-                if (!isAccessibilityEnabled) {
-                    Badge(
-                        modifier = Modifier
-                            .align(Alignment.TopEnd),
-                        containerColor = MaterialTheme.colorScheme.error
-                    ) {
-                        Text("!")
-                    }
+                    Text("!")
                 }
             }
+        }
 
-            // Main UI content aligned to bottom
-            Box(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .align(Alignment.BottomCenter)
+        // Gosling UI at the bottom
+        Box(
+            modifier = Modifier
+                .fillMaxWidth()
+                .align(Alignment.BottomCenter)
+                .padding(bottom = 32.dp)
+        ) {
+            GoslingUI(context = LocalContext.current)
+        }
+
+        // Long-press menu
+        if (showOptionsMenu) {
+            Dialog(
+                onDismissRequest = { showOptionsMenu = false }
             ) {
-                GoslingUI(context = LocalContext.current)
+                Card(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(16.dp),
+                    shape = RoundedCornerShape(16.dp)
+                ) {
+                    Column(
+                        modifier = Modifier.padding(16.dp)
+                    ) {
+                        Text(
+                            "Options",
+                            style = MaterialTheme.typography.titleLarge,
+                            modifier = Modifier.padding(bottom = 16.dp)
+                        )
+                        
+                        // System Settings
+                        TextButton(
+                            onClick = {
+                                showOptionsMenu = false
+                                context.startActivity(Intent(android.provider.Settings.ACTION_SETTINGS))
+                            },
+                            modifier = Modifier.fillMaxWidth()
+                        ) {
+                            Text("System Settings")
+                        }
+
+                        // Home Settings (Launcher settings)
+                        TextButton(
+                            onClick = {
+                                showOptionsMenu = false
+                                try {
+                                    context.startActivity(Intent(android.provider.Settings.ACTION_HOME_SETTINGS))
+                                } catch (e: Exception) {
+                                    // Fallback to display settings if HOME_SETTINGS is not available
+                                    context.startActivity(Intent(android.provider.Settings.ACTION_DISPLAY_SETTINGS))
+                                }
+                            },
+                            modifier = Modifier.fillMaxWidth()
+                        ) {
+                            Text("Change Default Launcher")
+                        }
+
+                        // App Settings
+                        TextButton(
+                            onClick = {
+                                showOptionsMenu = false
+                                onSettingsClick()
+                            },
+                            modifier = Modifier.fillMaxWidth()
+                        ) {
+                            Text("Gosling Settings")
+                        }
+                    }
+                }
             }
         }
     }
@@ -249,7 +370,7 @@ fun MainScreen(modifier: Modifier = Modifier) {
                 Spacer(modifier = Modifier.height(8.dp))
                 Button(
                     onClick = {
-                        openAccessibilitySettings(context)
+                        MainActivity.openAccessibilitySettings(context)
                         isAccessibilityEnabled = settingsManager.isAccessibilityEnabled
                     },
                     colors = ButtonDefaults.buttonColors(
@@ -266,19 +387,4 @@ fun MainScreen(modifier: Modifier = Modifier) {
             GoslingUI(context = context)
         }
     }
-}
-
-fun checkAccessibilityPermission(context: Context): Boolean {
-    val enabledServices = Settings.Secure.getString(
-        context.contentResolver,
-        Settings.Secure.ENABLED_ACCESSIBILITY_SERVICES
-    )
-    val isEnabled = enabledServices?.contains(context.packageName) == true
-    Log.d("Gosling", "Accessibility check: $enabledServices, enabled: $isEnabled")
-    return isEnabled
-}
-
-fun openAccessibilitySettings(context: Context) {
-    val intent = Intent(Settings.ACTION_ACCESSIBILITY_SETTINGS)
-    context.startActivity(intent)
 }

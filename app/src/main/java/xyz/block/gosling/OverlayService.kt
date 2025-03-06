@@ -123,8 +123,24 @@ class OverlayService : Service() {
 
         // Set up cancel button click listener
         overlayCancelButton?.setOnClickListener {
+            // Make the cancel button more visible to indicate it's being pressed
+            overlayCancelButton?.alpha = 0.5f
+            
+            // Disable the button to prevent multiple clicks
+            overlayCancelButton?.isEnabled = false
+            
+            // Cancel the agent
             Agent.getInstance()?.cancel()
-            updateStatus(AgentStatus.Success("Agent cancelled"))
+            
+            // Update the UI to show cancellation is in progress
+            updateStatus(AgentStatus.Processing("Cancelling operation..."))
+            
+            // Reset the button appearance and state after a short delay
+            overlayCancelButton?.postDelayed({
+                overlayCancelButton?.alpha = 1.0f
+                overlayCancelButton?.isEnabled = true
+                updateStatus(AgentStatus.Success("Agent cancelled"))
+            }, 500)
         }
 
         // Add the view and update its visibility based on app state
@@ -165,7 +181,14 @@ class OverlayService : Service() {
     fun updateStatus(status: AgentStatus) {
         // Convert status to display text and determine button visibility
         val (displayText, isDone) = when (status) {
-            is AgentStatus.Processing -> Pair(status.message, false)
+            is AgentStatus.Processing -> {
+                // Special case for cancellation message
+                if (status.message.contains("cancel", ignoreCase = true)) {
+                    Pair(status.message, false)
+                } else {
+                    Pair(status.message, false)
+                }
+            }
             is AgentStatus.Success -> Pair(status.message, true)
             is AgentStatus.Error -> Pair(status.message, true)
         }
@@ -178,8 +201,9 @@ class OverlayService : Service() {
             return
         }
 
-        // Ignore generic processing/thinking messages
-        if (displayText == "Processing..." || displayText == "Thinking...") {
+        // Ignore generic processing/thinking messages unless they're about cancellation
+        if ((displayText == "Processing..." || displayText == "Thinking...") && 
+            !displayText.contains("cancel", ignoreCase = true)) {
             android.util.Log.d("Gosling", "Ignoring generic processing message")
             return
         }
@@ -192,7 +216,12 @@ class OverlayService : Service() {
                 "Setting button visibility to: ${if (isDone) "VISIBLE" else "GONE"}"
             )
             overlayButton?.visibility = if (isDone) View.VISIBLE else View.GONE
-            overlayCancelButton?.visibility = if (!isDone) View.VISIBLE else View.GONE
+            
+            // Always show cancel button during processing, hide when done
+            // But don't show it during cancellation
+            val showCancelButton = !isDone && !displayText.contains("cancel", ignoreCase = true)
+            overlayCancelButton?.visibility = if (showCancelButton) View.VISIBLE else View.GONE
+            
             android.util.Log.d("Gosling", "Button visibility is now: ${overlayButton?.visibility}")
             android.util.Log.d("Gosling", "Button reference exists: ${overlayButton != null}")
         }

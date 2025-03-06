@@ -453,6 +453,11 @@ object ToolHandler {
         context: Context,
         accessibilityService: AccessibilityService?
     ): String {
+        // Check if the agent has been cancelled
+        if (Agent.getInstance()?.isCancelled() == true) {
+            return "Operation cancelled by user"
+        }
+        
         val toolMethod = ToolHandler::class.java.methods
             .firstOrNull {
                 it.isAnnotationPresent(Tool::class.java) &&
@@ -469,6 +474,11 @@ object ToolHandler {
         Thread.sleep(100)
 
         return try {
+            // Check again if cancelled after the delay
+            if (Agent.getInstance()?.isCancelled() == true) {
+                return "Operation cancelled by user"
+            }
+            
             if (toolAnnotation.requiresAccessibility) {
                 if (accessibilityService == null) {
                     return "Accessibility service not available."

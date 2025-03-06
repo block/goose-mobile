@@ -39,9 +39,10 @@ sealed class AgentStatus {
 }
 
 class Agent : Service() {
-    private val job = SupervisorJob()
-    private val scope = CoroutineScope(Dispatchers.IO + job)
+    private var job = SupervisorJob()
+    private var scope = CoroutineScope(Dispatchers.IO + job)
     private val binder = AgentBinder()
+    private var isCancelled = false
 
     companion object {
         private const val NOTIFICATION_CHANNEL_ID = "agent_service"
@@ -75,8 +76,21 @@ class Agent : Service() {
     }
 
     fun cancel() {
+        isCancelled = true
+        
         job.cancel()
+        
+        job = SupervisorJob()
+        scope = CoroutineScope(Dispatchers.IO + job)
+        
         updateNotification("Agent cancelled")
+        OverlayService.getInstance()?.updateStatus(AgentStatus.Success("Agent cancelled"))
+        
+        OverlayService.getInstance()?.setPerformingAction(false)
+    }
+
+    fun isCancelled(): Boolean {
+        return isCancelled
     }
 
     private fun startForegroundService() {
@@ -116,175 +130,217 @@ class Agent : Service() {
         isNotificationReply: Boolean,
         onStatusUpdate: (AgentStatus) -> Unit
     ): String {
-        val availableIntents = IntentScanner.getAvailableIntents(context)
-        val installedApps = availableIntents.joinToString("\n") { it.formatForLLM() }
+        try {
+            // Reset cancelled flag at the start of a new command
+            isCancelled = false
+            
+            val availableIntents = IntentScanner.getAvailableIntents(context)
+            val installedApps = availableIntents.joinToString("\n") { it.formatForLLM() }
 
-        val windowManager = context.getSystemService(Context.WINDOW_SERVICE) as WindowManager
-        val displayMetrics = DisplayMetrics()
-        @Suppress("DEPRECATION")
-        windowManager.defaultDisplay.getMetrics(displayMetrics)
+            val windowManager = context.getSystemService(Context.WINDOW_SERVICE) as WindowManager
+            val displayMetrics = DisplayMetrics()
+            @Suppress("DEPRECATION")
+            windowManager.defaultDisplay.getMetrics(displayMetrics)
 
-        val width = displayMetrics.widthPixels
-        val height = displayMetrics.heightPixels
+            val width = displayMetrics.widthPixels
+            val height = displayMetrics.heightPixels
 
-        val role =
-            if (isNotificationReply) "helping the user process android notifications" else "managing the users android phone"
+            val role =
+                if (isNotificationReply) "helping the user process android notifications" else "managing the users android phone"
 
-        val systemMessage = """
-            You are an assistant $role. The user does not have access to the phone. 
-            You will autonomously complete complex tasks on the phone and report back to the user when 
-            done. NEVER ask the user for additional information or choices - you must decide and act on your own.
-            
-            Your goal is to complete the requested task through any means necessary. If one approach doesn't work,
-            try alternative methods until you succeed. Be persistent and creative in finding solutions.
-            
-            When you call a tool, tell the user about it. After each tool call you will see the state of the phone 
-            by way of a screenshot and a ui hierarchy produced using 'adb shell uiautomator dump'. One or both 
-            might be simplified or omitted to save space. Use this to verify your work.
-            
-            The phone has a screen resolution of ${width}x${height} pixels
-            The phone has the following apps installed:
-    
-            $installedApps
-            
-            Before getting started, explicitly state the steps you want to take and which app(s) you want 
-            use to accomplish that task. For example, open the contacts app to find out Joe's phone number. 
-            
-            After each step verify that the step was completed successfully by looking at the screen and 
-            the ui hierarchy dump. If the step was not completed successfully, try to recover by:
-            1. Trying a different approach
-            2. Using a different app
-            3. Looking for alternative UI elements
-            4. Adjusting your interaction method
-            
-            When you start an app, make sure the app is in the state you expect it to be in. If it is not, 
-            try to navigate to the correct state.
-            
-            After each tool call and before the next step, write down what you see on the screen that helped 
-            you resolve this step. Keep iterating until you complete the task or have exhausted all possible approaches.
-            
-            Remember: DO NOT ask the user for help or additional information - you must solve the problem autonomously.
-        """.trimIndent()
+            val systemMessage = """
+                You are an assistant $role. The user does not have access to the phone. 
+                You will autonomously complete complex tasks on the phone and report back to the user when 
+                done. NEVER ask the user for additional information or choices - you must decide and act on your own.
+                
+                Your goal is to complete the requested task through any means necessary. If one approach doesn't work,
+                try alternative methods until you succeed. Be persistent and creative in finding solutions.
+                
+                When you call a tool, tell the user about it. After each tool call you will see the state of the phone 
+                by way of a screenshot and a ui hierarchy produced using 'adb shell uiautomator dump'. One or both 
+                might be simplified or omitted to save space. Use this to verify your work.
+                
+                The phone has a screen resolution of ${width}x${height} pixels
+                The phone has the following apps installed:
+        
+                $installedApps
+                
+                Before getting started, explicitly state the steps you want to take and which app(s) you want 
+                use to accomplish that task. For example, open the contacts app to find out Joe's phone number. 
+                
+                After each step verify that the step was completed successfully by looking at the screen and 
+                the ui hierarchy dump. If the step was not completed successfully, try to recover by:
+                1. Trying a different approach
+                2. Using a different app
+                3. Looking for alternative UI elements
+                4. Adjusting your interaction method
+                
+                When you start an app, make sure the app is in the state you expect it to be in. If it is not, 
+                try to navigate to the correct state.
+                
+                After each tool call and before the next step, write down what you see on the screen that helped 
+                you resolve this step. Keep iterating until you complete the task or have exhausted all possible approaches.
+                
+                Remember: DO NOT ask the user for help or additional information - you must solve the problem autonomously.
+            """.trimIndent()
 
-        val messages = mutableListOf(
-            Message(
-                role = "system",
-                content = systemMessage
-            ),
-            Message(
-                role = "user",
-                content = userInput
+            val messages = mutableListOf(
+                Message(
+                    role = "system",
+                    content = systemMessage
+                ),
+                Message(
+                    role = "user",
+                    content = userInput
+                )
             )
-        )
 
-        onStatusUpdate(AgentStatus.Processing("Thinking..."))
+            onStatusUpdate(AgentStatus.Processing("Thinking..."))
 
-        return withContext(scope.coroutineContext) {
-            var retryCount = 0
-            val maxRetries = 3
+            return withContext(scope.coroutineContext) {
+                var retryCount = 0
+                val maxRetries = 3
 
-            while (true) {
-                var response: JSONObject?
-                try {
-                    if (retryCount > 0) {
-                        val delayMs = (2.0.pow(retryCount.toDouble()) * 1000).toLong()
-                        delay(delayMs)
-                        onStatusUpdate(AgentStatus.Processing("Retrying... (attempt ${retryCount + 1})"))
+                while (true) {
+                    if (isCancelled) {
+                        onStatusUpdate(AgentStatus.Success("Operation cancelled"))
+                        return@withContext "Operation cancelled by user"
+                    }
+                    
+                    var response: JSONObject?
+                    try {
+                        if (retryCount > 0) {
+                            val delayMs = (2.0.pow(retryCount.toDouble()) * 1000).toLong()
+                            delay(delayMs)
+                            onStatusUpdate(AgentStatus.Processing("Retrying... (attempt ${retryCount + 1})"))
+                        }
+
+                        response = callLlm(messages, context)
+                        retryCount = 0
+                    } catch (e: AgentException) {
+                        if (isCancelled) {
+                            onStatusUpdate(AgentStatus.Success("Operation cancelled"))
+                            return@withContext "Operation cancelled by user"
+                        }
+                        
+                        retryCount++
+
+                        if (retryCount >= maxRetries) {
+                            val errorMsg = "Failed after $maxRetries attempts: ${e.message}"
+                            onStatusUpdate(AgentStatus.Error(errorMsg))
+                            return@withContext errorMsg
+                        }
+                        continue
                     }
 
-                    response = callLlm(messages, context)
-                    retryCount = 0
-                } catch (e: AgentException) {
-                    retryCount++
+                    try {
+                        val (assistantReply, toolCalls) = when {
+                            response.has("choices") -> {
+                                val assistantMessage = response.getJSONArray("choices").getJSONObject(0)
+                                    .getJSONObject("message")
+                                val content = assistantMessage.optString("content", "Ok")
+                                val tools = assistantMessage.optJSONArray("tool_calls")?.let {
+                                    List(it.length()) { i -> ToolHandler.fromJson(it.getJSONObject(i)) }
+                                }
+                                Pair(content, tools)
+                            }
 
-                    if (retryCount >= maxRetries) {
-                        val errorMsg = "Failed after $maxRetries attempts: ${e.message}"
+                            response.has("candidates") -> {
+                                val candidate = response.getJSONArray("candidates").getJSONObject(0)
+                                val content = candidate.getJSONObject("content")
+                                val text = content.getJSONArray("parts").getJSONObject(0)
+                                    .optString("text", "Ok")
+
+                                val tools = content.optJSONArray("parts")?.let { parts ->
+                                    List(parts.length()) { i ->
+                                        val part = parts.getJSONObject(i)
+                                        if (part.has("functionCall")) {
+                                            ToolHandler.fromJson(part)
+                                        } else null
+                                    }.filterNotNull()
+                                }
+                                Pair(text, tools)
+                            }
+
+                            else -> Pair("Unknown response format", null)
+                        }
+
+                        onStatusUpdate(AgentStatus.Processing(assistantReply))
+
+                        if (isCancelled) {
+                            onStatusUpdate(AgentStatus.Success("Operation cancelled"))
+                            return@withContext "Operation cancelled by user"
+                        }
+                        
+                        val toolResults = executeTools(toolCalls, context)
+                        if (toolResults.isEmpty() || isCancelled) {
+                            if (isCancelled) {
+                                onStatusUpdate(AgentStatus.Success("Operation cancelled"))
+                                return@withContext "Operation cancelled by user"
+                            } else {
+                                onStatusUpdate(AgentStatus.Success(assistantReply))
+                                break
+                            }
+                        }
+
+                        // Create a map of tool calls with their IDs
+                        val toolCallsWithIds = toolCalls?.mapIndexed { index, toolCall ->
+                            val toolCallId = toolResults[index]["tool_call_id"] ?: "call_${System.currentTimeMillis()}_$index"
+                            toolCall to toolCallId
+                        } ?: emptyList()
+
+                        messages.add(
+                            Message(
+                                role = "assistant",
+                                content = assistantReply,
+                                toolCalls = toolCallsWithIds.map { (toolCall, id) ->
+                                    ToolCall(
+                                        id = id,
+                                        function = ToolFunction(
+                                            name = toolCall.name,
+                                            arguments = toolCall.arguments.toString()
+                                        )
+                                    )
+                                }
+                            )
+                        )
+
+                        for (result in toolResults) {
+                            messages.add(
+                                Message(
+                                    role = "tool",
+                                    toolCallId = result["tool_call_id"].toString(),
+                                    content = result["output"].toString()
+                                )
+                            )
+                        }
+                    } catch (e: Exception) {
+                        Log.e("Agent", "Error processing response", e)
+                        val errorMsg = "Error processing response: ${e.message}"
                         onStatusUpdate(AgentStatus.Error(errorMsg))
                         return@withContext errorMsg
                     }
-                    continue
                 }
-
-                try {
-                    val (assistantReply, toolCalls) = when {
-                        response.has("choices") -> {
-                            val assistantMessage = response.getJSONArray("choices").getJSONObject(0)
-                                .getJSONObject("message")
-                            val content = assistantMessage.optString("content", "Ok")
-                            val tools = assistantMessage.optJSONArray("tool_calls")?.let {
-                                List(it.length()) { i -> ToolHandler.fromJson(it.getJSONObject(i)) }
-                            }
-                            Pair(content, tools)
-                        }
-
-                        response.has("candidates") -> {
-                            val candidate = response.getJSONArray("candidates").getJSONObject(0)
-                            val content = candidate.getJSONObject("content")
-                            val text = content.getJSONArray("parts").getJSONObject(0)
-                                .optString("text", "Ok")
-
-                            val tools = content.optJSONArray("parts")?.let { parts ->
-                                List(parts.length()) { i ->
-                                    val part = parts.getJSONObject(i)
-                                    if (part.has("functionCall")) {
-                                        ToolHandler.fromJson(part)
-                                    } else null
-                                }.filterNotNull()
-                            }
-                            Pair(text, tools)
-                        }
-
-                        else -> Pair("Unknown response format", null)
-                    }
-
-                    onStatusUpdate(AgentStatus.Processing(assistantReply))
-
-                    val toolResults = executeTools(toolCalls, context)
-                    if (toolResults.isEmpty()) {
-                        onStatusUpdate(AgentStatus.Success(assistantReply))
-                        break
-                    }
-
-                    // Create a map of tool calls with their IDs
-                    val toolCallsWithIds = toolCalls?.mapIndexed { index, toolCall ->
-                        val toolCallId = toolResults[index]["tool_call_id"] ?: "call_${System.currentTimeMillis()}_$index"
-                        toolCall to toolCallId
-                    } ?: emptyList()
-
-                    messages.add(
-                        Message(
-                            role = "assistant",
-                            content = assistantReply,
-                            toolCalls = toolCallsWithIds.map { (toolCall, id) ->
-                                ToolCall(
-                                    id = id,
-                                    function = ToolFunction(
-                                        name = toolCall.name,
-                                        arguments = toolCall.arguments.toString()
-                                    )
-                                )
-                            }
-                        )
-                    )
-
-                    for (result in toolResults) {
-                        messages.add(
-                            Message(
-                                role = "tool",
-                                toolCallId = result["tool_call_id"].toString(),
-                                content = result["output"].toString()
-                            )
-                        )
-                    }
-                } catch (e: Exception) {
-                    Log.e("Agent", "Error processing response", e)
-                    val errorMsg = "Error processing response: ${e.message}"
-                    onStatusUpdate(AgentStatus.Error(errorMsg))
-                    return@withContext errorMsg
-                }
+                onStatusUpdate(AgentStatus.Success("Task completed successfully"))
+                ""
             }
-            onStatusUpdate(AgentStatus.Success("Task completed successfully"))
-            ""
+        } catch (e: Exception) {
+            // Handle any unexpected exceptions
+            Log.e("Agent", "Error executing command", e)
+            
+            // If it's a cancellation exception, handle it gracefully
+            if (e is kotlinx.coroutines.CancellationException) {
+                // Reset the job and scope to ensure future commands work
+                job = SupervisorJob()
+                scope = CoroutineScope(Dispatchers.IO + job)
+                onStatusUpdate(AgentStatus.Success("Operation cancelled"))
+                return "Operation cancelled by user"
+            }
+            
+            // For other exceptions, report the error
+            val errorMsg = "Error: ${e.message}"
+            onStatusUpdate(AgentStatus.Error(errorMsg))
+            return errorMsg
         }
     }
 
@@ -295,25 +351,41 @@ class Agent : Service() {
         category: String,
     ) {
         scope.launch {
-            val prompt = """
-                Here's the notification:
-                App: $packageName
-                Title: $title
-                Content: $content
-                Category: $category
-                
-                Please analyze this notification and take appropriate action if needed.
-            """.trimIndent()
+            try {
+                val prompt = """
+                    Here's the notification:
+                    App: $packageName
+                    Title: $title
+                    Content: $content
+                    Category: $category
+                    
+                    Please analyze this notification and take appropriate action if needed.
+                """.trimIndent()
 
-            processCommand(
-                prompt,
-                this@Agent,
-                isNotificationReply = true
-            ) { status ->
-                when (status) {
-                    is AgentStatus.Processing -> updateNotification(status.message)
-                    is AgentStatus.Success -> updateNotification(status.message)
-                    is AgentStatus.Error -> updateNotification("Error: ${status.message}")
+                processCommand(
+                    prompt,
+                    this@Agent,
+                    isNotificationReply = true
+                ) { status ->
+                    when (status) {
+                        is AgentStatus.Processing -> updateNotification(status.message)
+                        is AgentStatus.Success -> updateNotification(status.message)
+                        is AgentStatus.Error -> updateNotification("Error: ${status.message}")
+                    }
+                }
+            } catch (e: Exception) {
+                // Handle any unexpected exceptions
+                Log.e("Agent", "Error handling notification", e)
+                
+                // If it's a cancellation exception, handle it gracefully
+                if (e is kotlinx.coroutines.CancellationException) {
+                    // Reset the job and scope to ensure future commands work
+                    job = SupervisorJob()
+                    scope = CoroutineScope(Dispatchers.IO + job)
+                    updateNotification("Operation cancelled")
+                } else {
+                    // For other exceptions, report the error
+                    updateNotification("Error: ${e.message}")
                 }
             }
         }
@@ -459,9 +531,16 @@ class Agent : Service() {
         toolCalls: List<InternalToolCall>?,
         context: Context
     ): List<Map<String, String>> {
-        if (toolCalls == null) return emptyList()
+        if (toolCalls == null || isCancelled) return emptyList()
 
         return toolCalls.mapIndexed { index, toolCall ->
+            if (isCancelled) {
+                return@mapIndexed mapOf(
+                    "tool_call_id" to "cancelled_${System.currentTimeMillis()}_$index",
+                    "output" to "Operation cancelled by user"
+                )
+            }
+            
             val toolCallId = "call_${System.currentTimeMillis()}_$index"  // Generate a unique ID
             val result = callTool(toolCall, context, GoslingAccessibilityService.getInstance())
             mapOf(

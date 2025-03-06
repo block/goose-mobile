@@ -19,8 +19,8 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.DisposableEffect
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -126,13 +126,22 @@ private fun WelcomeStep(
                     checkAssistantStatus()
                 }
             }
-            
+
             override fun onActivityPaused(activity: android.app.Activity) {}
             override fun onActivityStarted(activity: android.app.Activity) {}
             override fun onActivityDestroyed(activity: android.app.Activity) {}
-            override fun onActivitySaveInstanceState(activity: android.app.Activity, outState: android.os.Bundle) {}
+            override fun onActivitySaveInstanceState(
+                activity: android.app.Activity,
+                outState: android.os.Bundle
+            ) {
+            }
+
             override fun onActivityStopped(activity: android.app.Activity) {}
-            override fun onActivityCreated(activity: android.app.Activity, savedInstanceState: android.os.Bundle?) {}
+            override fun onActivityCreated(
+                activity: android.app.Activity,
+                savedInstanceState: android.os.Bundle?
+            ) {
+            }
         }
 
         activity?.application?.registerActivityLifecycleCallbacks(lifecycleObserver)
@@ -263,13 +272,9 @@ private fun LLMConfigStep(
     onApiKeyChange: (String) -> Unit,
     onComplete: () -> Unit
 ) {
-    val models = listOf(
-        "gpt-4o" to "GPT-4 Optimized",
-        "o3-mini" to "O3 Mini",
-        "o3-small" to "O3 Small",
-        "o3-medium" to "O3 Medium",
-        "o3-large" to "O3 Large"
-    )
+    val models = AiModel.AVAILABLE_MODELS.map {
+        it.identifier to it.displayName
+    }
 
     var expanded by remember { mutableStateOf(false) }
 
@@ -280,7 +285,6 @@ private fun LLMConfigStep(
         horizontalAlignment = Alignment.CenterHorizontally,
         verticalArrangement = Arrangement.SpaceBetween
     ) {
-        // Header Section
         Column(
             modifier = Modifier
                 .fillMaxWidth()

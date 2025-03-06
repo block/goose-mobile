@@ -453,7 +453,14 @@ class Agent : Service() {
         message.tool_calls?.let {
             val toolCallsJson = JSONArray()
             it.forEach { toolCall ->
-                toolCallsJson.put((toolCall as Map<String, Any>).toJSONObject())
+                val toolCallJson = JSONObject()
+                toolCallJson.put("id", toolCall.name)
+                toolCallJson.put("type", "function")
+                toolCallJson.put("function", JSONObject().apply {
+                    put("name", toolCall.name)
+                    put("arguments", toolCall.arguments.toString())
+                })
+                toolCallsJson.put(toolCallJson)
             }
             json.put("tool_calls", toolCallsJson)
         }

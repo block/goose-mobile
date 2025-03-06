@@ -199,22 +199,48 @@ object ToolHandler {
 
     @Tool(
         name = "click",
-        description = "Click at specific coordinates on the device screen",
+        description = "Click an element on screen by coordinates or resource ID. Specify either resource_id or x and y coordinates.",
         parameters = [
+            ParameterDef(
+                name = "resource_id",
+                type = "string",
+                description = "Resource ID of the element to click (e.g. 'com.example:id/button')",
+                required = false
+            ),
             ParameterDef(
                 name = "x",
                 type = "integer",
-                description = "X coordinate to click"
+                description = "X coordinate to click",
+                required = false
             ),
             ParameterDef(
                 name = "y",
                 type = "integer",
-                description = "Y coordinate to click"
+                description = "Y coordinate to click",
+                required = false
             )
         ],
         requiresAccessibility = true
     )
     fun click(accessibilityService: AccessibilityService, args: JSONObject): String {
+        val resourceId = args.optString("resource_id", null)
+
+        if (resourceId != null) {
+            val root = accessibilityService.rootInActiveWindow
+                ?: return "Error: Unable to access active window"
+
+            val node = findNodeByResourceId(root, resourceId)
+                ?: return "Error: Could not find element with resource ID: $resourceId"
+
+            val clicked = node.performAction(AccessibilityNodeInfo.ACTION_CLICK)
+            return if (clicked) {
+                "Clicked element with resource ID: $resourceId"
+            } else {
+                "Failed to click element with resource ID: $resourceId"
+            }
+        }
+
+        // Fall back to coordinate-based clicking
         val x = args.getInt("x")
         val y = args.getInt("y")
 
@@ -225,7 +251,11 @@ object ToolHandler {
         gestureBuilder.addStroke(GestureDescription.StrokeDescription(clickPath, 0, 50))
 
         val clickResult = performGesture(gestureBuilder.build(), accessibilityService)
-        return if (clickResult) "Clicked at coordinates ($x, $y)" else "Failed to click at coordinates ($x, $y)"
+        return if (clickResult) {
+            "Clicked at coordinates ($x, $y)"
+        } else {
+            "Failed to click at coordinates ($x, $y)"
+        }
     }
 
     @Tool(
@@ -290,9 +320,15 @@ object ToolHandler {
     }
 
     @Tool(
-        name = "enter_text",
-        description = "Enter text into the current text field. Text will automatically submit unless you end on ---",
+        name = "enterText",
+        description = "Enter text into a text field. Specify the resource_id of the text field to enter text into. If left out, the current focused text field will be used.",
         parameters = [
+            ParameterDef(
+                name = "resource_id",
+                type = "string",
+                description = "Resource ID of the text field (e.g. 'com.example:id/input')",
+                required = false
+            ),
             ParameterDef(
                 name = "text",
                 type = "string",
@@ -302,44 +338,63 @@ object ToolHandler {
         requiresAccessibility = true
     )
     fun enterText(accessibilityService: AccessibilityService, args: JSONObject): String {
-        try {
-            val text = args.getString("text")
+        val text = args.getString("text")
+        val resourceId = args.optString("resource_id", null)
 
-            val (textToEnter, shouldSubmit) = if (text.endsWith("---")) {
-                Pair(text.substring(0, text.length - 3), false)
-            } else {
-                Pair(text, true)
-            }
-
-            val rootNode = accessibilityService.rootInActiveWindow
-                ?: return "Error: Unable to access active window"
-
-            val focusedNode = rootNode.findFocus(AccessibilityNodeInfo.FOCUS_INPUT)
-                ?: return "Error: No input field is currently focused"
-
-            if (!focusedNode.isEditable) {
-                return "Error: The focused element is not an editable text field"
-            }
-
-            val arguments = Bundle()
-            arguments.putCharSequence(
-                AccessibilityNodeInfo.ACTION_ARGUMENT_SET_TEXT_CHARSEQUENCE,
-                textToEnter
-            )
-            val setTextResult =
-                focusedNode.performAction(AccessibilityNodeInfo.ACTION_SET_TEXT, arguments)
-
-            if (shouldSubmit && setTextResult) {
-                Runtime.getRuntime().exec(arrayOf("input", "keyevent", "KEYCODE_ENTER"))
-            }
-
-            return if (setTextResult) {
-                "Entered text: \"$textToEnter\"${if (shouldSubmit) " and submitted" else ""}"
-            } else {
-                "Failed to enter text"
-            }
-        } finally {
+        val (textToEnter, shouldSubmit) = if (text.endsWith("---")) {
+            Pair(text.substring(0, text.length - 3), false)
+        } else {
+            Pair(text, true)
         }
+
+        val rootNode = accessibilityService.rootInActiveWindow
+            ?: return "Error: Unable to access active window"
+
+        val targetNode = if (resourceId != null) {
+            findNodeByResourceId(rootNode, resourceId)
+        } else {
+            rootNode.findFocus(AccessibilityNodeInfo.FOCUS_INPUT)
+        }
+            ?: return "Error: Could not find text field${if (resourceId != null) " with resource ID: $resourceId" else ""}"
+
+        if (!targetNode.isEditable) {
+            return "Error: The target element is not an editable text field"
+        }
+
+        val arguments = Bundle()
+        arguments.putCharSequence(
+            AccessibilityNodeInfo.ACTION_ARGUMENT_SET_TEXT_CHARSEQUENCE,
+            textToEnter
+        )
+        val setTextResult =
+            targetNode.performAction(AccessibilityNodeInfo.ACTION_SET_TEXT, arguments)
+
+        if (shouldSubmit && setTextResult) {
+            Runtime.getRuntime().exec(arrayOf("input", "keyevent", "KEYCODE_ENTER"))
+        }
+
+        return if (setTextResult) {
+            "Entered text: \"$textToEnter\"${if (shouldSubmit) " and submitted" else ""}"
+        } else {
+            "Failed to enter text"
+        }
+    }
+
+    private fun findNodeByResourceId(
+        root: AccessibilityNodeInfo,
+        resourceId: String
+    ): AccessibilityNodeInfo? {
+        if (resourceId == root.viewIdResourceName) {
+            return root
+        }
+
+        for (i in 0 until root.childCount) {
+            root.getChild(i)?.let { child ->
+                findNodeByResourceId(child, resourceId)?.let { return it }
+            }
+        }
+
+        return null
     }
 
     fun getToolDefinitions(provider: ModelProvider): List<Map<String, Any>> {
@@ -455,7 +510,8 @@ object ToolHandler {
             }
             ?: return "Unknown tool call: ${toolCall.name}"
 
-        val toolAnnotation = toolMethod.getAnnotation(Tool::class.java)
+        val toolAnnotation =
+            toolMethod.getAnnotation(Tool::class.java) ?: return "Invalid tool annotation"
 
         OverlayService.getInstance()?.setPerformingAction(true)
 
@@ -481,7 +537,7 @@ object ToolHandler {
                     toolCall.arguments
                 ) as String
             }
-            if (toolAnnotation != null && toolAnnotation.requiresContext) {
+            if (toolAnnotation.requiresContext) {
                 return toolMethod.invoke(ToolHandler, context, toolCall.arguments) as String
             }
             return toolMethod.invoke(ToolHandler, toolCall.arguments) as String

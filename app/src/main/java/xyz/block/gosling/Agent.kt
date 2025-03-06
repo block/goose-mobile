@@ -143,8 +143,7 @@ class Agent : Service() {
             try alternative methods until you succeed. Be persistent and creative in finding solutions.
             
             When you call a tool, tell the user about it. After each tool call you will see the state of the phone 
-            by way of a screenshot and a ui hierarchy produced using 'adb shell uiautomator dump'. One or both 
-            might be simplified or omitted to save space. Use this to verify your work.
+            as a ui hierarchy produced using 'adb shell uiautomator dump'. Use this to verify your work.
             
             The phone has a screen resolution of ${width}x${height} pixels
             The phone has the following apps installed:
@@ -237,17 +236,23 @@ class Agent : Service() {
 
                     onStatusUpdate(AgentStatus.Processing(assistantReply))
 
-                    val toolResults = executeTools(toolCalls, context)
-                    if (toolResults.isEmpty()) {
-                        onStatusUpdate(AgentStatus.Success(assistantReply))
-                        break
+                    if (toolCalls.isNullOrEmpty()) break
+
+                    val toolCallsWithUi = if (
+                        !toolCalls.any { it.name == "getUiHierarchy" }
+                    ) {
+                        toolCalls + ToolCall("getUiHierarchy", JSONObject().put("clean", false))
+                    } else {
+                        toolCalls
                     }
+
+                    val toolResults = executeTools(toolCallsWithUi, context)
 
                     messages.add(
                         Message(
                             role = "assistant",
                             content = assistantReply,
-                            tool_calls = toolCalls
+                            tool_calls = toolCallsWithUi
                         )
                     )
 
@@ -422,11 +427,9 @@ class Agent : Service() {
 
 
     private fun executeTools(
-        toolCalls: List<ToolCall>?,
+        toolCalls: List<ToolCall>,
         context: Context
     ): List<Map<String, String>> {
-        if (toolCalls == null) return emptyList()
-
         return toolCalls.map { toolCall ->
             val result = callTool(toolCall, context, GoslingAccessibilityService.getInstance())
             mapOf(

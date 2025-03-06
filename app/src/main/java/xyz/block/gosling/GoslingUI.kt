@@ -14,6 +14,8 @@ import android.speech.RecognizerIntent
 import android.speech.SpeechRecognizer
 import android.util.Log
 import androidx.compose.foundation.Image
+import androidx.compose.foundation.clickable
+import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -49,6 +51,7 @@ import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.unit.dp
 import androidx.core.app.ActivityCompat
@@ -60,6 +63,13 @@ data class ChatMessage(
     val text: String,
     val isUser: Boolean,
     val timestamp: Long = System.currentTimeMillis()
+)
+
+private val predefinedQueries = listOf(
+    "What's the weather like?",
+    "Add contact named James Gosling",
+    "Show me the best beer garden in Berlin in maps",
+    "Turn on flashlight"
 )
 
 @Composable
@@ -76,6 +86,7 @@ fun GoslingUI(
     var outputText by remember { mutableStateOf("") }
     var isOutputMode by remember { mutableStateOf(false) }
     var boundService by remember { mutableStateOf<Agent?>(null) }
+    var showPresetQueries by remember { mutableStateOf(false) }
 
     var speechRecognizer by remember { mutableStateOf<SpeechRecognizer?>(null) }
     val scope = rememberCoroutineScope()
@@ -330,7 +341,6 @@ fun GoslingUI(
                 }
             }
 
-            // Bottom input panel
             Surface(
                 modifier = Modifier.fillMaxWidth(),
                 color = MaterialTheme.colorScheme.surfaceContainer,
@@ -363,7 +373,16 @@ fun GoslingUI(
                         Image(
                             painter = painterResource(id = R.drawable.gosling),
                             contentDescription = "Gosling Icon",
-                            modifier = Modifier.size(48.dp)
+                            modifier = Modifier
+                                .size(48.dp)
+                                .pointerInput(Unit) {
+                                    detectTapGestures(
+                                        onLongPress = {
+                                            Log.d("Gosling", "Long press detected on logo")
+                                            showPresetQueries = true
+                                        }
+                                    )
+                                }
                         )
                     }
 
@@ -374,17 +393,55 @@ fun GoslingUI(
                             color = MaterialTheme.colorScheme.onSurface
                         )
                     } else {
-                        OutlinedTextField(
-                            value = inputText,
-                            onValueChange = { inputText = it },
-                            modifier = Modifier.fillMaxWidth(),
-                            placeholder = { Text("Type your request...") },
-                            singleLine = true,
-                            colors = OutlinedTextFieldDefaults.colors(
-                                unfocusedBorderColor = MaterialTheme.colorScheme.outline,
-                                focusedBorderColor = MaterialTheme.colorScheme.primary,
+                        Box {
+                            OutlinedTextField(
+                                value = inputText,
+                                onValueChange = { inputText = it },
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .pointerInput(Unit) {
+                                        detectTapGestures(
+                                            onLongPress = {
+                                                Log.d("Agent", "Long press detected")
+                                                showPresetQueries = true
+                                            }
+                                        )
+                                    },
+                                placeholder = { Text("Type your request...") },
+                                singleLine = true,
+                                colors = OutlinedTextFieldDefaults.colors(
+                                    unfocusedBorderColor = MaterialTheme.colorScheme.outline,
+                                    focusedBorderColor = MaterialTheme.colorScheme.primary,
+                                )
                             )
-                        )
+
+                            if (showPresetQueries) {
+                                Card(
+                                    modifier = Modifier
+                                        .fillMaxWidth()
+                                        .padding(top = 60.dp),
+                                    elevation = CardDefaults.cardElevation(defaultElevation = 4.dp)
+                                ) {
+                                    Column(
+                                        modifier = Modifier.fillMaxWidth()
+                                    ) {
+                                        predefinedQueries.forEach { query ->
+                                            Text(
+                                                text = query,
+                                                modifier = Modifier
+                                                    .fillMaxWidth()
+                                                    .clickable {
+                                                        inputText = query
+                                                        showPresetQueries = false
+                                                        executeCommand(query)
+                                                    }
+                                                    .padding(16.dp)
+                                            )
+                                        }
+                                    }
+                                }
+                            }
+                        }
 
                         Button(
                             onClick = { executeCommand(inputText) },

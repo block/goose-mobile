@@ -181,6 +181,7 @@ class Agent : Service() {
             var retryCount = 0
             val maxRetries = 3
 
+            val startTime = System.currentTimeMillis()
             while (true) {
                 var response: JSONObject?
                 try {
@@ -267,7 +268,12 @@ class Agent : Service() {
                     return@withContext errorMsg
                 }
             }
-            onStatusUpdate(AgentStatus.Success("Task completed successfully"))
+            val elapsedSeconds = (System.currentTimeMillis() - startTime) / 1000.0
+            onStatusUpdate(
+                AgentStatus.Success(
+                    "Task completed successfully in %.1f seconds.".format(elapsedSeconds)
+                )
+            )
             ""
         }
     }

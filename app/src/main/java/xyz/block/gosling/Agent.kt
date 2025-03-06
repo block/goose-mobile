@@ -18,10 +18,14 @@ import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
-import org.json.JSONArray
+import kotlinx.serialization.encodeToString
+import kotlinx.serialization.decodeFromString
+import kotlinx.serialization.json.Json
 import org.json.JSONObject
 import xyz.block.gosling.ToolHandler.callTool
-import xyz.block.gosling.ToolHandler.getToolDefinitions
+import xyz.block.gosling.ToolHandler.getSerializableToolDefinitions
+import xyz.block.gosling.SerializableToolDefinitions
+import xyz.block.gosling.InternalToolCall
 import java.net.HttpURLConnection
 import java.net.URL
 import kotlin.math.pow
@@ -106,14 +110,6 @@ class Agent : Service() {
         notificationManager.createNotificationChannel(channel)
     }
 
-    data class Message(
-        val role: String,
-        val content: Any?,
-        val tool_call_id: String? = null,
-        val name: String? = null,
-        val tool_calls: List<ToolCall>? = null
-    )
-
     suspend fun processCommand(
         userInput: String,
         context: Context,
@@ -171,8 +167,14 @@ class Agent : Service() {
         """.trimIndent()
 
         val messages = mutableListOf(
-            Message(role = "system", content = systemMessage),
-            Message(role = "user", content = userInput)
+            Message(
+                role = "system",
+                content = systemMessage
+            ),
+            Message(
+                role = "user",
+                content = userInput
+            )
         )
 
         onStatusUpdate(AgentStatus.Processing("Thinking..."))
@@ -243,11 +245,25 @@ class Agent : Service() {
                         break
                     }
 
+                    // Create a map of tool calls with their IDs
+                    val toolCallsWithIds = toolCalls?.mapIndexed { index, toolCall ->
+                        val toolCallId = toolResults[index]["tool_call_id"] ?: "call_${System.currentTimeMillis()}_$index"
+                        toolCall to toolCallId
+                    } ?: emptyList()
+
                     messages.add(
                         Message(
                             role = "assistant",
                             content = assistantReply,
-                            tool_calls = toolCalls
+                            toolCalls = toolCallsWithIds.map { (toolCall, id) ->
+                                ToolCall(
+                                    id = id,
+                                    function = ToolFunction(
+                                        name = toolCall.name,
+                                        arguments = toolCall.arguments.toString()
+                                    )
+                                )
+                            }
                         )
                     )
 
@@ -255,8 +271,8 @@ class Agent : Service() {
                         messages.add(
                             Message(
                                 role = "tool",
-                                tool_call_id = result["tool_call_id"].toString(),
-                                content = result["output"]
+                                toolCallId = result["tool_call_id"].toString(),
+                                content = result["output"].toString()
                             )
                         )
                     }
@@ -341,50 +357,56 @@ class Agent : Service() {
 
             connection.doOutput = true
 
+            // Create a Json instance with pretty printing for debugging
+            val json = Json {
+                prettyPrint = true
+                ignoreUnknownKeys = true
+                encodeDefaults = true
+            }
+
             val requestBody = when (model.provider) {
                 ModelProvider.OPENAI -> {
-                    val messagesJsonArray = JSONArray()
-                    messages.forEach { message ->
-                        messagesJsonArray.put(messageToJson(message))
-                    }
-
-                    JSONObject().apply {
-                        put("model", model.identifier)
-                        put("messages", messagesJsonArray)
-                        if (model.identifier != "o3-mini") {
-                            put("temperature", 0.1)
+                    val toolDefinitions =
+                        when (val result = getSerializableToolDefinitions(model.provider)) {
+                            is SerializableToolDefinitions.OpenAITools -> result.definitions
+                            else -> emptyList() // This should never happen for OpenAI
                         }
-                        put("tools", getToolDefinitions(model.provider).toJSONArray())
-                    }
+
+                    val openAIRequest = OpenAIRequest(
+                        model = model.identifier,
+                        messages = messages,
+                        temperature = if (model.identifier != "o3-mini") 0.1 else null,
+                        tools = toolDefinitions
+                    )
+
+                    json.encodeToString(openAIRequest)
                 }
 
                 ModelProvider.GEMINI -> {
+                    // Combine all messages into a single text for Gemini
                     val combinedText = messages.joinToString("\n") {
                         "${it.role}: ${it.content}"
                     }
 
-                    // Create proper JSON structure - following Google's example
-                    val toolsDefinitions =
-                        getToolDefinitions(model.provider)
-                    val toolsArray = JSONArray()
-
-                    for (toolDef in toolsDefinitions) {
-                        toolsArray.put(convertMapToJson(toolDef))
+                    // Get serializable tool definitions directly
+                    val tools = when (val result = getSerializableToolDefinitions(model.provider)) {
+                        is SerializableToolDefinitions.GeminiTools -> result.tools
+                        else -> emptyList() // This should never happen for Gemini
                     }
 
-                    JSONObject().apply {
-                        put("contents", JSONObject().apply {
-                            put("role", "user")  // Adding role as in the example
-                            put("parts", JSONObject().apply {
-                                put("text", combinedText)
-                            })
-                        })
-                        put("tools", toolsArray)
-                    }
+                    // Create the Gemini request
+                    val geminiRequest = GeminiRequest(
+                        contents = GeminiContent(
+                            parts = listOf(GeminiPart(text = combinedText))
+                        ),
+                        tools = tools
+                    )
+
+                    json.encodeToString(geminiRequest)
                 }
             }
 
-            connection.outputStream.write(requestBody.toString().toByteArray())
+            connection.outputStream.write(requestBody.toByteArray())
 
             val responseCode = connection.responseCode
             if (responseCode != HttpURLConnection.HTTP_OK) {
@@ -393,6 +415,19 @@ class Agent : Service() {
             }
 
             val response = connection.inputStream.bufferedReader().use { it.readText() }
+
+            // Parse the response using Kotlinx Serialization for type safety
+            when (model.provider) {
+                ModelProvider.OPENAI -> {
+                    json.decodeFromString<OpenAIResponse>(response)
+                }
+
+                ModelProvider.GEMINI -> {
+                    json.decodeFromString<GeminiResponse>(response)
+                }
+            }
+
+            // Return the original JSONObject for backward compatibility
             JSONObject(response)
         } catch (e: Exception) {
             val message = when {
@@ -420,124 +455,19 @@ class Agent : Service() {
         }
     }
 
-
     private fun executeTools(
-        toolCalls: List<ToolCall>?,
+        toolCalls: List<InternalToolCall>?,
         context: Context
     ): List<Map<String, String>> {
         if (toolCalls == null) return emptyList()
 
-        return toolCalls.map { toolCall ->
+        return toolCalls.mapIndexed { index, toolCall ->
+            val toolCallId = "call_${System.currentTimeMillis()}_$index"  // Generate a unique ID
             val result = callTool(toolCall, context, GoslingAccessibilityService.getInstance())
             mapOf(
-                "tool_call_id" to toolCall.name,
+                "tool_call_id" to toolCallId,
                 "output" to result
             )
         }
-    }
-
-    private fun messageToJson(message: Message): JSONObject {
-        val json = JSONObject()
-        json.put("role", message.role)
-        if (message.content != null) {
-            json.put("content", message.content)
-        }
-        message.tool_call_id?.let { json.put("tool_call_id", it) }
-        message.name?.let { json.put("name", it) }
-        message.tool_calls?.let {
-            val toolCallsJson = JSONArray()
-            it.forEach { toolCall ->
-                val toolCallJson = JSONObject()
-                toolCallJson.put("id", toolCall.name)
-                toolCallJson.put("type", "function")
-                toolCallJson.put("function", JSONObject().apply {
-                    put("name", toolCall.name)
-                    put("arguments", toolCall.arguments.toString())
-                })
-                toolCallsJson.put(toolCallJson)
-            }
-            json.put("tool_calls", toolCallsJson)
-        }
-        return json
-    }
-
-    private fun Map<String, Any>.toJSONObject(): JSONObject {
-        val json = JSONObject()
-        this.forEach { (key, value) ->
-            when (value) {
-                is Map<*, *> -> json.put(key, (value as Map<String, Any>).toJSONObject())
-                is List<*> -> json.put(key, (value as List<Any>).toJSONArray())
-                else -> json.put(key, value)
-            }
-        }
-        return json
-    }
-
-    private fun List<Any>.toJSONArray(): JSONArray {
-        val jsonArray = JSONArray()
-        this.forEach { item ->
-            when (item) {
-                is Map<*, *> -> jsonArray.put((item as Map<String, Any>).toJSONObject())
-                is List<*> -> jsonArray.put((item as List<Any>).toJSONArray())
-                else -> jsonArray.put(item)
-            }
-        }
-        return jsonArray
-    }
-
-    private fun jsonObjectToMap(jsonObject: JSONObject): Map<String, Any> {
-        val map = mutableMapOf<String, Any>()
-        val keys = jsonObject.keys()
-        while (keys.hasNext()) {
-            val key = keys.next()
-            map[key] = when (val value = jsonObject.get(key)) {
-                is JSONObject -> jsonObjectToMap(value)
-                is JSONArray -> jsonArrayToList(value)
-                else -> value
-            }
-        }
-        return map
-    }
-
-    private fun jsonArrayToList(jsonArray: JSONArray): List<Any> {
-        return List(jsonArray.length()) { i ->
-            when (val value = jsonArray.get(i)) {
-                is JSONObject -> jsonObjectToMap(value)
-                is JSONArray -> jsonArrayToList(value)
-                else -> value
-            }
-        }
-    }
-
-    private fun convertMapToJson(map: Map<String, Any>): JSONObject {
-        val json = JSONObject()
-
-        for ((key, value) in map) {
-            when (value) {
-                is Map<*, *> -> {
-                    @Suppress("UNCHECKED_CAST")
-                    json.put(key, convertMapToJson(value as Map<String, Any>))
-                }
-
-                is List<*> -> {
-                    val jsonArray = JSONArray()
-                    for (item in value) {
-                        when (item) {
-                            is Map<*, *> -> {
-                                @Suppress("UNCHECKED_CAST")
-                                jsonArray.put(convertMapToJson(item as Map<String, Any>))
-                            }
-
-                            else -> jsonArray.put(item)
-                        }
-                    }
-                    json.put(key, jsonArray)
-                }
-
-                else -> json.put(key, value)
-            }
-        }
-
-        return json
     }
 }

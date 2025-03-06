@@ -13,6 +13,7 @@ import android.speech.RecognitionListener
 import android.speech.RecognizerIntent
 import android.speech.SpeechRecognizer
 import android.util.Log
+import android.widget.Toast
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -55,6 +56,8 @@ import androidx.core.app.ActivityCompat
 import androidx.core.content.ContextCompat
 import kotlinx.coroutines.async
 import kotlinx.coroutines.launch
+import xyz.block.gosling.features.agent.Agent
+import xyz.block.gosling.features.agent.AgentStatus
 
 data class ChatMessage(
     val text: String,
@@ -168,7 +171,15 @@ fun GoslingUI(
                             }
                         }
                         Log.d("Agent", "Status update: $status")
-                        OverlayService.getInstance()?.updateStatus(status)
+                        if (outputText.isNotEmpty() && outputText != "null") {
+                            android.os.Handler(context.mainLooper).post {
+                                Toast.makeText(
+                                    context,
+                                    outputText,
+                                    Toast.LENGTH_SHORT
+                                ).show()
+                            }
+                        }
                     }
                 }.await()
 

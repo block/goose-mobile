@@ -38,6 +38,10 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
+import xyz.block.gosling.features.agent.Agent
+import xyz.block.gosling.features.onboarding.Onboarding
+import xyz.block.gosling.features.settings.SettingsManager
+import xyz.block.gosling.features.settings.SettingsScreen
 import xyz.block.gosling.ui.theme.GoslingTheme
 
 class MainActivity : ComponentActivity() {

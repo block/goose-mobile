@@ -1,4 +1,4 @@
-package xyz.block.gosling
+package xyz.block.gosling.features.assistant
 
 import android.content.Intent
 import android.graphics.Color
@@ -10,6 +10,9 @@ import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.compose.runtime.mutableStateListOf
 import androidx.compose.runtime.remember
+import xyz.block.gosling.ChatMessage
+import xyz.block.gosling.GoslingApplication
+import xyz.block.gosling.GoslingUI
 
 class AssistantActivity : ComponentActivity() {
     private var isVoiceInteraction = false

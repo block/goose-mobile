@@ -1,7 +1,8 @@
-package xyz.block.gosling
+package xyz.block.gosling.features.assistant
 
 import android.content.Intent
 import android.service.voice.VoiceInteractionService
+import xyz.block.gosling.SessionService
 
 class AssistantService : VoiceInteractionService() {
     override fun onReady() {

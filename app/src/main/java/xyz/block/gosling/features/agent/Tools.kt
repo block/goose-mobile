@@ -1,4 +1,4 @@
-package xyz.block.gosling
+package xyz.block.gosling.features.agent
 
 import android.accessibilityservice.AccessibilityService
 import android.accessibilityservice.GestureDescription
@@ -9,9 +9,9 @@ import android.graphics.Rect
 import android.os.Bundle
 import android.view.accessibility.AccessibilityNodeInfo
 import kotlinx.serialization.encodeToString
-import kotlinx.serialization.decodeFromString
 import kotlinx.serialization.json.Json
 import org.json.JSONObject
+import xyz.block.gosling.OverlayService
 import java.util.Locale
 
 @Target(AnnotationTarget.FUNCTION)

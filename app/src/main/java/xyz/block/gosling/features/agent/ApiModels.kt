@@ -1,4 +1,4 @@
-package xyz.block.gosling
+package xyz.block.gosling.features.agent
 
 import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable

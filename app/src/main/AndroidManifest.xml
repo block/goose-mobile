@@ -38,7 +38,22 @@
         </activity>
 
         <activity
-            android:name=".AssistantActivity"
+            android:name=".features.launcher.LauncherActivity"
+            android:exported="true"
+            android:label="Gosling Launcher"
+            android:launchMode="singleTask"
+            android:screenOrientation="portrait"
+            android:theme="@style/Theme.Gosling.NoActionBar">
+            <intent-filter>
+                <action android:name="android.intent.action.MAIN" />
+
+                <category android:name="android.intent.category.HOME" />
+                <category android:name="android.intent.category.DEFAULT" />
+            </intent-filter>
+        </activity>
+
+        <activity
+            android:name=".features.assistant.AssistantActivity"
             android:excludeFromRecents="true"
             android:exported="true"
             android:label="Gosling Assistant"
@@ -53,7 +68,7 @@
         </activity>
 
         <service
-            android:name=".AssistantService"
+            android:name=".features.assistant.AssistantService"
             android:exported="true"
             android:permission="android.permission.BIND_VOICE_INTERACTION">
             <meta-data
@@ -83,7 +98,7 @@
         </service>
 
         <service
-            android:name=".Agent"
+            android:name=".features.agent.Agent"
             android:enabled="true"
             android:exported="false"
             android:foregroundServiceType="dataSync" />

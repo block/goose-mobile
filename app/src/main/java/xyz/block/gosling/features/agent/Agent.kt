@@ -1,4 +1,4 @@
-package xyz.block.gosling
+package xyz.block.gosling.features.agent
 
 import android.app.NotificationChannel
 import android.app.NotificationManager
@@ -19,13 +19,17 @@ import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import kotlinx.serialization.encodeToString
-import kotlinx.serialization.decodeFromString
 import kotlinx.serialization.json.Json
 import org.json.JSONObject
-import xyz.block.gosling.ToolHandler.callTool
-import xyz.block.gosling.ToolHandler.getSerializableToolDefinitions
-import xyz.block.gosling.SerializableToolDefinitions
-import xyz.block.gosling.InternalToolCall
+import xyz.block.gosling.GoslingAccessibilityService
+import xyz.block.gosling.IntentScanner
+import xyz.block.gosling.MainActivity
+import xyz.block.gosling.OverlayService
+import xyz.block.gosling.R
+import xyz.block.gosling.features.agent.ToolHandler.callTool
+import xyz.block.gosling.features.agent.ToolHandler.getSerializableToolDefinitions
+import xyz.block.gosling.features.settings.SettingsManager
+import xyz.block.gosling.formatForLLM
 import java.net.HttpURLConnection
 import java.net.URL
 import kotlin.math.pow
@@ -77,15 +81,15 @@ class Agent : Service() {
 
     fun cancel() {
         isCancelled = true
-        
+
         job.cancel()
-        
+
         job = SupervisorJob()
         scope = CoroutineScope(Dispatchers.IO + job)
-        
+
         updateNotification("Agent cancelled")
         OverlayService.getInstance()?.updateStatus(AgentStatus.Success("Agent cancelled"))
-        
+
         OverlayService.getInstance()?.setPerformingAction(false)
     }
 
@@ -133,7 +137,7 @@ class Agent : Service() {
         try {
             // Reset cancelled flag at the start of a new command
             isCancelled = false
-            
+
             val availableIntents = IntentScanner.getAvailableIntents(context)
             val installedApps = availableIntents.joinToString("\n") { it.formatForLLM() }
 
@@ -206,7 +210,7 @@ class Agent : Service() {
                         onStatusUpdate(AgentStatus.Success("Operation cancelled"))
                         return@withContext "Operation cancelled by user"
                     }
-                    
+
                     var response: JSONObject?
                     try {
                         if (retryCount > 0) {
@@ -222,7 +226,7 @@ class Agent : Service() {
                             onStatusUpdate(AgentStatus.Success("Operation cancelled"))
                             return@withContext "Operation cancelled by user"
                         }
-                        
+
                         retryCount++
 
                         if (retryCount >= maxRetries) {
@@ -236,8 +240,9 @@ class Agent : Service() {
                     try {
                         val (assistantReply, toolCalls) = when {
                             response.has("choices") -> {
-                                val assistantMessage = response.getJSONArray("choices").getJSONObject(0)
-                                    .getJSONObject("message")
+                                val assistantMessage =
+                                    response.getJSONArray("choices").getJSONObject(0)
+                                        .getJSONObject("message")
                                 val content = assistantMessage.optString("content", "Ok")
                                 val tools = assistantMessage.optJSONArray("tool_calls")?.let {
                                     List(it.length()) { i -> ToolHandler.fromJson(it.getJSONObject(i)) }
@@ -271,7 +276,7 @@ class Agent : Service() {
                             onStatusUpdate(AgentStatus.Success("Operation cancelled"))
                             return@withContext "Operation cancelled by user"
                         }
-                        
+
                         val toolResults = executeTools(toolCalls, context)
                         if (toolResults.isEmpty() || isCancelled) {
                             if (isCancelled) {
@@ -285,7 +290,8 @@ class Agent : Service() {
 
                         // Create a map of tool calls with their IDs
                         val toolCallsWithIds = toolCalls?.mapIndexed { index, toolCall ->
-                            val toolCallId = toolResults[index]["tool_call_id"] ?: "call_${System.currentTimeMillis()}_$index"
+                            val toolCallId = toolResults[index]["tool_call_id"]
+                                ?: "call_${System.currentTimeMillis()}_$index"
                             toolCall to toolCallId
                         } ?: emptyList()
 
@@ -320,14 +326,16 @@ class Agent : Service() {
                         onStatusUpdate(AgentStatus.Error(errorMsg))
                         return@withContext errorMsg
                     }
+                    continue
                 }
+
                 onStatusUpdate(AgentStatus.Success("Task completed successfully"))
-                ""
+                return@withContext "Task completed successfully"
             }
         } catch (e: Exception) {
             // Handle any unexpected exceptions
             Log.e("Agent", "Error executing command", e)
-            
+
             // If it's a cancellation exception, handle it gracefully
             if (e is kotlinx.coroutines.CancellationException) {
                 // Reset the job and scope to ensure future commands work
@@ -336,7 +344,7 @@ class Agent : Service() {
                 onStatusUpdate(AgentStatus.Success("Operation cancelled"))
                 return "Operation cancelled by user"
             }
-            
+
             // For other exceptions, report the error
             val errorMsg = "Error: ${e.message}"
             onStatusUpdate(AgentStatus.Error(errorMsg))
@@ -376,7 +384,7 @@ class Agent : Service() {
             } catch (e: Exception) {
                 // Handle any unexpected exceptions
                 Log.e("Agent", "Error handling notification", e)
-                
+
                 // If it's a cancellation exception, handle it gracefully
                 if (e is kotlinx.coroutines.CancellationException) {
                     // Reset the job and scope to ensure future commands work
@@ -540,7 +548,7 @@ class Agent : Service() {
                     "output" to "Operation cancelled by user"
                 )
             }
-            
+
             val toolCallId = "call_${System.currentTimeMillis()}_$index"  // Generate a unique ID
             val result = callTool(toolCall, context, GoslingAccessibilityService.getInstance())
             mapOf(

@@ -1,6 +1,7 @@
-package xyz.block.gosling
+package xyz.block.gosling.features.settings
 
 import android.content.Context
+import xyz.block.gosling.features.agent.AiModel
 
 class SettingsManager(context: Context) {
     private val prefs = context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)

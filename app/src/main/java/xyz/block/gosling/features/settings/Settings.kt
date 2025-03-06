@@ -1,4 +1,4 @@
-package xyz.block.gosling
+package xyz.block.gosling.features.settings
 
 import android.provider.Settings
 import androidx.compose.foundation.layout.Arrangement
@@ -39,6 +39,7 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.unit.dp
+import xyz.block.gosling.features.agent.AiModel
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable

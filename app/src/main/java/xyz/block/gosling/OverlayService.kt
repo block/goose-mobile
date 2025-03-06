@@ -16,6 +16,8 @@ import android.view.WindowManager
 import android.widget.Button
 import android.widget.LinearLayout
 import android.widget.TextView
+import xyz.block.gosling.features.agent.Agent
+import xyz.block.gosling.features.agent.AgentStatus
 import java.lang.ref.WeakReference
 
 class OverlayService : Service() {
@@ -41,6 +43,10 @@ class OverlayService : Service() {
         super.onCreate()
         instance = WeakReference(this)
         windowManager = getSystemService(Context.WINDOW_SERVICE) as WindowManager
+
+        // Ensure overlay is disabled by default when service starts
+        // (This is redundant since the flag defaults to false, but makes it explicit)
+        GoslingApplication.disableOverlay()
 
         // Inflate the overlay view
         val tempParent = LinearLayout(this).apply {
@@ -114,10 +120,14 @@ class OverlayService : Service() {
 
         // Set up button click listener
         overlayButton?.setOnClickListener {
-            val activityManager = getSystemService(Context.ACTIVITY_SERVICE) as android.app.ActivityManager
+            val activityManager =
+                getSystemService(Context.ACTIVITY_SERVICE) as android.app.ActivityManager
             val tasks = activityManager.getRunningTasks(1)
             if (tasks.isNotEmpty() && tasks[0].topActivity?.packageName == packageName) {
-                activityManager.moveTaskToFront(tasks[0].id, android.app.ActivityManager.MOVE_TASK_WITH_HOME)
+                activityManager.moveTaskToFront(
+                    tasks[0].id,
+                    android.app.ActivityManager.MOVE_TASK_WITH_HOME
+                )
             }
         }
 
@@ -230,11 +240,12 @@ class OverlayService : Service() {
 
     fun updateOverlayVisibility() {
         overlayView?.post {
-            val shouldShow = !GoslingApplication.isMainActivityRunning && !isPerformingAction
+            val isGloballyEnabled = !GoslingApplication.shouldHideOverlay()
+            val shouldShow = isGloballyEnabled && !isPerformingAction
             val newVisibility = if (shouldShow) View.VISIBLE else View.GONE
             android.util.Log.d(
                 "Gosling",
-                "updateOverlayVisibility: isMainActivityRunning=${GoslingApplication.isMainActivityRunning}, isPerformingAction=$isPerformingAction, shouldShow=$shouldShow"
+                "updateOverlayVisibility: globallyEnabled=$isGloballyEnabled, isPerformingAction=$isPerformingAction, shouldShow=$shouldShow"
             )
             overlayView?.visibility = newVisibility
             android.util.Log.d("Gosling", "Overlay visibility set to: $newVisibility")

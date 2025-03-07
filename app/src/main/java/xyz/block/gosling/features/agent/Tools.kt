@@ -6,6 +6,7 @@ import android.content.Context
 import android.content.Intent
 import android.graphics.Path
 import android.graphics.Rect
+import android.net.Uri
 import android.os.Bundle
 import android.view.accessibility.AccessibilityNodeInfo
 import kotlinx.serialization.encodeToString
@@ -373,6 +374,41 @@ object ToolHandler {
         }
     }
 
+    @Tool(
+        name = "actionView",
+        description = "Open a URL using Android's ACTION_VIEW intent. Requires the app " +
+                "installed and that you know that app can open the url",
+        parameters = [
+            ParameterDef(
+                name = "package_name",
+                type = "string",
+                description = "Package name of the app to open the URL in"
+            ),
+            ParameterDef(
+                name = "url",
+                type = "string",
+                description = "The URL to open"
+            )
+        ],
+        requiresContext = true
+    )
+    fun actionView(context: Context, args: JSONObject): String {
+        val packageName = args.getString("package_name")
+        val url = args.getString("url")
+
+        return try {
+            val intent = Intent(Intent.ACTION_VIEW, Uri.parse(url)).apply {
+                addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+                setPackage(packageName)
+            }
+
+            context.startActivity(intent)
+            "Opened URL '$url' in app: $packageName"
+        } catch (e: Exception) {
+            "Failed to open URL: ${e.message}"
+        }
+    }
+
     fun getSerializableToolDefinitions(provider: ModelProvider): SerializableToolDefinitions {
         val methods = ToolHandler::class.java.methods
             .filter { it.isAnnotationPresent(Tool::class.java) }
@@ -457,7 +493,7 @@ object ToolHandler {
         if (Agent.getInstance()?.isCancelled() == true) {
             return "Operation cancelled by user"
         }
-        
+
         val toolMethod = ToolHandler::class.java.methods
             .firstOrNull {
                 it.isAnnotationPresent(Tool::class.java) &&
@@ -478,7 +514,7 @@ object ToolHandler {
             if (Agent.getInstance()?.isCancelled() == true) {
                 return "Operation cancelled by user"
             }
-            
+
             if (toolAnnotation.requiresAccessibility) {
                 if (accessibilityService == null) {
                     return "Accessibility service not available."

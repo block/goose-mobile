@@ -154,15 +154,17 @@ class Agent : Service() {
 
             val systemMessage = """
                 You are an assistant $role. The user does not have access to the phone. 
-                You will autonomously complete complex tasks on the phone and report back to the user when 
-                done. NEVER ask the user for additional information or choices - you must decide and act on your own.
+                You will autonomously complete complex tasks on the phone and report back to the 
+                user when done. NEVER ask the user for additional information or choices - you must 
+                decide and act on your own.
                 
-                Your goal is to complete the requested task through any means necessary. If one approach doesn't work,
-                try alternative methods until you succeed. Be persistent and creative in finding solutions.
+                Your goal is to complete the requested task through any means necessary. If one 
+                approach doesn't work, try alternative methods until you succeed. Be persistent 
+                and creative in finding solutions.
                 
-                When you call a tool, tell the user about it. After each tool call you will see the state of the phone 
-                by way of a screenshot and a ui hierarchy produced using 'adb shell uiautomator dump'. One or both 
-                might be simplified or omitted to save space. Use this to verify your work.
+                When you call a tool, tell the user about it. Call getUiHierarchy to see what's on 
+                the screen. In some cases you can call actionView to get something done in one shot -
+                do so only if you are sure about the url to use.
                 
                 The phone has a screen resolution of ${width}x${height} pixels
                 The phone has the following apps installed:

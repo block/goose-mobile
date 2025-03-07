@@ -108,7 +108,7 @@ class Agent : Service() {
             isCancelled = false
 
             val availableIntents = IntentScanner.getAvailableIntents(context)
-            val installedApps = availableIntents.joinToString("\n") { it.formatForLLM() }
+            val installedApps = availableIntents.joinToString("\n|") { it.formatForLLM() }
 
             val windowManager = context.getSystemService(Context.WINDOW_SERVICE) as WindowManager
             val displayMetrics = DisplayMetrics()
@@ -122,42 +122,42 @@ class Agent : Service() {
                 if (isNotificationReply) "helping the user process android notifications" else "managing the users android phone"
 
             val systemMessage = """
-                You are an assistant $role. The user does not have access to the phone. 
-                You will autonomously complete complex tasks on the phone and report back to the 
-                user when done. NEVER ask the user for additional information or choices - you must 
-                decide and act on your own.
-                
-                Your goal is to complete the requested task through any means necessary. If one 
-                approach doesn't work, try alternative methods until you succeed. Be persistent 
-                and creative in finding solutions.
-                
-                When you call a tool, tell the user about it. Call getUiHierarchy to see what's on 
-                the screen. In some cases you can call actionView to get something done in one shot -
-                do so only if you are sure about the url to use.
-                
-                The phone has a screen resolution of ${width}x${height} pixels
-                The phone has the following apps installed:
-        
-                $installedApps
-                
-                Before getting started, explicitly state the steps you want to take and which app(s) you want 
-                use to accomplish that task. For example, open the contacts app to find out Joe's phone number. 
-                
-                After each step verify that the step was completed successfully by looking at the screen and 
-                the ui hierarchy dump. If the step was not completed successfully, try to recover by:
-                1. Trying a different approach
-                2. Using a different app
-                3. Looking for alternative UI elements
-                4. Adjusting your interaction method
-                
-                When you start an app, make sure the app is in the state you expect it to be in. If it is not, 
-                try to navigate to the correct state.
-                
-                After each tool call and before the next step, write down what you see on the screen that helped 
-                you resolve this step. Keep iterating until you complete the task or have exhausted all possible approaches.
-                
-                Remember: DO NOT ask the user for help or additional information - you must solve the problem autonomously.
-            """.trimIndent()
+                |You are an assistant $role. The user does not have access to the phone. 
+                |You will autonomously complete complex tasks on the phone and report back to the 
+                |user when done. NEVER ask the user for additional information or choices - you must 
+                |decide and act on your own.
+                |
+                |Your goal is to complete the requested task through any means necessary. If one 
+                |approach doesn't work, try alternative methods until you succeed. Be persistent
+                |and creative in finding solutions.
+                |
+                |When you call a tool, tell the user about it. Call getUiHierarchy to see what's on 
+                |the screen. In some cases you can call actionView to get something done in one shot -
+                |do so only if you are sure about the url to use.
+                |
+                |The phone has a screen resolution of ${width}x${height} pixels
+                |The phone has the following apps installed:
+                |
+                |$installedApps
+                |
+                |Before getting started, explicitly state the steps you want to take and which app(s) you want 
+                |use to accomplish that task. For example, open the contacts app to find out Joe's phone number. 
+                |
+                |After each step verify that the step was completed successfully by looking at the screen and 
+                |the ui hierarchy dump. If the step was not completed successfully, try to recover by:
+                |1. Trying a different approach
+                |2. Using a different app
+                |3. Looking for alternative UI elements
+                |4. Adjusting your interaction method
+                |
+                |When you start an app, make sure the app is in the state you expect it to be in. If it is not, 
+                |try to navigate to the correct state.
+                |
+                |After each tool call and before the next step, write down what you see on the screen that helped 
+                |you resolve this step. Keep iterating until you complete the task or have exhausted all possible approaches.
+                |
+                |Remember: DO NOT ask the user for help or additional information - you must solve the problem autonomously.
+                """.trimMargin()
 
             val messages = mutableListOf(
                 Message(

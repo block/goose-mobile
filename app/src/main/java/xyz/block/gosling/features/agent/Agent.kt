@@ -1,8 +1,5 @@
 package xyz.block.gosling.features.agent
 
-import android.app.NotificationChannel
-import android.app.NotificationManager
-import android.app.PendingIntent
 import android.app.Service
 import android.content.Context
 import android.content.Intent
@@ -11,7 +8,6 @@ import android.os.IBinder
 import android.util.DisplayMetrics
 import android.util.Log
 import android.view.WindowManager
-import androidx.core.app.NotificationCompat
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
@@ -23,13 +19,10 @@ import kotlinx.serialization.json.Json
 import org.json.JSONObject
 import xyz.block.gosling.GoslingAccessibilityService
 import xyz.block.gosling.IntentScanner
-import xyz.block.gosling.MainActivity
-import xyz.block.gosling.OverlayService
-import xyz.block.gosling.R
+import xyz.block.gosling.formatForLLM
 import xyz.block.gosling.features.agent.ToolHandler.callTool
 import xyz.block.gosling.features.agent.ToolHandler.getSerializableToolDefinitions
 import xyz.block.gosling.features.settings.SettingsManager
-import xyz.block.gosling.formatForLLM
 import java.net.HttpURLConnection
 import java.net.URL
 import kotlin.math.pow
@@ -47,10 +40,9 @@ class Agent : Service() {
     private var scope = CoroutineScope(Dispatchers.IO + job)
     private val binder = AgentBinder()
     private var isCancelled = false
+    private var statusListener: ((AgentStatus) -> Unit)? = null
 
     companion object {
-        private const val NOTIFICATION_CHANNEL_ID = "agent_service"
-        private const val NOTIFICATION_ID = 2
         private var instance: Agent? = null
         fun getInstance(): Agent? = instance
     }
@@ -62,7 +54,6 @@ class Agent : Service() {
     override fun onCreate() {
         super.onCreate()
         instance = this
-        startForegroundService()
     }
 
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
@@ -79,60 +70,30 @@ class Agent : Service() {
         instance = null
     }
 
+    fun setStatusListener(listener: (AgentStatus) -> Unit) {
+        statusListener = listener
+    }
+
+    private fun updateStatus(status: AgentStatus) {
+        statusListener?.invoke(status)
+    }
+
     fun cancel() {
         isCancelled = true
-
         job.cancel()
-
         job = SupervisorJob()
         scope = CoroutineScope(Dispatchers.IO + job)
-
-        updateNotification("Agent cancelled")
-        OverlayService.getInstance()?.updateStatus(AgentStatus.Success("Agent cancelled"))
-
-        OverlayService.getInstance()?.setPerformingAction(false)
+        updateStatus(AgentStatus.Success("Agent cancelled"))
     }
 
     fun isCancelled(): Boolean {
         return isCancelled
     }
 
-    private fun startForegroundService() {
-        createNotificationChannel()
-
-        val notificationIntent = Intent(this, MainActivity::class.java)
-        val pendingIntent = PendingIntent.getActivity(
-            this, 0, notificationIntent,
-            PendingIntent.FLAG_IMMUTABLE
-        )
-
-        val notification = NotificationCompat.Builder(this, NOTIFICATION_CHANNEL_ID)
-            .setContentTitle("Gosling Agent")
-            .setContentText("Processing commands")
-            .setSmallIcon(R.drawable.ic_launcher_foreground)
-            .setContentIntent(pendingIntent)
-            .setOngoing(true)
-            .build()
-
-        startForeground(NOTIFICATION_ID, notification)
-    }
-
-    private fun createNotificationChannel() {
-        val name = "Gosling Agent"
-        val descriptionText = "Handles network operations and command processing"
-        val importance = NotificationManager.IMPORTANCE_LOW
-        val channel = NotificationChannel(NOTIFICATION_CHANNEL_ID, name, importance).apply {
-            description = descriptionText
-        }
-        val notificationManager = getSystemService(NotificationManager::class.java)
-        notificationManager.createNotificationChannel(channel)
-    }
-
     suspend fun processCommand(
         userInput: String,
         context: Context,
-        isNotificationReply: Boolean,
-        onStatusUpdate: (AgentStatus) -> Unit
+        isNotificationReply: Boolean
     ): String {
         try {
             // Reset cancelled flag at the start of a new command
@@ -201,7 +162,7 @@ class Agent : Service() {
                 )
             )
 
-            onStatusUpdate(AgentStatus.Processing("Thinking..."))
+            updateStatus(AgentStatus.Processing("Thinking..."))
 
             return withContext(scope.coroutineContext) {
                 var retryCount = 0
@@ -209,7 +170,7 @@ class Agent : Service() {
 
                 while (true) {
                     if (isCancelled) {
-                        onStatusUpdate(AgentStatus.Success("Operation cancelled"))
+                        updateStatus(AgentStatus.Success("Operation cancelled"))
                         return@withContext "Operation cancelled by user"
                     }
 
@@ -218,14 +179,14 @@ class Agent : Service() {
                         if (retryCount > 0) {
                             val delayMs = (2.0.pow(retryCount.toDouble()) * 1000).toLong()
                             delay(delayMs)
-                            onStatusUpdate(AgentStatus.Processing("Retrying... (attempt ${retryCount + 1})"))
+                            updateStatus(AgentStatus.Processing("Retrying... (attempt ${retryCount + 1})"))
                         }
 
                         response = callLlm(messages, context)
                         retryCount = 0
                     } catch (e: AgentException) {
                         if (isCancelled) {
-                            onStatusUpdate(AgentStatus.Success("Operation cancelled"))
+                            updateStatus(AgentStatus.Success("Operation cancelled"))
                             return@withContext "Operation cancelled by user"
                         }
 
@@ -233,7 +194,7 @@ class Agent : Service() {
 
                         if (retryCount >= maxRetries) {
                             val errorMsg = "Failed after $maxRetries attempts: ${e.message}"
-                            onStatusUpdate(AgentStatus.Error(errorMsg))
+                            updateStatus(AgentStatus.Error(errorMsg))
                             return@withContext errorMsg
                         }
                         continue
@@ -272,10 +233,10 @@ class Agent : Service() {
                             else -> Pair("Unknown response format", null)
                         }
 
-                        onStatusUpdate(AgentStatus.Processing(assistantReply))
+                        updateStatus(AgentStatus.Processing(assistantReply))
 
                         if (isCancelled) {
-                            onStatusUpdate(AgentStatus.Success("Operation cancelled"))
+                            updateStatus(AgentStatus.Success("Operation cancelled"))
                             return@withContext "Operation cancelled by user"
                         }
 
@@ -323,12 +284,13 @@ class Agent : Service() {
                     } catch (e: Exception) {
                         Log.e("Agent", "Error processing response", e)
                         val errorMsg = "Error processing response: ${e.message}"
-                        onStatusUpdate(AgentStatus.Error(errorMsg))
+                        updateStatus(AgentStatus.Error(errorMsg))
                         return@withContext errorMsg
                     }
                     continue
                 }
 
+                updateStatus(AgentStatus.Success("Task completed successfully"))
                 return@withContext "Task completed successfully"
             }
         } catch (e: Exception) {
@@ -340,13 +302,13 @@ class Agent : Service() {
                 // Reset the job and scope to ensure future commands work
                 job = SupervisorJob()
                 scope = CoroutineScope(Dispatchers.IO + job)
-                onStatusUpdate(AgentStatus.Success("Operation cancelled"))
+                updateStatus(AgentStatus.Success("Operation cancelled"))
                 return "Operation cancelled by user"
             }
 
             // For other exceptions, report the error
             val errorMsg = "Error: ${e.message}"
-            onStatusUpdate(AgentStatus.Error(errorMsg))
+            updateStatus(AgentStatus.Error(errorMsg))
             return errorMsg
         }
     }
@@ -373,13 +335,7 @@ class Agent : Service() {
                     prompt,
                     this@Agent,
                     isNotificationReply = true
-                ) { status ->
-                    when (status) {
-                        is AgentStatus.Processing -> updateNotification(status.message)
-                        is AgentStatus.Success -> updateNotification(status.message)
-                        is AgentStatus.Error -> updateNotification("Error: ${status.message}")
-                    }
-                }
+                )
             } catch (e: Exception) {
                 // Handle any unexpected exceptions
                 Log.e("Agent", "Error handling notification", e)
@@ -389,29 +345,13 @@ class Agent : Service() {
                     // Reset the job and scope to ensure future commands work
                     job = SupervisorJob()
                     scope = CoroutineScope(Dispatchers.IO + job)
-                    updateNotification("Operation cancelled")
+                    updateStatus(AgentStatus.Success("Operation cancelled"))
                 } else {
                     // For other exceptions, report the error
-                    updateNotification("Error: ${e.message}")
+                    updateStatus(AgentStatus.Error("Error: ${e.message}"))
                 }
             }
         }
-    }
-
-    private fun updateNotification(status: String) {
-        val notification = NotificationCompat.Builder(this, NOTIFICATION_CHANNEL_ID)
-            .setContentTitle("Gosling Agent")
-            .setContentText(status)
-            .setSmallIcon(R.drawable.ic_launcher_foreground)
-            .setOngoing(true)
-            .build()
-
-        val notificationManager =
-            getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
-        notificationManager.notify(NOTIFICATION_ID, notification)
-
-        // Update overlay with current status
-        OverlayService.getInstance()?.updateStatus(AgentStatus.Processing(status))
     }
 
     private fun callLlm(messages: List<Message>, context: Context): JSONObject {

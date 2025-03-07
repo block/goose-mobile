@@ -83,6 +83,15 @@ class GoslingAccessibilityService : AccessibilityService() {
             val packageName = event.packageName?.toString() ?: return
             if (packageName == "xyz.block.gosling") return
 
+            // Create an AgentServiceManager to handle notifications
+            val agentServiceManager = xyz.block.gosling.features.agent.AgentServiceManager(this)
+            
+            // Set up status listener
+            agent.setStatusListener { status ->
+                // Update notification via AgentServiceManager
+                agentServiceManager.updateNotification(status)
+            }
+
             val rawText = event.text.joinToString(" ")
             val extras = parcelableData.extras
 

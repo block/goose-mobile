@@ -139,8 +139,23 @@ class OverlayService : Service() {
             // Disable the button to prevent multiple clicks
             overlayCancelButton?.isEnabled = false
             
+            // Get the Agent instance
+            val agent = Agent.getInstance()
+            
+            // Create an AgentServiceManager to handle notifications
+            val agentServiceManager = xyz.block.gosling.features.agent.AgentServiceManager(this)
+            
+            // Set up status listener
+            agent?.setStatusListener { status ->
+                // Update notification via AgentServiceManager
+                agentServiceManager.updateNotification(status)
+                
+                // Update overlay UI
+                updateStatus(status)
+            }
+            
             // Cancel the agent
-            Agent.getInstance()?.cancel()
+            agent?.cancel()
             
             // Update the UI to show cancellation is in progress
             updateStatus(AgentStatus.Processing("Cancelling operation..."))

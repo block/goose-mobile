@@ -39,6 +39,8 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
 import xyz.block.gosling.features.agent.Agent
+import xyz.block.gosling.features.agent.AgentServiceManager
+import xyz.block.gosling.features.agent.AgentStatus
 import xyz.block.gosling.features.onboarding.Onboarding
 import xyz.block.gosling.features.settings.SettingsManager
 import xyz.block.gosling.features.settings.SettingsScreen
@@ -55,6 +57,7 @@ class MainActivity : ComponentActivity() {
     private lateinit var accessibilitySettingsLauncher: ActivityResultLauncher<Intent>
     private var isAccessibilityEnabled by mutableStateOf(false)
     private val sharedPreferences by lazy { getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE) }
+    private lateinit var agentServiceManager: AgentServiceManager
 
     internal fun saveMessages(messages: List<ChatMessage>) {
         val json = messages.map { message ->
@@ -86,6 +89,7 @@ class MainActivity : ComponentActivity() {
         super.onCreate(savedInstanceState)
         settingsManager = SettingsManager(this)
         isAccessibilityEnabled = settingsManager.isAccessibilityEnabled
+        agentServiceManager = AgentServiceManager(this)
 
         // Check for overlay permission
         if (!Settings.canDrawOverlays(this)) {
@@ -97,7 +101,11 @@ class MainActivity : ComponentActivity() {
             startActivity(intent)
         } else {
             // Start services only if we have overlay permission
-            startForegroundService(Intent(this, Agent::class.java))
+            agentServiceManager.bindAndStartAgent { agent ->
+                // Agent is now started as a foreground service and has a status listener set up
+                Log.d("MainActivity", "Agent service started successfully")
+            }
+            
             startService(Intent(this, OverlayService::class.java))
         }
 
@@ -149,7 +157,11 @@ class MainActivity : ComponentActivity() {
 
         // Start services if overlay permission was just granted
         if (Settings.canDrawOverlays(this)) {
-            startForegroundService(Intent(this, Agent::class.java))
+            agentServiceManager.bindAndStartAgent { agent ->
+                // Agent is now started as a foreground service and has a status listener set up
+                Log.d("MainActivity", "Agent service started successfully")
+            }
+            
             startService(Intent(this, OverlayService::class.java))
         }
     }

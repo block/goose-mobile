@@ -81,13 +81,11 @@ object ToolHandler {
         return gestureResult
     }
 
-    private fun serializeNodeHierarchy(node: AccessibilityNodeInfo, clean: Boolean): JSONObject {
+    private fun serializeNodeHierarchy(node: AccessibilityNodeInfo): NodeInfo {
         try {
-            // Create a NodeInfo object using the serializable model
-            val bounds = Rect()
-            node.getBoundsInScreen(bounds)
+            val bounds = Rect().also { node.getBoundsInScreen(it) }
 
-            val nodeInfo = NodeInfo(
+            return NodeInfo(
                 className = node.className?.toString(),
                 packageName = node.packageName?.toString(),
                 text = node.text?.toString()?.takeIf { it.isNotEmpty() },
@@ -99,19 +97,16 @@ object ToolHandler {
                     right = bounds.right,
                     bottom = bounds.bottom
                 ),
-                clickable = if (!clean) node.isClickable else null,
-                focusable = if (!clean) node.isFocusable else null,
-                enabled = if (!clean) node.isEnabled else null,
-                scrollable = if (!clean) node.isScrollable else null,
-                editable = if (!clean) node.isEditable else null,
+                clickable = if (node.isClickable) true else null,
+                focusable = if (node.isFocusable) true else null,
+                scrollable = if (node.isScrollable) true else null,
+                editable = if (node.isEditable) true else null,
+                enabled = if (!node.isEnabled) false else null,
                 children = if (node.childCount > 0) {
                     (0 until node.childCount).mapNotNull { i ->
                         node.getChild(i)?.let { childNode ->
                             try {
-                                // Extract the NodeInfo from the JSONObject returned by the recursive call
-                                val json = Json { ignoreUnknownKeys = true }
-                                val childJson = serializeNodeHierarchy(childNode, clean)
-                                json.decodeFromString<NodeInfo>(childJson.toString())
+                                serializeNodeHierarchy(childNode)
                             } catch (e: Exception) {
                                 NodeInfo(
                                     error = "Failed to serialize child node: ${e.message}",
@@ -122,74 +117,47 @@ object ToolHandler {
                     }
                 } else null
             )
-
-            // Convert the NodeInfo object to a JSONObject
-            val json = Json {
-                prettyPrint = true
-                ignoreUnknownKeys = true
-                encodeDefaults = false // Skip null values
-            }
-            val jsonString = json.encodeToString(nodeInfo)
-            return JSONObject(jsonString)
         } catch (e: Exception) {
-            val errorJson = JSONObject()
-            errorJson.put("error", "Failed to serialize node: ${e.message}")
-            return errorJson
+            return NodeInfo(
+                error = "Failed to serialize node: ${e.message}",
+                bounds = NodeBounds(0, 0, 0, 0)
+            )
         }
     }
 
     @Tool(
         name = "getUiHierarchy",
-        description = "Get the current UI hierarchy as a JSON string. This shows all UI elements, their properties, and locations on screen.",
-        parameters = [
-            ParameterDef(
-                name = "clean",
-                type = "boolean",
-                description = "If true, omits additional properties like clickable, focusable, etc. Default is false.",
-                required = false
-            )
-        ],
+        description = "Get the current UI hierarchy as a JSON string. " +
+                "This shows all UI elements, their properties, and locations on screen. " +
+                "clickable, focusable, scrollable, and editable properties are only mentioned " +
+                "when true, enabled only when false.",
+        parameters = [],
         requiresAccessibility = true
     )
     fun getUiHierarchy(accessibilityService: AccessibilityService, args: JSONObject): String {
-        try {
-            val clean = args.optBoolean("clean", false)
+        val json = Json {
+            prettyPrint = false
+            ignoreUnknownKeys = true
+            encodeDefaults = false
+        }
 
-            try {
-                val activeWindow = accessibilityService.rootInActiveWindow
-                if (activeWindow != null) {
-                    val nodeJson = serializeNodeHierarchy(activeWindow, clean)
-
-                    // Create a UiHierarchy object
-                    val uiHierarchy = UiHierarchy(
-                        packageName = activeWindow.packageName?.toString(),
-                        className = activeWindow.className?.toString(),
-                        nodes = Json { ignoreUnknownKeys = true }
-                            .decodeFromString<NodeInfo>(nodeJson.toString())
-                    )
-
-                    // Convert to JSON string with pretty printing
-                    val json = Json {
-                        prettyPrint = true
-                        ignoreUnknownKeys = true
-                        encodeDefaults = false
-                    }
-                    return json.encodeToString(uiHierarchy)
-                } else {
-                    val uiHierarchy = UiHierarchy(
-                        error = "No active window found"
-                    )
-                    val json = Json { prettyPrint = true }
-                    return json.encodeToString(uiHierarchy)
-                }
-            } catch (e: Exception) {
-                val uiHierarchy = UiHierarchy(
-                    error = "Failed to get UI hierarchy: ${e.message}"
+        return try {
+            val activeWindow =
+                accessibilityService.rootInActiveWindow ?: return json.encodeToString(
+                    UiHierarchy(error = "No active window found")
                 )
-                val json = Json { prettyPrint = true }
-                return json.encodeToString(uiHierarchy)
-            }
-        } finally {
+
+            val nodeInfo = serializeNodeHierarchy(activeWindow)
+
+            json.encodeToString(
+                UiHierarchy(
+                    packageName = activeWindow.packageName?.toString(),
+                    className = activeWindow.className?.toString(),
+                    nodes = nodeInfo
+                )
+            )
+        } catch (e: Exception) {
+            json.encodeToString(UiHierarchy(error = "Failed to get UI hierarchy: ${e.message}"))
         }
     }
 
@@ -511,7 +479,7 @@ object ToolHandler {
             //Delay to let the overlay hide...
             Thread.sleep(100)
         }
-        
+
         return try {
             // Check again if cancelled after the delay
             if (Agent.getInstance()?.isCancelled() == true) {

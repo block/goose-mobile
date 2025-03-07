@@ -282,10 +282,8 @@ class Agent : Service() {
                         val toolResults = executeTools(toolCalls, context)
                         if (toolResults.isEmpty() || isCancelled) {
                             if (isCancelled) {
-                                onStatusUpdate(AgentStatus.Success("Operation cancelled"))
                                 return@withContext "Operation cancelled by user"
                             } else {
-                                onStatusUpdate(AgentStatus.Success(assistantReply))
                                 break
                             }
                         }
@@ -331,7 +329,6 @@ class Agent : Service() {
                     continue
                 }
 
-                onStatusUpdate(AgentStatus.Success("Task completed successfully"))
                 return@withContext "Task completed successfully"
             }
         } catch (e: Exception) {

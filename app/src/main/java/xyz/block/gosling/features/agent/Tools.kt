@@ -12,6 +12,7 @@ import android.view.accessibility.AccessibilityNodeInfo
 import kotlinx.serialization.encodeToString
 import kotlinx.serialization.json.Json
 import org.json.JSONObject
+import xyz.block.gosling.GoslingApplication
 import xyz.block.gosling.OverlayService
 import java.util.Locale
 
@@ -506,9 +507,11 @@ object ToolHandler {
 
         OverlayService.getInstance()?.setPerformingAction(true)
 
-        //Delay to let the overlay hide...
-        Thread.sleep(100)
-
+        if (!GoslingApplication.shouldHideOverlay()) {
+            //Delay to let the overlay hide...
+            Thread.sleep(100)
+        }
+        
         return try {
             // Check again if cancelled after the delay
             if (Agent.getInstance()?.isCancelled() == true) {

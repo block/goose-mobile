@@ -68,6 +68,10 @@ fun LauncherScreen() {
     var appList by remember { mutableStateOf<List<AppInfo>>(emptyList()) }
     val coroutineScope = rememberCoroutineScope()
 
+    // State for keyboard input drawer
+    var showKeyboardDrawer by remember { mutableStateOf(false) }
+    var textInput by remember { mutableStateOf("") }
+
     // Current time for the clock widget
     var currentTime by remember { mutableStateOf(getCurrentTime()) }
 
@@ -195,10 +199,8 @@ fun LauncherScreen() {
                         startVoiceRecognition(context)
                     },
                     onKeyboardClick = {
-                        // Open keyboard input
-                        val intent = Intent(context, xyz.block.gosling.MainActivity::class.java)
-                        intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
-                        context.startActivity(intent)
+                        // Show keyboard input drawer
+                        showKeyboardDrawer = true
                     }
                 )
 
@@ -213,6 +215,25 @@ fun LauncherScreen() {
                 )
             }
         }
+    }
+
+    // Keyboard input drawer
+    if (showKeyboardDrawer) {
+        KeyboardInputDrawer(
+            value = textInput,
+            onValueChange = { textInput = it },
+            onDismiss = {
+                showKeyboardDrawer = false
+                textInput = ""
+            },
+            onSubmit = {
+                if (textInput.isNotEmpty()) {
+                    processAgentCommand(context, textInput)
+                }
+                showKeyboardDrawer = false
+                textInput = ""
+            }
+        )
     }
 }
 
@@ -314,8 +335,7 @@ private fun startVoiceRecognition(context: Context) {
  * Processes a command with the Agent service.
  */
 private fun processAgentCommand(context: Context, command: String) {
-    // Show a toast with the recognized command
-    Toast.makeText(context, "Command: $command", Toast.LENGTH_SHORT).show()
+    Toast.makeText(context, command, Toast.LENGTH_SHORT).show()
 
     // Bind to the Agent service
     val serviceIntent = Intent(context, Agent::class.java)
@@ -326,7 +346,6 @@ private fun processAgentCommand(context: Context, command: String) {
             // Create a final reference to the service connection
             val connection = this
 
-            // Launch a coroutine to process the command
             kotlinx.coroutines.CoroutineScope(Dispatchers.IO).launch {
                 try {
                     agent.processCommand(
@@ -337,7 +356,7 @@ private fun processAgentCommand(context: Context, command: String) {
                         // Update UI based on status
                         when (status) {
                             is AgentStatus.Processing -> {
-                                if (status.message.isEmpty()) return@processCommand
+                                if (status.message.isEmpty() || status.message == "null") return@processCommand
                                 // Show processing status
                                 android.os.Handler(context.mainLooper).post {
                                     Toast.makeText(
@@ -349,15 +368,13 @@ private fun processAgentCommand(context: Context, command: String) {
                             }
 
                             is AgentStatus.Success -> {
-                                // Show success status
                                 android.os.Handler(context.mainLooper).post {
                                     Toast.makeText(
                                         context,
-                                        "Success: ${status.message}",
+                                        status.message,
                                         Toast.LENGTH_SHORT
                                     ).show()
                                 }
-
                             }
 
                             is AgentStatus.Error -> {
@@ -397,4 +414,4 @@ private fun processAgentCommand(context: Context, command: String) {
 
     // Bind to the service
     context.bindService(serviceIntent, serviceConnection, Context.BIND_AUTO_CREATE)
-} 
+}

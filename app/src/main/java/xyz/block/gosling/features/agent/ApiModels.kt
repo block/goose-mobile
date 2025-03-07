@@ -13,7 +13,9 @@ data class Message(
     val toolCallId: String? = null,
     val name: String? = null,
     @SerialName("tool_calls")
-    val toolCalls: List<ToolCall>? = null
+    val toolCalls: List<ToolCall>? = null,
+    @SerialName("annotations")
+    val annotations: Map<String, Double>? = null
 )
 
 @Serializable

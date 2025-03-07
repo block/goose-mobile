@@ -4,3 +4,4 @@ local.properties
 .kotlin
 app/build/
 .DS_Store
+session_dumps/

@@ -60,6 +60,7 @@ import androidx.core.content.ContextCompat
 import kotlinx.coroutines.async
 import kotlinx.coroutines.launch
 import xyz.block.gosling.features.agent.Agent
+import xyz.block.gosling.features.agent.AgentServiceManager
 import xyz.block.gosling.features.agent.AgentStatus
 
 data class ChatMessage(
@@ -146,21 +147,13 @@ fun GoslingUI(
             outputText = "Thinking..."
             onMessageAdded(ChatMessage(text = "Thinking...", isUser = false))
             try {
-                val service = boundService
-                if (service == null) {
-                    outputText = "Error: Service not connected"
-                    onMessageRemoved(messages.last()) // Remove "Thinking..." message
-                    onMessageAdded(
-                        ChatMessage(
-                            text = "Error: Service not connected",
-                            isUser = false
-                        )
-                    )
-                    return@launch
-                }
-
-                val response = async {
-                    service.processCommand(input, context, isNotificationReply = false) { status ->
+                // Create an AgentServiceManager to handle notifications
+                val agentServiceManager = AgentServiceManager(context)
+                
+                // Bind to the Agent service and start it as a foreground service
+                agentServiceManager.bindAndStartAgent { agent ->
+                    // Set up status listener
+                    agent.setStatusListener { status ->
                         outputText = when (status) {
                             is AgentStatus.Processing -> status.message
                             is AgentStatus.Success -> status.message
@@ -192,20 +185,24 @@ fun GoslingUI(
                             }
                         }
                     }
-                }.await()
 
-                // Only add the final response if it's not empty and not a duplicate
-                if (response.isNotBlank() && messages.lastOrNull()?.text != response) {
-                    // Remove the last message if it was a thinking or processing message
-                    if (messages.lastOrNull()?.text == "Thinking..." ||
-                        messages.lastOrNull()?.text == "Processing..."
-                    ) {
-                        onMessageRemoved(messages.last())
-                    }
-                    onMessageAdded(ChatMessage(text = response, isUser = false))
-                    // Scroll to bottom after adding final response
                     scope.launch {
-                        listState.animateScrollToItem(messages.size - 1)
+                        val response = agent.processCommand(input, context, isNotificationReply = false)
+
+                        // Only add the final response if it's not empty and not a duplicate
+                        if (response.isNotBlank() && messages.lastOrNull()?.text != response) {
+                            // Remove the last message if it was a thinking or processing message
+                            if (messages.lastOrNull()?.text == "Thinking..." ||
+                                messages.lastOrNull()?.text == "Processing..."
+                            ) {
+                                onMessageRemoved(messages.last())
+                            }
+                            onMessageAdded(ChatMessage(text = response, isUser = false))
+                            // Scroll to bottom after adding final response
+                            scope.launch {
+                                listState.animateScrollToItem(messages.size - 1)
+                            }
+                        }
                     }
                 }
             } catch (e: Exception) {

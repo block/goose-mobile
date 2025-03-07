@@ -2,14 +2,11 @@ package xyz.block.gosling.features.launcher
 
 import android.Manifest
 import android.app.Activity
-import android.content.ComponentName
 import android.content.Context
 import android.content.Intent
-import android.content.ServiceConnection
 import android.content.pm.PackageManager
 import android.content.pm.ResolveInfo
 import android.os.Bundle
-import android.os.IBinder
 import android.speech.RecognitionListener
 import android.speech.RecognizerIntent
 import android.speech.SpeechRecognizer
@@ -53,7 +50,7 @@ import androidx.core.graphics.drawable.toBitmap
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
-import xyz.block.gosling.features.agent.Agent
+import xyz.block.gosling.features.agent.AgentServiceManager
 import xyz.block.gosling.features.agent.AgentStatus
 import xyz.block.gosling.ui.theme.GoslingTheme
 
@@ -67,6 +64,10 @@ fun LauncherScreen() {
     val context = LocalContext.current
     var appList by remember { mutableStateOf<List<AppInfo>>(emptyList()) }
     val coroutineScope = rememberCoroutineScope()
+
+    // State for keyboard input drawer
+    var showKeyboardDrawer by remember { mutableStateOf(false) }
+    var textInput by remember { mutableStateOf("") }
 
     // Current time for the clock widget
     var currentTime by remember { mutableStateOf(getCurrentTime()) }
@@ -195,13 +196,12 @@ fun LauncherScreen() {
                         startVoiceRecognition(context)
                     },
                     onKeyboardClick = {
-                        // Open keyboard input
-                        val intent = Intent(context, xyz.block.gosling.MainActivity::class.java)
-                        intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
-                        context.startActivity(intent)
+                        // Show keyboard input drawer
+                        showKeyboardDrawer = true
                     }
                 )
 
+                // Remove test notification button
                 Spacer(modifier = Modifier.weight(0.2f))
 
                 // Instructions at the bottom
@@ -213,6 +213,25 @@ fun LauncherScreen() {
                 )
             }
         }
+    }
+
+    // Keyboard input drawer
+    if (showKeyboardDrawer) {
+        KeyboardInputDrawer(
+            value = textInput,
+            onValueChange = { textInput = it },
+            onDismiss = {
+                showKeyboardDrawer = false
+                textInput = ""
+            },
+            onSubmit = {
+                if (textInput.isNotEmpty()) {
+                    processAgentCommand(context, textInput)
+                }
+                showKeyboardDrawer = false
+                textInput = ""
+            }
+        )
     }
 }
 
@@ -314,87 +333,73 @@ private fun startVoiceRecognition(context: Context) {
  * Processes a command with the Agent service.
  */
 private fun processAgentCommand(context: Context, command: String) {
-    // Show a toast with the recognized command
-    Toast.makeText(context, "Command: $command", Toast.LENGTH_SHORT).show()
+    Toast.makeText(context, command, Toast.LENGTH_SHORT).show()
 
-    // Bind to the Agent service
-    val serviceIntent = Intent(context, Agent::class.java)
-    val serviceConnection = object : ServiceConnection {
-        override fun onServiceConnected(name: ComponentName?, service: IBinder?) {
-            val agent = (service as Agent.AgentBinder).getService()
+    // Create an AgentServiceManager to handle notifications
+    val agentServiceManager = AgentServiceManager(context)
 
-            // Create a final reference to the service connection
-            val connection = this
-
-            // Launch a coroutine to process the command
-            kotlinx.coroutines.CoroutineScope(Dispatchers.IO).launch {
-                try {
-                    agent.processCommand(
-                        userInput = command,
-                        context = context,
-                        isNotificationReply = false
-                    ) { status ->
-                        // Update UI based on status
-                        when (status) {
-                            is AgentStatus.Processing -> {
-                                if (status.message.isEmpty()) return@processCommand
-                                // Show processing status
-                                android.os.Handler(context.mainLooper).post {
-                                    Toast.makeText(
-                                        context,
-                                        status.message,
-                                        Toast.LENGTH_SHORT
-                                    ).show()
-                                }
-                            }
-
-                            is AgentStatus.Success -> {
-                                // Show success status
-                                android.os.Handler(context.mainLooper).post {
-                                    Toast.makeText(
-                                        context,
-                                        "Success: ${status.message}",
-                                        Toast.LENGTH_SHORT
-                                    ).show()
-                                }
-
-                            }
-
-                            is AgentStatus.Error -> {
-                                // Show error status
-                                android.os.Handler(context.mainLooper).post {
-                                    Toast.makeText(
-                                        context,
-                                        "Error: ${status.message}",
-                                        Toast.LENGTH_SHORT
-                                    ).show()
-                                }
-                            }
-                        }
-                    }
-                } catch (e: Exception) {
-                    // Handle exceptions
+    // Bind to the Agent service and start it as a foreground service
+    agentServiceManager.bindAndStartAgent { agent ->
+        // Set up status listener for UI updates (in addition to notifications)
+        agent.setStatusListener { status ->
+            // Update UI based on status
+            when (status) {
+                is AgentStatus.Processing -> {
+                    if (status.message.isEmpty() || status.message == "null") return@setStatusListener
+                    // Show processing status
                     android.os.Handler(context.mainLooper).post {
-                        Toast.makeText(context, "Error: ${e.message}", Toast.LENGTH_SHORT).show()
+                        Toast.makeText(
+                            context,
+                            status.message,
+                            Toast.LENGTH_SHORT
+                        ).show()
                     }
-                } finally {
-                    // Unbind from the service on the main thread
+                }
+
+                is AgentStatus.Success -> {
                     android.os.Handler(context.mainLooper).post {
-                        try {
-                            context.unbindService(connection)
-                        } catch (e: Exception) {
-                            // Ignore unbinding errors
+                        // Launch home screen instead of showing a notification
+                        val homeIntent = Intent(Intent.ACTION_MAIN).apply {
+                            addCategory(Intent.CATEGORY_HOME)
+                            flags = Intent.FLAG_ACTIVITY_NEW_TASK
                         }
+                        context.startActivity(homeIntent)
+
+                        // Also show a toast with the message
+                        Toast.makeText(
+                            context,
+                            status.message,
+                            Toast.LENGTH_LONG
+                        ).show()
+                    }
+                }
+
+                is AgentStatus.Error -> {
+                    // Show error status
+                    android.os.Handler(context.mainLooper).post {
+                        Toast.makeText(
+                            context,
+                            "Error: ${status.message}",
+                            Toast.LENGTH_SHORT
+                        ).show()
                     }
                 }
             }
         }
 
-        override fun onServiceDisconnected(name: ComponentName?) {
-            // Service disconnected
+        kotlinx.coroutines.CoroutineScope(Dispatchers.IO).launch {
+            try {
+                agent.processCommand(
+                    userInput = command,
+                    context = context,
+                    isNotificationReply = false
+                )
+            } catch (e: Exception) {
+                // Handle exceptions
+                android.os.Handler(context.mainLooper).post {
+                    Toast.makeText(context, "Error: ${e.message}", Toast.LENGTH_SHORT).show()
+                }
+            }
         }
     }
-
-    // Bind to the service
-    context.bindService(serviceIntent, serviceConnection, Context.BIND_AUTO_CREATE)
-} 
+}

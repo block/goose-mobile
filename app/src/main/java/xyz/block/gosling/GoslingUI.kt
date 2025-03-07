@@ -57,7 +57,6 @@ import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.unit.dp
 import androidx.core.app.ActivityCompat
 import androidx.core.content.ContextCompat
-import kotlinx.coroutines.async
 import kotlinx.coroutines.launch
 import xyz.block.gosling.features.agent.Agent
 import xyz.block.gosling.features.agent.AgentServiceManager
@@ -73,7 +72,8 @@ private val predefinedQueries = listOf(
     "What's the weather like?",
     "Add contact named James Gosling",
     "Show me the best beer garden in Berlin in maps",
-    "Turn on flashlight"
+    "Turn on flashlight",
+    "Take a picture using the camera and attach that to a new email. Save the email in drafts"
 )
 
 @Composable
@@ -149,7 +149,7 @@ fun GoslingUI(
             try {
                 // Create an AgentServiceManager to handle notifications
                 val agentServiceManager = AgentServiceManager(context)
-                
+
                 // Bind to the Agent service and start it as a foreground service
                 agentServiceManager.bindAndStartAgent { agent ->
                     // Set up status listener
@@ -187,7 +187,8 @@ fun GoslingUI(
                     }
 
                     scope.launch {
-                        val response = agent.processCommand(input, context, isNotificationReply = false)
+                        val response =
+                            agent.processCommand(input, context, isNotificationReply = false)
 
                         // Only add the final response if it's not empty and not a duplicate
                         if (response.isNotBlank() && messages.lastOrNull()?.text != response) {

@@ -16,6 +16,8 @@ import android.view.WindowManager
 import android.widget.Button
 import android.widget.LinearLayout
 import android.widget.TextView
+import xyz.block.gosling.features.agent.Agent
+import xyz.block.gosling.features.agent.AgentStatus
 import java.lang.ref.WeakReference
 
 class OverlayService : Service() {
@@ -41,6 +43,10 @@ class OverlayService : Service() {
         super.onCreate()
         instance = WeakReference(this)
         windowManager = getSystemService(Context.WINDOW_SERVICE) as WindowManager
+
+        // Ensure overlay is disabled by default when service starts
+        // (This is redundant since the flag defaults to false, but makes it explicit)
+        GoslingApplication.disableOverlay()
 
         // Inflate the overlay view
         val tempParent = LinearLayout(this).apply {
@@ -114,17 +120,37 @@ class OverlayService : Service() {
 
         // Set up button click listener
         overlayButton?.setOnClickListener {
-            val activityManager = getSystemService(Context.ACTIVITY_SERVICE) as android.app.ActivityManager
+            val activityManager =
+                getSystemService(Context.ACTIVITY_SERVICE) as android.app.ActivityManager
             val tasks = activityManager.getRunningTasks(1)
             if (tasks.isNotEmpty() && tasks[0].topActivity?.packageName == packageName) {
-                activityManager.moveTaskToFront(tasks[0].id, android.app.ActivityManager.MOVE_TASK_WITH_HOME)
+                activityManager.moveTaskToFront(
+                    tasks[0].id,
+                    android.app.ActivityManager.MOVE_TASK_WITH_HOME
+                )
             }
         }
 
         // Set up cancel button click listener
         overlayCancelButton?.setOnClickListener {
+            // Make the cancel button more visible to indicate it's being pressed
+            overlayCancelButton?.alpha = 0.5f
+            
+            // Disable the button to prevent multiple clicks
+            overlayCancelButton?.isEnabled = false
+            
+            // Cancel the agent
             Agent.getInstance()?.cancel()
-            updateStatus(AgentStatus.Success("Agent cancelled"))
+            
+            // Update the UI to show cancellation is in progress
+            updateStatus(AgentStatus.Processing("Cancelling operation..."))
+            
+            // Reset the button appearance and state after a short delay
+            overlayCancelButton?.postDelayed({
+                overlayCancelButton?.alpha = 1.0f
+                overlayCancelButton?.isEnabled = true
+                updateStatus(AgentStatus.Success("Agent cancelled"))
+            }, 500)
         }
 
         // Add the view and update its visibility based on app state
@@ -165,7 +191,14 @@ class OverlayService : Service() {
     fun updateStatus(status: AgentStatus) {
         // Convert status to display text and determine button visibility
         val (displayText, isDone) = when (status) {
-            is AgentStatus.Processing -> Pair(status.message, false)
+            is AgentStatus.Processing -> {
+                // Special case for cancellation message
+                if (status.message.contains("cancel", ignoreCase = true)) {
+                    Pair(status.message, false)
+                } else {
+                    Pair(status.message, false)
+                }
+            }
             is AgentStatus.Success -> Pair(status.message, true)
             is AgentStatus.Error -> Pair(status.message, true)
         }
@@ -178,8 +211,9 @@ class OverlayService : Service() {
             return
         }
 
-        // Ignore generic processing/thinking messages
-        if (displayText == "Processing..." || displayText == "Thinking...") {
+        // Ignore generic processing/thinking messages unless they're about cancellation
+        if ((displayText == "Processing..." || displayText == "Thinking...") && 
+            !displayText.contains("cancel", ignoreCase = true)) {
             android.util.Log.d("Gosling", "Ignoring generic processing message")
             return
         }
@@ -192,7 +226,12 @@ class OverlayService : Service() {
                 "Setting button visibility to: ${if (isDone) "VISIBLE" else "GONE"}"
             )
             overlayButton?.visibility = if (isDone) View.VISIBLE else View.GONE
-            overlayCancelButton?.visibility = if (!isDone) View.VISIBLE else View.GONE
+            
+            // Always show cancel button during processing, hide when done
+            // But don't show it during cancellation
+            val showCancelButton = !isDone && !displayText.contains("cancel", ignoreCase = true)
+            overlayCancelButton?.visibility = if (showCancelButton) View.VISIBLE else View.GONE
+            
             android.util.Log.d("Gosling", "Button visibility is now: ${overlayButton?.visibility}")
             android.util.Log.d("Gosling", "Button reference exists: ${overlayButton != null}")
         }
@@ -201,11 +240,12 @@ class OverlayService : Service() {
 
     fun updateOverlayVisibility() {
         overlayView?.post {
-            val shouldShow = !GoslingApplication.isMainActivityRunning && !isPerformingAction
+            val isGloballyEnabled = !GoslingApplication.shouldHideOverlay()
+            val shouldShow = isGloballyEnabled && !isPerformingAction
             val newVisibility = if (shouldShow) View.VISIBLE else View.GONE
             android.util.Log.d(
                 "Gosling",
-                "updateOverlayVisibility: isMainActivityRunning=${GoslingApplication.isMainActivityRunning}, isPerformingAction=$isPerformingAction, shouldShow=$shouldShow"
+                "updateOverlayVisibility: globallyEnabled=$isGloballyEnabled, isPerformingAction=$isPerformingAction, shouldShow=$shouldShow"
             )
             overlayView?.visibility = newVisibility
             android.util.Log.d("Gosling", "Overlay visibility set to: $newVisibility")

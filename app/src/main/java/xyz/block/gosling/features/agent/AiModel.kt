@@ -1,4 +1,4 @@
-package xyz.block.gosling
+package xyz.block.gosling.features.agent
 
 enum class ModelProvider {
     OPENAI,

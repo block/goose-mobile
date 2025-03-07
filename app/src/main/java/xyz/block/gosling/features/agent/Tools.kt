@@ -1,4 +1,4 @@
-package xyz.block.gosling
+package xyz.block.gosling.features.agent
 
 import android.accessibilityservice.AccessibilityService
 import android.accessibilityservice.GestureDescription
@@ -8,8 +8,10 @@ import android.graphics.Path
 import android.graphics.Rect
 import android.os.Bundle
 import android.view.accessibility.AccessibilityNodeInfo
-import org.json.JSONArray
+import kotlinx.serialization.encodeToString
+import kotlinx.serialization.json.Json
 import org.json.JSONObject
+import xyz.block.gosling.OverlayService
 import java.util.Locale
 
 @Target(AnnotationTarget.FUNCTION)
@@ -31,10 +33,15 @@ annotation class ParameterDef(
     val required: Boolean = true
 )
 
-data class ToolCall(
+data class InternalToolCall(
     val name: String,
     val arguments: JSONObject
 )
+
+sealed class SerializableToolDefinitions {
+    data class OpenAITools(val definitions: List<ToolDefinition>) : SerializableToolDefinitions()
+    data class GeminiTools(val tools: List<GeminiTool>) : SerializableToolDefinitions()
+}
 
 object ToolHandler {
     /**
@@ -73,55 +80,60 @@ object ToolHandler {
     }
 
     private fun serializeNodeHierarchy(node: AccessibilityNodeInfo, clean: Boolean): JSONObject {
-        val json = JSONObject()
-
         try {
-            json.put("class", node.className)
-            json.put("package", node.packageName)
-
-            node.text?.toString()?.takeIf { it.isNotEmpty() }?.let {
-                json.put("text", it)
-            }
-
-            node.contentDescription?.toString()?.takeIf { it.isNotEmpty() }?.let {
-                json.put("content-desc", it)
-            }
-
-            node.viewIdResourceName?.takeIf { it.isNotEmpty() }?.let {
-                json.put("resource-id", it)
-            }
-
+            // Create a NodeInfo object using the serializable model
             val bounds = Rect()
             node.getBoundsInScreen(bounds)
-            json.put("bounds", JSONObject().apply {
-                put("left", bounds.left)
-                put("top", bounds.top)
-                put("right", bounds.right)
-                put("bottom", bounds.bottom)
-            })
 
-            if (!clean) {
-                json.put("clickable", node.isClickable)
-                json.put("focusable", node.isFocusable)
-                json.put("enabled", node.isEnabled)
-                json.put("scrollable", node.isScrollable)
-                json.put("editable", node.isEditable)
-            }
+            val nodeInfo = NodeInfo(
+                className = node.className?.toString(),
+                packageName = node.packageName?.toString(),
+                text = node.text?.toString()?.takeIf { it.isNotEmpty() },
+                contentDesc = node.contentDescription?.toString()?.takeIf { it.isNotEmpty() },
+                resourceId = node.viewIdResourceName?.takeIf { it.isNotEmpty() },
+                bounds = NodeBounds(
+                    left = bounds.left,
+                    top = bounds.top,
+                    right = bounds.right,
+                    bottom = bounds.bottom
+                ),
+                clickable = if (!clean) node.isClickable else null,
+                focusable = if (!clean) node.isFocusable else null,
+                enabled = if (!clean) node.isEnabled else null,
+                scrollable = if (!clean) node.isScrollable else null,
+                editable = if (!clean) node.isEditable else null,
+                children = if (node.childCount > 0) {
+                    (0 until node.childCount).mapNotNull { i ->
+                        node.getChild(i)?.let { childNode ->
+                            try {
+                                // Extract the NodeInfo from the JSONObject returned by the recursive call
+                                val json = Json { ignoreUnknownKeys = true }
+                                val childJson = serializeNodeHierarchy(childNode, clean)
+                                json.decodeFromString<NodeInfo>(childJson.toString())
+                            } catch (e: Exception) {
+                                NodeInfo(
+                                    error = "Failed to serialize child node: ${e.message}",
+                                    bounds = NodeBounds(0, 0, 0, 0)
+                                )
+                            }
+                        }
+                    }
+                } else null
+            )
 
-            val children = JSONArray()
-            for (i in 0 until node.childCount) {
-                node.getChild(i)?.let { childNode ->
-                    children.put(serializeNodeHierarchy(childNode, clean))
-                }
+            // Convert the NodeInfo object to a JSONObject
+            val json = Json {
+                prettyPrint = true
+                ignoreUnknownKeys = true
+                encodeDefaults = false // Skip null values
             }
-            if (children.length() > 0) {
-                json.put("children", children)
-            }
+            val jsonString = json.encodeToString(nodeInfo)
+            return JSONObject(jsonString)
         } catch (e: Exception) {
-            json.put("error", "Failed to serialize node: ${e.message}")
+            val errorJson = JSONObject()
+            errorJson.put("error", "Failed to serialize node: ${e.message}")
+            return errorJson
         }
-
-        return json
     }
 
     @Tool(
@@ -140,22 +152,41 @@ object ToolHandler {
     fun getUiHierarchy(accessibilityService: AccessibilityService, args: JSONObject): String {
         try {
             val clean = args.optBoolean("clean", false)
-            val root = JSONObject()
 
             try {
                 val activeWindow = accessibilityService.rootInActiveWindow
                 if (activeWindow != null) {
-                    root.put("package", activeWindow.packageName)
-                    root.put("class", activeWindow.className)
-                    root.put("nodes", serializeNodeHierarchy(activeWindow, clean))
+                    val nodeJson = serializeNodeHierarchy(activeWindow, clean)
+
+                    // Create a UiHierarchy object
+                    val uiHierarchy = UiHierarchy(
+                        packageName = activeWindow.packageName?.toString(),
+                        className = activeWindow.className?.toString(),
+                        nodes = Json { ignoreUnknownKeys = true }
+                            .decodeFromString<NodeInfo>(nodeJson.toString())
+                    )
+
+                    // Convert to JSON string with pretty printing
+                    val json = Json {
+                        prettyPrint = true
+                        ignoreUnknownKeys = true
+                        encodeDefaults = false
+                    }
+                    return json.encodeToString(uiHierarchy)
                 } else {
-                    root.put("error", "No active window found")
+                    val uiHierarchy = UiHierarchy(
+                        error = "No active window found"
+                    )
+                    val json = Json { prettyPrint = true }
+                    return json.encodeToString(uiHierarchy)
                 }
             } catch (e: Exception) {
-                root.put("error", "Failed to get UI hierarchy: ${e.message}")
+                val uiHierarchy = UiHierarchy(
+                    error = "Failed to get UI hierarchy: ${e.message}"
+                )
+                val json = Json { prettyPrint = true }
+                return json.encodeToString(uiHierarchy)
             }
-
-            return root.toString(2)
         } finally {
         }
     }
@@ -342,120 +373,100 @@ object ToolHandler {
         }
     }
 
-    fun getToolDefinitions(provider: ModelProvider): List<Map<String, Any>> {
+    fun getSerializableToolDefinitions(provider: ModelProvider): SerializableToolDefinitions {
         val methods = ToolHandler::class.java.methods
             .filter { it.isAnnotationPresent(Tool::class.java) }
 
         return when (provider) {
             ModelProvider.OPENAI -> {
-                methods.map { method ->
-                    val tool = method.getAnnotation(Tool::class.java)
+                val definitions = methods.mapNotNull { method ->
+                    val tool = method.getAnnotation(Tool::class.java) ?: return@mapNotNull null
 
-                    val parametersMap = if (tool.parameters.isNotEmpty()) {
-                        val properties = tool.parameters.associate { param ->
-                            param.name to mapOf(
-                                "type" to param.type,
-                                "description" to param.description
+                    // Always create a ToolParametersObject, even for tools with no parameters
+                    val toolParameters = ToolParametersObject(
+                        properties = tool.parameters.associate { param ->
+                            param.name to ToolParameter(
+                                type = param.type,
+                                description = param.description
                             )
-                        }
-
-                        val required = tool.parameters
+                        },
+                        required = tool.parameters
                             .filter { it.required }
                             .map { it.name }
+                    )
 
-                        mapOf(
-                            "type" to "object",
-                            "properties" to properties,
-                            "required" to required
+                    ToolDefinition(
+                        function = ToolFunctionDefinition(
+                            name = tool.name,
+                            description = tool.description,
+                            parameters = toolParameters
                         )
-                    } else null
-
-                    mapOf(
-                        "type" to "function",
-                        "function" to mapOf(
-                            "name" to tool.name,
-                            "description" to tool.description
-                        ).let {
-                            if (parametersMap != null)
-                                it + ("parameters" to parametersMap)
-                            else it
-                        }
                     )
                 }
+                SerializableToolDefinitions.OpenAITools(definitions)
             }
 
             ModelProvider.GEMINI -> {
-                // Single tool object with function_declarations array
-                val functionDeclarations = methods.map { method ->
-                    val tool = method.getAnnotation(Tool::class.java)
+                val functionDeclarations = methods.mapNotNull { method ->
+                    val tool = method.getAnnotation(Tool::class.java) ?: return@mapNotNull null
 
-                    // For functions with no parameters, we use a different approach
-                    if (tool.parameters.isEmpty()) {
-                        // Just return name and description for functions with no parameters
-                        mapOf(
-                            "name" to tool.name,
-                            "description" to tool.description
+                    // For Gemini, we can still use null for empty parameters
+                    val toolParameters = if (tool.parameters.isNotEmpty()) {
+                        ToolParametersObject(
+                            properties = tool.parameters.associate { param ->
+                                param.name to ToolParameter(
+                                    type = when (param.type.lowercase(Locale.getDefault())) {
+                                        "integer" -> "string" // Use string for integers
+                                        "boolean" -> "boolean"
+                                        "string" -> "string"
+                                        "double", "float" -> "number"
+                                        else -> "string"
+                                    },
+                                    description = param.description
+                                )
+                            },
+                            required = tool.parameters
+                                .filter { it.required }
+                                .map { it.name }
                         )
-                    } else {
-                        // For functions with parameters, include the parameters object
-                        val properties = mutableMapOf<String, Any>()
-                        val required = mutableListOf<String>()
+                    } else null
 
-                        tool.parameters.forEach { param ->
-                            properties[param.name] = mapOf(
-                                "type" to when (param.type.lowercase(Locale.getDefault())) {
-                                    "integer" -> "string" // Use string for integers
-                                    "boolean" -> "boolean"
-                                    "string" -> "string"
-                                    "double", "float" -> "number"
-                                    else -> "string"
-                                },
-                                "description" to param.description
-                            )
-
-                            if (param.required) {
-                                required.add(param.name)
-                            }
-                        }
-
-                        val result = mutableMapOf(
-                            "name" to tool.name,
-                            "description" to tool.description,
-                            "parameters" to mapOf(
-                                "type" to "object",
-                                "properties" to properties
-                            )
-                        )
-
-                        if (required.isNotEmpty()) {
-                            (result["parameters"] as MutableMap<String, Any>)["required"] = required
-                        }
-
-                        result
-                    }
+                    GeminiFunctionDeclaration(
+                        name = tool.name,
+                        description = tool.description,
+                        parameters = toolParameters
+                    )
                 }
-                listOf(
-                    mapOf(
-                        "function_declarations" to functionDeclarations
+
+                val tools = listOf(
+                    GeminiTool(
+                        functionDeclarations = functionDeclarations
                     )
                 )
+                SerializableToolDefinitions.GeminiTools(tools)
             }
         }
     }
 
     fun callTool(
-        toolCall: ToolCall,
+        toolCall: InternalToolCall,
         context: Context,
         accessibilityService: AccessibilityService?
     ): String {
+        // Check if the agent has been cancelled
+        if (Agent.getInstance()?.isCancelled() == true) {
+            return "Operation cancelled by user"
+        }
+        
         val toolMethod = ToolHandler::class.java.methods
             .firstOrNull {
                 it.isAnnotationPresent(Tool::class.java) &&
-                        it.getAnnotation(Tool::class.java).name == toolCall.name
+                        it.getAnnotation(Tool::class.java)?.name == toolCall.name
             }
             ?: return "Unknown tool call: ${toolCall.name}"
 
         val toolAnnotation = toolMethod.getAnnotation(Tool::class.java)
+            ?: return "Tool annotation not found for: ${toolCall.name}"
 
         OverlayService.getInstance()?.setPerformingAction(true)
 
@@ -463,6 +474,11 @@ object ToolHandler {
         Thread.sleep(100)
 
         return try {
+            // Check again if cancelled after the delay
+            if (Agent.getInstance()?.isCancelled() == true) {
+                return "Operation cancelled by user"
+            }
+            
             if (toolAnnotation.requiresAccessibility) {
                 if (accessibilityService == null) {
                     return "Accessibility service not available."
@@ -481,7 +497,7 @@ object ToolHandler {
                     toolCall.arguments
                 ) as String
             }
-            if (toolAnnotation != null && toolAnnotation.requiresContext) {
+            if (toolAnnotation.requiresContext) {
                 return toolMethod.invoke(ToolHandler, context, toolCall.arguments) as String
             }
             return toolMethod.invoke(ToolHandler, toolCall.arguments) as String
@@ -492,11 +508,11 @@ object ToolHandler {
         }
     }
 
-    fun fromJson(json: JSONObject): ToolCall {
+    fun fromJson(json: JSONObject): InternalToolCall {
         return when {
             json.has("function") -> {
                 val functionObject = json.getJSONObject("function")
-                ToolCall(
+                InternalToolCall(
                     name = functionObject.getString("name"),
                     arguments = JSONObject(functionObject.optString("arguments", "{}"))
                 )
@@ -504,9 +520,9 @@ object ToolHandler {
 
             json.has("functionCall") -> {
                 val functionCall = json.getJSONObject("functionCall")
-                ToolCall(
+                InternalToolCall(
                     name = functionCall.getString("name"),
-                    arguments = functionCall.getJSONObject("args")
+                    arguments = functionCall.optJSONObject("args") ?: JSONObject()
                 )
             }
 

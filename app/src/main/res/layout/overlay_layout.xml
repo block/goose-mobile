@@ -43,10 +43,12 @@
             android:layout_height="wrap_content"
             android:layout_marginEnd="8dp"
             android:text="Cancel"
-            android:textSize="12sp"
+            android:textSize="14sp"
             android:visibility="gone"
             android:background="@android:color/transparent"
-            android:textColor="#F44336" />
+            android:textColor="#F44336"
+            android:padding="8dp"
+            android:textStyle="bold" />
 
         <Button
             android:id="@+id/overlay_button"

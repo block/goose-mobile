@@ -10,6 +10,8 @@ import android.content.Intent
 import android.graphics.Bitmap
 import android.view.accessibility.AccessibilityEvent
 import androidx.core.app.NotificationCompat
+import xyz.block.gosling.features.agent.Agent
+import xyz.block.gosling.features.settings.SettingsManager
 
 class GoslingAccessibilityService : AccessibilityService() {
 

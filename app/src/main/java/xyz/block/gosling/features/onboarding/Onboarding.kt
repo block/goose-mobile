@@ -1,4 +1,4 @@
-package xyz.block.gosling
+package xyz.block.gosling.features.onboarding
 
 import android.content.Intent
 import android.provider.Settings
@@ -31,6 +31,8 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.unit.dp
+import xyz.block.gosling.features.agent.AiModel
+import xyz.block.gosling.features.settings.SettingsManager
 
 enum class OnboardingStep {
     WELCOME,

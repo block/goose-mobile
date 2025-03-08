@@ -2,7 +2,13 @@
 
 # Super Simple Gosling App Test Script
 
-CONTACT="James Gosling"
+# Generate a random contact name
+FIRST_NAMES=("James" "Emma" "Michael" "Olivia" "William" "Sophia" "John" "Isabella" "David" "Charlotte")
+LAST_NAMES=("Smith" "Johnson" "Williams" "Brown" "Jones" "Miller" "Davis" "Garcia" "Rodriguez" "Wilson")
+
+RANDOM_FIRST=${FIRST_NAMES[$RANDOM % ${#FIRST_NAMES[@]}]}
+RANDOM_LAST=${LAST_NAMES[$RANDOM % ${#LAST_NAMES[@]}]}
+CONTACT="$RANDOM_FIRST $RANDOM_LAST"
 
 # Default message if none provided
 MESSAGE=${1:-"Add contact named $CONTACT"}

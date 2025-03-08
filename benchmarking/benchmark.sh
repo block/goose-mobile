@@ -8,6 +8,46 @@ echo "Gosling Benchmarking Tool"
 echo "======================================"
 echo
 
+# Function to return to Gosling app screen
+return_to_gosling() {
+    echo "Returning to Gosling app..."
+    # Press home button
+    adb shell input keyevent KEYCODE_HOME
+    sleep 1
+    
+    # Try different possible package names for the Gosling app
+    echo "Attempting to launch Gosling app..."
+    
+    # First try with com.block.gosling
+    if adb shell pm list packages | grep -q "com.block.gosling"; then
+        echo "Found package: com.block.gosling"
+        adb shell monkey -p com.block.gosling -c android.intent.category.LAUNCHER 1
+    # Try with com.block.goose
+    elif adb shell pm list packages | grep -q "com.block.goose"; then
+        echo "Found package: com.block.goose"
+        adb shell monkey -p com.block.goose -c android.intent.category.LAUNCHER 1
+    # Try with com.gosling
+    elif adb shell pm list packages | grep -q "com.gosling"; then
+        echo "Found package: com.gosling"
+        adb shell monkey -p com.gosling -c android.intent.category.LAUNCHER 1
+    # Try with gosling
+    elif adb shell pm list packages | grep -q "gosling"; then
+        PACKAGE=$(adb shell pm list packages | grep "gosling" | head -1 | sed 's/package://')
+        echo "Found package: $PACKAGE"
+        adb shell monkey -p $PACKAGE -c android.intent.category.LAUNCHER 1
+    # If we can't find it, try to list all packages and look for likely candidates
+    else
+        echo "Could not find Gosling package. Listing all packages:"
+        adb shell pm list packages
+        echo "WARNING: Could not automatically launch Gosling app. Please launch it manually."
+        # Give user time to manually launch the app
+        sleep 5
+    fi
+    
+    # Wait for app to launch
+    sleep 2
+}
+
 # Create results directory if it doesn't exist
 RESULTS_DIR="benchmark_results"
 mkdir -p "$RESULTS_DIR"
@@ -56,6 +96,9 @@ for script in $SCENARIO_SCRIPTS; do
     
     # Make sure the script is executable
     chmod +x "$script"
+    
+    # Return to Gosling app before running the scenario
+    return_to_gosling
     
     # Run the script and capture output
     OUTPUT=$(bash "$script" 2>&1)

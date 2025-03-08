@@ -317,6 +317,7 @@ class Agent : Service() {
                                     role = "tool",
                                     toolCallId = result["tool_call_id"].toString(),
                                     content = result["output"].toString(),
+                                    name = result["name"].toString()
                                 )
                             )
                             addAnnotation(toolAnnotation)
@@ -419,10 +420,28 @@ class Agent : Service() {
         }
     }
 
+    private fun filterUiHierarchyMessages(messages: List<Message>): List<Message> {
+        val isUiHierarchyCall = { message: Message ->
+            message.role == "tool" && message.name == "getUiHierarchy"
+        }
+
+        val lastUiHierarchyIndex = messages.indexOfLast(isUiHierarchyCall)
+
+        return messages.mapIndexed { index, message ->
+            if (isUiHierarchyCall(message) && index < lastUiHierarchyIndex) {
+                message.copy(content = "{UI hierarchy output truncated}")
+            } else {
+                message
+            }
+        }
+    }
+
     private fun callLlm(messages: List<Message>, context: Context): JSONObject {
         val settings = SettingsManager(context)
         val model = AiModel.fromIdentifier(settings.llmModel)
         val apiKey = settings.apiKey
+
+        val processedMessages = filterUiHierarchyMessages(messages)
 
         val url = when (model.provider) {
             ModelProvider.OPENAI -> URL("https://api.openai.com/v1/chat/completions")
@@ -457,7 +476,7 @@ class Agent : Service() {
 
                     val openAIRequest = OpenAIRequest(
                         model = model.identifier,
-                        messages = messages,
+                        messages = processedMessages,
                         temperature = if (model.identifier != "o3-mini") 0.1 else null,
                         tools = toolDefinitions
                     )
@@ -466,18 +485,15 @@ class Agent : Service() {
                 }
 
                 ModelProvider.GEMINI -> {
-                    // Combine all messages into a single text for Gemini
-                    val combinedText = messages.joinToString("\n") {
+                    val combinedText = processedMessages.joinToString("\n") {
                         "${it.role}: ${it.content}"
                     }
 
-                    // Get serializable tool definitions directly
                     val tools = when (val result = getSerializableToolDefinitions(model.provider)) {
                         is SerializableToolDefinitions.GeminiTools -> result.tools
-                        else -> emptyList() // This should never happen for Gemini
+                        else -> emptyList()
                     }
 
-                    // Create the Gemini request
                     val geminiRequest = GeminiRequest(
                         contents = GeminiContent(
                             parts = listOf(GeminiPart(text = combinedText))
@@ -499,7 +515,6 @@ class Agent : Service() {
 
             val response = connection.inputStream.bufferedReader().use { it.readText() }
 
-            // Parse the response using Kotlinx Serialization for type safety
             when (model.provider) {
                 ModelProvider.OPENAI -> {
                     json.decodeFromString<OpenAIResponse>(response)
@@ -510,7 +525,6 @@ class Agent : Service() {
                 }
             }
 
-            // Return the original JSONObject for backward compatibility
             JSONObject(response)
         } catch (e: Exception) {
             val message = when {
@@ -551,7 +565,8 @@ class Agent : Service() {
                 annotations.add(emptyMap())
                 return@mapIndexed mapOf(
                     "tool_call_id" to "cancelled_${System.currentTimeMillis()}_$index",
-                    "output" to "Operation cancelled by user"
+                    "output" to "Operation cancelled by user",
+                    "name" to "cancelled"
                 )
             }
 
@@ -561,7 +576,8 @@ class Agent : Service() {
             annotations.add(mapOf("duration" to (System.currentTimeMillis() - startTime) / 1000.0))
             mapOf(
                 "tool_call_id" to toolCallId,
-                "output" to result
+                "output" to result,
+                "name" to toolCall.name
             )
         }
         return Pair(results, annotations)

@@ -77,4 +77,4 @@ if [ "$CONTACT_FOUND" = false ]; then
     exit 1
 fi
 
-echo "Test completed successfully!"
+echo "SUCCESS. time: $TIME_DIFF"

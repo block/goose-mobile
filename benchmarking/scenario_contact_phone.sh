@@ -2,10 +2,10 @@
 
 # Super Simple Gosling App Test Script
 
-CONTACT="James Gosling"
+CONTACT="James Gaslight"
 
 # Default message if none provided
-MESSAGE=${1:-"Add contact named $CONTACT"}
+MESSAGE=${1:-"Add contact named $CONTACT with phone number 04666555"}
 
 # Function to escape spaces in a string
 escape_spaces() {

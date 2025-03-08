@@ -2,8 +2,10 @@
 
 # Super Simple Gosling App Test Script
 
+CONTACT="James Gosling"
+
 # Default message if none provided
-MESSAGE=${1:-"Add contact named James Gosling"}
+MESSAGE=${1:-"Add contact named $CONTACT"}
 
 # Function to escape spaces in a string
 escape_spaces() {
@@ -43,36 +45,35 @@ echo "Clicking submit button..."
 START_TIME=$(date +%s.%N)
 adb shell input tap $SUBMIT_X $SUBMIT_Y
 
-echo "Waiting for contact 'James Gosling' to appear in contacts database..."
+echo "Waiting for contact '$CONTACT' to appear in contacts database..."
 CONTACT_FOUND=false
 POLL_COUNT=0
 
 # Poll for the contact every second until found or timeout
 while [ "$CONTACT_FOUND" = false ] && [ $POLL_COUNT -lt 60 ]; do
     POLL_COUNT=$((POLL_COUNT+1))
-    
+
     # Query the contacts database
     CONTACT_QUERY=$(adb shell content query --uri content://com.android.contacts/data)
-    
-    # Check if "James Gosling" is in the results
-    if echo "$CONTACT_QUERY" | grep -q "James Gosling"; then
+
+    if echo "$CONTACT_QUERY" | grep -q "$CONTACT"; then
         CONTACT_FOUND=true
         END_TIME=$(date +%s.%N)
-        
+
         # Calculate time difference
         TIME_DIFF=$(echo "$END_TIME - $START_TIME" | bc)
-        
-        echo "SUCCESS: Contact 'James Gosling' found after $TIME_DIFF seconds!"
+
+        echo "SUCCESS: Contact '$CONTACT' found after $TIME_DIFF seconds!"
         echo "Total polls: $POLL_COUNT"
         break
     else
-        echo "Poll $POLL_COUNT: Contact not found yet. Waiting 1 second..."
+        #echo "Poll $POLL_COUNT: Contact not found yet. Waiting 1 second..."
         sleep 1
     fi
 done
 
 if [ "$CONTACT_FOUND" = false ]; then
-    echo "TIMEOUT: Contact 'James Gosling' was not found after 60 seconds."
+    echo "TIMEOUT: Contact '$CONTACT' was not found after 60 seconds."
     exit 1
 fi
 

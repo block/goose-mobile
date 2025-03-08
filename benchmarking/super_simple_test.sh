@@ -38,8 +38,42 @@ echo "Typing text: $MESSAGE"
 adb shell input text "$ESCAPED_MESSAGE"
 sleep 1
 
-# Click submit
+# Click submit and record start time
 echo "Clicking submit button..."
+START_TIME=$(date +%s.%N)
 adb shell input tap $SUBMIT_X $SUBMIT_Y
 
-echo "Test completed!"
+echo "Waiting for contact 'James Gosling' to appear in contacts database..."
+CONTACT_FOUND=false
+POLL_COUNT=0
+
+# Poll for the contact every second until found or timeout
+while [ "$CONTACT_FOUND" = false ] && [ $POLL_COUNT -lt 60 ]; do
+    POLL_COUNT=$((POLL_COUNT+1))
+    
+    # Query the contacts database
+    CONTACT_QUERY=$(adb shell content query --uri content://com.android.contacts/data)
+    
+    # Check if "James Gosling" is in the results
+    if echo "$CONTACT_QUERY" | grep -q "James Gosling"; then
+        CONTACT_FOUND=true
+        END_TIME=$(date +%s.%N)
+        
+        # Calculate time difference
+        TIME_DIFF=$(echo "$END_TIME - $START_TIME" | bc)
+        
+        echo "SUCCESS: Contact 'James Gosling' found after $TIME_DIFF seconds!"
+        echo "Total polls: $POLL_COUNT"
+        break
+    else
+        echo "Poll $POLL_COUNT: Contact not found yet. Waiting 1 second..."
+        sleep 1
+    fi
+done
+
+if [ "$CONTACT_FOUND" = false ]; then
+    echo "TIMEOUT: Contact 'James Gosling' was not found after 60 seconds."
+    exit 1
+fi
+
+echo "Test completed successfully!"

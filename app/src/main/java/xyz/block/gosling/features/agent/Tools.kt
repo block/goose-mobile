@@ -81,16 +81,23 @@ object ToolHandler {
         return gestureResult
     }
 
-    private fun serializeNodeHierarchy(node: AccessibilityNodeInfo): NodeInfo {
+    private fun serializeNodeHierarchy(
+        node: AccessibilityNodeInfo,
+        parentPackageName: String? = null
+    ): NodeInfo {
         try {
             val bounds = Rect().also { node.getBoundsInScreen(it) }
 
+            val useable = (node.isClickable || node.isFocusable || node.isScrollable
+                    || node.isEditable) && node.isEnabled
+
             return NodeInfo(
                 className = node.className?.toString(),
-                packageName = node.packageName?.toString(),
+                packageName = node.packageName?.toString()
+                    .takeIf { parentPackageName != node.packageName },
                 text = node.text?.toString()?.takeIf { it.isNotEmpty() },
                 contentDesc = node.contentDescription?.toString()?.takeIf { it.isNotEmpty() },
-                resourceId = node.viewIdResourceName?.takeIf { it.isNotEmpty() },
+                resourceId = node.viewIdResourceName?.takeIf { it.isNotEmpty() && useable },
                 bounds = NodeBounds(
                     left = bounds.left,
                     top = bounds.top,
@@ -106,7 +113,7 @@ object ToolHandler {
                     (0 until node.childCount).mapNotNull { i ->
                         node.getChild(i)?.let { childNode ->
                             try {
-                                serializeNodeHierarchy(childNode)
+                                serializeNodeHierarchy(childNode, node.packageName?.toString())
                             } catch (e: Exception) {
                                 NodeInfo(
                                     error = "Failed to serialize child node: ${e.message}",
@@ -146,12 +153,12 @@ object ToolHandler {
                 accessibilityService.rootInActiveWindow ?: return json.encodeToString(
                     UiHierarchy(error = "No active window found")
                 )
-
-            val nodeInfo = serializeNodeHierarchy(activeWindow)
+            val packageName = activeWindow.packageName?.toString()
+            val nodeInfo = serializeNodeHierarchy(activeWindow, packageName)
 
             json.encodeToString(
                 UiHierarchy(
-                    packageName = activeWindow.packageName?.toString(),
+                    packageName = packageName,
                     className = activeWindow.className?.toString(),
                     nodes = nodeInfo
                 )

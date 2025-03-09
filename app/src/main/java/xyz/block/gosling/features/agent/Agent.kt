@@ -600,6 +600,15 @@ class Agent : Service() {
             annotation.annotations["duration"] ?: 0.0
         }
 
+// Before:
+//        "annotations": {
+//            "total_input_tokens": 35132.0,
+//            "total_output_tokens": 189.0,
+//            "total_wall_time": 11.671,
+//            "total_annotated_time": 11.658000000000001,
+//            "time_coverage_percentage": 99.88861280095966
+//        }
+
         return Message(
             role = "stats",
             content = "Conversation Statistics - ${

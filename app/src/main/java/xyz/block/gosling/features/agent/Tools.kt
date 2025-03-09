@@ -291,55 +291,58 @@ object ToolHandler {
     }
 
     @Tool(
-        name = "enter_text",
-        description = "Enter text into the current text field. Text will automatically submit unless you end on ---",
+        name = "enterText",
+        description = "Enter text into the a text field. Make sure the field you want the " +
+                "text to enter into is focused. Click it if needed, don't assume.",
         parameters = [
             ParameterDef(
                 name = "text",
                 type = "string",
                 description = "Text to enter"
+            ),
+            ParameterDef(
+                name = "submit",
+                type = "boolean",
+                description = "Whether to submit the text after entering it. " +
+                        "This doesn't always work. If there is a button to click directly, use that",
+                required = false
             )
         ],
         requiresAccessibility = true
     )
     fun enterText(accessibilityService: AccessibilityService, args: JSONObject): String {
-        try {
-            val text = args.getString("text")
+        val text = args.getString("text")
 
-            val (textToEnter, shouldSubmit) = if (text.endsWith("---")) {
-                Pair(text.substring(0, text.length - 3), false)
-            } else {
-                Pair(text, true)
-            }
+        val targetNode = if (args.has("id")) {
+            accessibilityService.rootInActiveWindow?.findAccessibilityNodeInfosByViewId(
+                args.getString(
+                    "id"
+                )
+            )?.firstOrNull()
+        } else {
+            accessibilityService.rootInActiveWindow?.findFocus(AccessibilityNodeInfo.FOCUS_INPUT)
+        } ?: return "Error: No targetable input field found"
 
-            val rootNode = accessibilityService.rootInActiveWindow
-                ?: return "Error: Unable to access active window"
+        if (!targetNode.isEditable) {
+            return "Error: The targeted element is not an editable text field"
+        }
 
-            val focusedNode = rootNode.findFocus(AccessibilityNodeInfo.FOCUS_INPUT)
-                ?: return "Error: No input field is currently focused"
+        val arguments = Bundle()
+        arguments.putCharSequence(
+            AccessibilityNodeInfo.ACTION_ARGUMENT_SET_TEXT_CHARSEQUENCE,
+            text
+        )
+        val setTextResult =
+            targetNode.performAction(AccessibilityNodeInfo.ACTION_SET_TEXT, arguments)
 
-            if (!focusedNode.isEditable) {
-                return "Error: The focused element is not an editable text field"
-            }
+        if (args.optBoolean("submit", false) && setTextResult) {
+            Runtime.getRuntime().exec(arrayOf("input", "keyevent", "KEYCODE_ENTER"))
+        }
 
-            val arguments = Bundle()
-            arguments.putCharSequence(
-                AccessibilityNodeInfo.ACTION_ARGUMENT_SET_TEXT_CHARSEQUENCE,
-                textToEnter
-            )
-            val setTextResult =
-                focusedNode.performAction(AccessibilityNodeInfo.ACTION_SET_TEXT, arguments)
-
-            if (shouldSubmit && setTextResult) {
-                Runtime.getRuntime().exec(arrayOf("input", "keyevent", "KEYCODE_ENTER"))
-            }
-
-            return if (setTextResult) {
-                "Entered text: \"$textToEnter\"${if (shouldSubmit) " and submitted" else ""}"
-            } else {
-                "Failed to enter text"
-            }
-        } finally {
+        return if (setTextResult) {
+            "Entered text: \"$text\""
+        } else {
+            "Failed to enter text"
         }
     }
 

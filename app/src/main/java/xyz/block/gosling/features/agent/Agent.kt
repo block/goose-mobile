@@ -26,6 +26,8 @@ import xyz.block.gosling.formatForLLM
 import java.io.File
 import java.net.HttpURLConnection
 import java.net.URL
+import java.time.LocalDateTime
+import java.time.format.DateTimeFormatter
 import kotlin.math.pow
 
 class AgentException(message: String) : Exception(message)
@@ -600,7 +602,9 @@ class Agent : Service() {
 
         return Message(
             role = "stats",
-            content = "Conversation Statistics",
+            content = "Conversation Statistics - ${
+                LocalDateTime.now().format(DateTimeFormatter.ISO_LOCAL_DATE_TIME)
+            }",
             annotations = mapOf(
                 "total_input_tokens" to totalInputTokens,
                 "total_output_tokens" to totalOutputTokens,

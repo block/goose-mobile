@@ -52,6 +52,35 @@ return_to_gosling() {
     sleep 2
 }
 
+# Function to collect diagnostic data after each test
+collect_diagnostics() {
+    local test_dir="$1"
+    echo "Collecting diagnostic data..."
+    
+    # Create test directory if it doesn't exist
+    mkdir -p "$test_dir"
+    
+    # Pull session dumps
+    echo "Pulling session dumps..."
+    DUMPS_DIR="${test_dir}/session_dumps"
+    mkdir -p "$DUMPS_DIR"
+    adb pull /storage/emulated/0/Android/data/xyz.block.gosling/files/session_dumps/ "${DUMPS_DIR}/" > /dev/null 2>&1
+    
+    # Take screenshot
+    echo "Taking screenshot..."
+    adb shell screencap -p /sdcard/screen.png
+    adb pull /sdcard/screen.png "${test_dir}/screenshot.png" > /dev/null 2>&1
+    adb shell rm /sdcard/screen.png
+    
+    # Dump UI hierarchy
+    echo "Dumping UI hierarchy..."
+    adb shell uiautomator dump
+    adb pull /sdcard/window_dump.xml "${test_dir}/window_dump.xml" > /dev/null 2>&1
+    adb shell rm /sdcard/window_dump.xml
+    
+    echo "Diagnostic data collection complete"
+}
+
 # Create results directory if it doesn't exist
 RESULTS_DIR="benchmark_results"
 mkdir -p "$RESULTS_DIR"
@@ -98,6 +127,10 @@ for script in $SCENARIO_SCRIPTS; do
     echo "Running scenario: $SCENARIO_NAME"
     echo "======================================"
     
+    # Create test-specific directory for diagnostics
+    TEST_DIR="$RESULTS_DIR/${TIMESTAMP}_${SCENARIO_NAME}"
+    mkdir -p "$TEST_DIR"
+    
     # Make sure the script is executable
     chmod +x "$script"
     
@@ -107,4 +140,52 @@ for script in $SCENARIO_SCRIPTS; do
     # Run the script and capture output
     OUTPUT=$(bash "$script" 2>&1)
     
+    # Save the script output to the test directory
+    echo "$OUTPUT" > "$TEST_DIR/script_output.txt"
+    
+    # Check if the script was successful
+    if echo "$OUTPUT" | grep -q "BENCHMARK_SUCCESS"; then
+        STATUS="SUCCESS"
+        SUCCESSFUL=$((SUCCESSFUL+1))
+        
+        # Extract the time measurement if available
+        if echo "$OUTPUT" | grep -q "BENCHMARK_TIME:"; then
+            TIME=$(echo "$OUTPUT" | grep "BENCHMARK_TIME:" | sed 's/.*BENCHMARK_TIME: \([0-9.]*\).*/\1/')
+        else
+            TIME="N/A"
+        fi
+    else
+        STATUS="FAILURE"
+        TIME="N/A"
+    fi
+    
+    # Record results
+    echo "" >> "$RESULTS_FILE"
+    echo "Scenario: $SCENARIO_NAME" >> "$RESULTS_FILE"
+    echo "Status: $STATUS" >> "$RESULTS_FILE"
+    echo "Time: $TIME seconds" >> "$RESULTS_FILE"
+    echo "--------------------" >> "$RESULTS_FILE"
+    
+    # Add to CSV
+    echo "$SCENARIO_NAME,$STATUS,$TIME" >> "$CSV_FILE"
+    
+    # Collect diagnostics after test completes
+    collect_diagnostics "$TEST_DIR"
+    
+    echo "Test completed with status: $STATUS"
+    echo "------------------------------------"
+    echo
 done
+
+# Print summary
+echo "======================================"
+echo "Benchmark Summary"
+echo "======================================"
+echo "Total scenarios: $TOTAL"
+echo "Successful: $SUCCESSFUL"
+echo "Failed: $((TOTAL-SUCCESSFUL))"
+echo "Success rate: $(( (SUCCESSFUL*100) / TOTAL ))%"
+echo "Results saved to: $RESULTS_FILE"
+echo "CSV data saved to: $CSV_FILE"
+echo "Diagnostic data saved to: $RESULTS_DIR"
+echo "======================================"

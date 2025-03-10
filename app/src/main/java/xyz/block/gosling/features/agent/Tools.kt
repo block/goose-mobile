@@ -104,7 +104,6 @@ object ToolHandler {
     private fun buildCompactHierarchy(node: AccessibilityNodeInfo, depth: Int = 0): String {
         try {
             val bounds = Rect().also { node.getBoundsInScreen(it) }
-            val indent = "  ".repeat(depth)
             val attributes = mutableListOf<String>()
             
             // Add key attributes in a compact format
@@ -127,10 +126,21 @@ object ToolHandler {
             if (node.isEditable) attributes.add("editable")
             if (!node.isEnabled) attributes.add("disabled")
             
+            // Check if this is a "meaningless" container that should be skipped
+            val hasNoAttributes = attributes.isEmpty()
+            val hasSingleChild = node.childCount == 1
+            
+            // Skip this node if it has no attributes and only one child
+            if (hasNoAttributes && hasSingleChild && node.getChild(0) != null) {
+                // Skip this level and directly return the child's hierarchy with the same depth
+                return buildCompactHierarchy(node.getChild(0), depth)
+            }
+            
             // Format bounds compactly
             val boundsStr = "[${bounds.left},${bounds.top},${bounds.right},${bounds.bottom}]"
             
             // Build the node line
+            val indent = "  ".repeat(depth)
             val nodeType = node.className?.toString()?.substringAfterLast('.') ?: "View"
             val attrStr = if (attributes.isNotEmpty()) " " + attributes.joinToString(" ") else ""
             val nodeLine = "$indent$nodeType$attrStr $boundsStr"

@@ -1,8 +1,4 @@
 #!/bin/bash
-
-# Super Simple Gosling App Test Script
-
-# Source common functions
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 source "$SCRIPT_DIR/benchmark_common.sh"
 
@@ -14,11 +10,7 @@ RANDOM_FIRST=${FIRST_NAMES[$RANDOM % ${#FIRST_NAMES[@]}]}
 RANDOM_LAST=${LAST_NAMES[$RANDOM % ${#LAST_NAMES[@]}]}
 CONTACT="$RANDOM_FIRST $RANDOM_LAST"
 
-# Default message if none provided
 MESSAGE=${1:-"Add contact named $CONTACT"}
-
-# Get UI hierarchy
-
 
 # Input text and click submit
 input_text "$MESSAGE"

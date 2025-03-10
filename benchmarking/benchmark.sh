@@ -125,3 +125,13 @@ for script in $SCENARIO_SCRIPTS; do
     fi
     
 done
+
+
+if command -v goose &> /dev/null; then
+    echo "Running final analysis with goose..."
+    goose run --text "look in for all analysis.txt files in benchmark_results, and summarise them up in a neat result.md file here with pass/fail/time".
+else
+    echo "PLEASE INSTALL GOOSE FOR MORE ANALYSIS OF RESULTS"
+fi
+
+

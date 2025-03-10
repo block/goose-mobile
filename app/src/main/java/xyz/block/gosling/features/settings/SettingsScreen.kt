@@ -44,16 +44,17 @@ import xyz.block.gosling.features.agent.AiModel
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun SettingsScreen(
-    settingsManager: SettingsManager,
+    settingsStore: SettingsStore,
     onBack: () -> Unit,
     openAccessibilitySettings: () -> Unit,
     isAccessibilityEnabled: Boolean
 ) {
     val context = LocalContext.current
     var isAssistantEnabled by remember { mutableStateOf(false) }
-    var llmModel by remember { mutableStateOf(settingsManager.llmModel) }
-    var apiKey by remember { mutableStateOf(settingsManager.apiKey) }
-    var shouldProcessNotifications by remember { mutableStateOf(settingsManager.shouldProcessNotifications) }
+    var llmModel by remember { mutableStateOf(settingsStore.llmModel) }
+    var currentModel by remember { mutableStateOf(AiModel.fromIdentifier(llmModel)) }
+    var apiKey by remember { mutableStateOf(settingsStore.getApiKey(currentModel.provider)) }
+    var shouldProcessNotifications by remember { mutableStateOf(settingsStore.shouldProcessNotifications) }
     var showResetDialog by remember { mutableStateOf(false) }
     var expanded by remember { mutableStateOf(false) }
 
@@ -102,6 +103,12 @@ fun SettingsScreen(
         onDispose {
             activity?.application?.unregisterActivityLifecycleCallbacks(lifecycleObserver)
         }
+    }
+
+    // Update API key when model changes
+    LaunchedEffect(llmModel) {
+        currentModel = AiModel.fromIdentifier(llmModel)
+        apiKey = settingsStore.getApiKey(currentModel.provider)
     }
 
     val models = AiModel.AVAILABLE_MODELS.map {
@@ -164,7 +171,9 @@ fun SettingsScreen(
                                         text = { Text(displayName) },
                                         onClick = {
                                             llmModel = modelId
-                                            settingsManager.llmModel = modelId
+                                            settingsStore.llmModel = modelId
+                                            currentModel = AiModel.fromIdentifier(modelId)
+                                            apiKey = settingsStore.getApiKey(currentModel.provider)
                                             expanded = false
                                         }
                                     )
@@ -183,7 +192,7 @@ fun SettingsScreen(
                             value = apiKey,
                             onValueChange = {
                                 apiKey = it
-                                settingsManager.apiKey = it
+                                settingsStore.setApiKey(currentModel.provider, it)
                             },
                             modifier = Modifier.fillMaxWidth(),
                             visualTransformation = PasswordVisualTransformation(),
@@ -220,7 +229,7 @@ fun SettingsScreen(
                                 checked = shouldProcessNotifications,
                                 onCheckedChange = {
                                     shouldProcessNotifications = it
-                                    settingsManager.shouldProcessNotifications = it
+                                    settingsStore.shouldProcessNotifications = it
                                 }
                             )
                         }
@@ -268,7 +277,7 @@ fun SettingsScreen(
             confirmButton = {
                 TextButton(
                     onClick = {
-                        settingsManager.isFirstTime = true
+                        settingsStore.isFirstTime = true
                         showResetDialog = false
                     }
                 ) {

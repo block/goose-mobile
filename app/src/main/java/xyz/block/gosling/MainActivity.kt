@@ -38,12 +38,10 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
-import xyz.block.gosling.features.agent.Agent
 import xyz.block.gosling.features.agent.AgentServiceManager
-import xyz.block.gosling.features.agent.AgentStatus
 import xyz.block.gosling.features.onboarding.Onboarding
-import xyz.block.gosling.features.settings.SettingsManager
 import xyz.block.gosling.features.settings.SettingsScreen
+import xyz.block.gosling.features.settings.SettingsStore
 import xyz.block.gosling.ui.theme.GoslingTheme
 
 class MainActivity : ComponentActivity() {
@@ -53,7 +51,7 @@ class MainActivity : ComponentActivity() {
         private const val MESSAGES_KEY = "chat_messages"
     }
 
-    private lateinit var settingsManager: SettingsManager
+    private lateinit var settingsStore: SettingsStore
     private lateinit var accessibilitySettingsLauncher: ActivityResultLauncher<Intent>
     private var isAccessibilityEnabled by mutableStateOf(false)
     private val sharedPreferences by lazy { getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE) }
@@ -87,8 +85,8 @@ class MainActivity : ComponentActivity() {
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
-        settingsManager = SettingsManager(this)
-        isAccessibilityEnabled = settingsManager.isAccessibilityEnabled
+        settingsStore = SettingsStore(this)
+        isAccessibilityEnabled = settingsStore.isAccessibilityEnabled
         agentServiceManager = AgentServiceManager(this)
 
         // Check for overlay permission
@@ -105,7 +103,7 @@ class MainActivity : ComponentActivity() {
                 // Agent is now started as a foreground service and has a status listener set up
                 Log.d("MainActivity", "Agent service started successfully")
             }
-            
+
             startService(Intent(this, OverlayService::class.java))
         }
 
@@ -115,7 +113,7 @@ class MainActivity : ComponentActivity() {
         ) { _ ->
             // Check accessibility permission when returning from settings
             val isEnabled = checkAccessibilityPermission(this)
-            settingsManager.isAccessibilityEnabled = isEnabled
+            settingsStore.isAccessibilityEnabled = isEnabled
             isAccessibilityEnabled = isEnabled
             Log.d("Gosling", "MainActivity: Updated accessibility state after settings: $isEnabled")
         }
@@ -126,7 +124,7 @@ class MainActivity : ComponentActivity() {
                 Scaffold(modifier = Modifier.fillMaxSize()) { innerPadding ->
                     MainContent(
                         modifier = Modifier.padding(innerPadding),
-                        settingsManager = settingsManager,
+                        settingsStore = settingsStore,
                         openAccessibilitySettings = { openAccessibilitySettings() },
                         isAccessibilityEnabled = isAccessibilityEnabled
                     )
@@ -151,7 +149,7 @@ class MainActivity : ComponentActivity() {
 
         // Check and save accessibility permission state
         val isEnabled = checkAccessibilityPermission(this)
-        settingsManager.isAccessibilityEnabled = isEnabled
+        settingsStore.isAccessibilityEnabled = isEnabled
         isAccessibilityEnabled = isEnabled
         Log.d("Gosling", "MainActivity: Updated accessibility state on resume: $isEnabled")
 
@@ -161,7 +159,7 @@ class MainActivity : ComponentActivity() {
                 // Agent is now started as a foreground service and has a status listener set up
                 Log.d("MainActivity", "Agent service started successfully")
             }
-            
+
             startService(Intent(this, OverlayService::class.java))
         }
     }
@@ -187,11 +185,11 @@ class MainActivity : ComponentActivity() {
 @Composable
 fun MainContent(
     modifier: Modifier = Modifier,
-    settingsManager: SettingsManager,
+    settingsStore: SettingsStore,
     openAccessibilitySettings: () -> Unit,
     isAccessibilityEnabled: Boolean
 ) {
-    var showSetup by remember { mutableStateOf(settingsManager.isFirstTime) }
+    var showSetup by remember { mutableStateOf(settingsStore.isFirstTime) }
     var showSettings by remember { mutableStateOf(false) }
     val context = LocalContext.current
     val activity = context as MainActivity
@@ -210,13 +208,13 @@ fun MainContent(
         Onboarding(
             onSetupComplete = { showSetup = false },
             modifier = modifier,
-            settingsManager = settingsManager,
+            settingsStore = settingsStore,
             openAccessibilitySettings = openAccessibilitySettings,
             isAccessibilityEnabled = isAccessibilityEnabled
         )
     } else if (showSettings) {
         SettingsScreen(
-            settingsManager = settingsManager,
+            settingsStore = settingsStore,
             onBack = { showSettings = false },
             openAccessibilitySettings = openAccessibilitySettings,
             isAccessibilityEnabled = isAccessibilityEnabled

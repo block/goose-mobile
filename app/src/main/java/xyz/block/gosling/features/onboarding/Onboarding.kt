@@ -32,7 +32,7 @@ import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.unit.dp
 import xyz.block.gosling.features.agent.AiModel
-import xyz.block.gosling.features.settings.SettingsManager
+import xyz.block.gosling.features.settings.SettingsStore
 
 enum class OnboardingStep {
     WELCOME,
@@ -43,13 +43,20 @@ enum class OnboardingStep {
 fun Onboarding(
     onSetupComplete: () -> Unit,
     modifier: Modifier = Modifier,
-    settingsManager: SettingsManager,
+    settingsStore: SettingsStore,
     openAccessibilitySettings: () -> Unit,
     isAccessibilityEnabled: Boolean
 ) {
     var currentStep by remember { mutableStateOf(OnboardingStep.WELCOME) }
-    var llmModel by remember { mutableStateOf(settingsManager.llmModel) }
-    var apiKey by remember { mutableStateOf(settingsManager.apiKey) }
+    var llmModel by remember { mutableStateOf(settingsStore.llmModel) }
+    var currentModel by remember { mutableStateOf(AiModel.fromIdentifier(llmModel)) }
+    var apiKey by remember { mutableStateOf(settingsStore.getApiKey(currentModel.provider)) }
+
+    // Update API key when model changes
+    LaunchedEffect(llmModel) {
+        currentModel = AiModel.fromIdentifier(llmModel)
+        apiKey = settingsStore.getApiKey(currentModel.provider)
+    }
 
     Column(
         modifier = modifier
@@ -81,13 +88,17 @@ fun Onboarding(
             OnboardingStep.LLM_CONFIG -> {
                 LLMConfigStep(
                     llmModel = llmModel,
-                    onLLMModelChange = { llmModel = it },
+                    onLLMModelChange = { 
+                        llmModel = it
+                        currentModel = AiModel.fromIdentifier(it)
+                        apiKey = settingsStore.getApiKey(currentModel.provider)
+                    },
                     apiKey = apiKey,
                     onApiKeyChange = { apiKey = it },
                     onComplete = {
-                        settingsManager.llmModel = llmModel
-                        settingsManager.apiKey = apiKey
-                        settingsManager.isFirstTime = false
+                        settingsStore.llmModel = llmModel
+                        settingsStore.setApiKey(currentModel.provider, apiKey)
+                        settingsStore.isFirstTime = false
                         onSetupComplete()
                     }
                 )

@@ -21,7 +21,7 @@ import xyz.block.gosling.GoslingAccessibilityService
 import xyz.block.gosling.IntentScanner
 import xyz.block.gosling.features.agent.ToolHandler.callTool
 import xyz.block.gosling.features.agent.ToolHandler.getSerializableToolDefinitions
-import xyz.block.gosling.features.settings.SettingsManager
+import xyz.block.gosling.features.settings.SettingsStore
 import xyz.block.gosling.formatForLLM
 import java.io.File
 import java.net.HttpURLConnection
@@ -439,9 +439,9 @@ class Agent : Service() {
     }
 
     private fun callLlm(messages: List<Message>, context: Context): JSONObject {
-        val settings = SettingsManager(context)
+        val settings = SettingsStore(context)
         val model = AiModel.fromIdentifier(settings.llmModel)
-        val apiKey = settings.apiKey
+        val apiKey = settings.getApiKey(model.provider)
 
         val processedMessages = filterUiHierarchyMessages(messages)
 

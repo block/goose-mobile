@@ -11,6 +11,7 @@ activityCompose = "1.10.0"
 composeBom = "2024.04.01"
 lifecycleRuntimeKtxVersion = "2.5.1"
 savedstate = "1.2.0"
+securityCrypto = "1.1.0-alpha06"
 
 [libraries]
 androidx-core-ktx = { group = "androidx.core", name = "core-ktx", version.ref = "coreKtx" }
@@ -18,6 +19,7 @@ androidx-core = { group = "androidx.core", name = "core", version.ref = "coreKtx
 androidx-lifecycle-runtime-ktx-v251 = { module = "androidx.lifecycle:lifecycle-runtime-ktx", version.ref = "lifecycleRuntimeKtxVersion" }
 androidx-material-icons-extended = { module = "androidx.compose.material:material-icons-extended" }
 androidx-savedstate = { module = "androidx.savedstate:savedstate", version.ref = "savedstate" }
+androidx-security-crypto = { module = "androidx.security:security-crypto", version.ref = "securityCrypto" }
 junit = { group = "junit", name = "junit", version.ref = "junit" }
 androidx-junit = { group = "androidx.test.ext", name = "junit", version.ref = "junitVersion" }
 androidx-espresso-core = { group = "androidx.test.espresso", name = "espresso-core", version.ref = "espressoCore" }

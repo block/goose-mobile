@@ -11,7 +11,7 @@ import android.graphics.Bitmap
 import android.view.accessibility.AccessibilityEvent
 import androidx.core.app.NotificationCompat
 import xyz.block.gosling.features.agent.Agent
-import xyz.block.gosling.features.settings.SettingsManager
+import xyz.block.gosling.features.settings.SettingsStore
 
 class GoslingAccessibilityService : AccessibilityService() {
 
@@ -75,7 +75,7 @@ class GoslingAccessibilityService : AccessibilityService() {
 
     override fun onAccessibilityEvent(event: AccessibilityEvent) {
         if (event.eventType != AccessibilityEvent.TYPE_NOTIFICATION_STATE_CHANGED) return
-        if (!SettingsManager(this).shouldProcessNotifications) return
+        if (!SettingsStore(this).shouldProcessNotifications) return
 
         val agent = Agent.getInstance() ?: return
         val parcelableData = event.parcelableData
@@ -85,7 +85,7 @@ class GoslingAccessibilityService : AccessibilityService() {
 
             // Create an AgentServiceManager to handle notifications
             val agentServiceManager = xyz.block.gosling.features.agent.AgentServiceManager(this)
-            
+
             // Set up status listener
             agent.setStatusListener { status ->
                 // Update notification via AgentServiceManager

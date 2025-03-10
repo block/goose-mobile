@@ -116,4 +116,12 @@ for script in $SCENARIO_SCRIPTS; do
     # Collect diagnostics after test completes
     collect_diagnostics "$TEST_DIR"
     
+    # Check if goose binary is available
+    if command -v goose &> /dev/null; then
+        echo "Running goose analysis..."
+        goose run --text "look in ${TEST_DIR} at the session_dumps, look at last result and consider it with the screenshot.png and window_dump.xml if needed, and conclude if test was successful or not, return 'STATUS:PASS/FAIL, TIME:number of seconds'. Add to analysis.txt in that dir"
+    else
+        echo "PLEASE INSTALL GOOSE FOR MORE ANALYSIS OF RESULTS"
+    fi
+    
 done

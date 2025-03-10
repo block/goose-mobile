@@ -119,7 +119,7 @@ for script in $SCENARIO_SCRIPTS; do
     # Check if goose binary is available
     if command -v goose &> /dev/null; then
         echo "Running goose analysis..."
-        goose run --text "look in ${TEST_DIR} at the session_dumps, look at last result and consider it with the screenshot.png and window_dump.xml if needed, and conclude if test was successful or not, return 'STATUS:PASS/FAIL, TIME:number of seconds'. Add to analysis.txt in that dir"
+        goose run --text "In ${TEST_DIR} look in the session_dumps dir for a json file, 'total_wall_time' has the time taken, the last json result should conclude if it thinks it did the task (can also look further up for evidence). Consider it with the screenshot.png and window_dump.xml if needed, and conclude if test was successful or not, return 'STATUS:PASS/FAIL, TIME:wall time'. Add to analysis.txt in that dir."
     else
         echo "PLEASE INSTALL GOOSE FOR MORE ANALYSIS OF RESULTS"
     fi

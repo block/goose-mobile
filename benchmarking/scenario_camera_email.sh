@@ -9,3 +9,5 @@ input_text "$MESSAGE"
 click_submit
 
 sleep 30
+
+echo "The picture should be in the drafts (but it may just show the mail screen, that is ok)"

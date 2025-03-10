@@ -1,3 +1,4 @@
 *.xml
 benchmark_results
 session_dumps
+result.md

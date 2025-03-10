@@ -3,6 +3,10 @@
 # Benchmark script for running all scenario scripts and recording results
 # Created: $(date)
 
+# Source common functions
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+source "$SCRIPT_DIR/benchmark_common.sh"
+
 echo "======================================"
 echo "Gosling Benchmarking Tool"
 echo "======================================"
@@ -102,62 +106,5 @@ for script in $SCENARIO_SCRIPTS; do
     
     # Run the script and capture output
     OUTPUT=$(bash "$script" 2>&1)
-    EXIT_CODE=$?
     
-    # Check if the script was successful
-    if [ $EXIT_CODE -eq 0 ] && echo "$OUTPUT" | grep -q "SUCCESS"; then
-        # Extract the time from the output
-        TIME=$(echo "$OUTPUT" | grep -o "SUCCESS.*time: [0-9.]*" | grep -o "[0-9.]*$")
-        
-        if [ -z "$TIME" ]; then
-            # Try alternative format
-            TIME=$(echo "$OUTPUT" | grep -o "found after [0-9.]* seconds" | grep -o "[0-9.]*")
-        fi
-        
-        if [ -n "$TIME" ]; then
-            STATUS="SUCCESS"
-            SUCCESSFUL=$((SUCCESSFUL+1))
-            echo "✅ Success - Time: $TIME seconds"
-            
-            # Add to results file
-            echo "- $SCENARIO_NAME: SUCCESS - $TIME seconds" >> "$RESULTS_FILE"
-            echo "$SCENARIO_NAME,SUCCESS,$TIME" >> "$CSV_FILE"
-        else
-            STATUS="SUCCESS (time not found)"
-            echo "✅ Success - Time: unknown"
-            
-            # Add to results file
-            echo "- $SCENARIO_NAME: SUCCESS - time not found" >> "$RESULTS_FILE"
-            echo "$SCENARIO_NAME,SUCCESS,N/A" >> "$CSV_FILE"
-        fi
-    else
-        STATUS="FAILED"
-        echo "❌ Failed"
-        
-        # Add to results file
-        echo "- $SCENARIO_NAME: FAILED" >> "$RESULTS_FILE"
-        echo "$SCENARIO_NAME,FAILED,N/A" >> "$CSV_FILE"
-    fi
-    
-    echo
 done
-
-# Summary
-echo "======================================"
-echo "Benchmark Summary"
-echo "======================================"
-echo "Total scenarios: $TOTAL"
-echo "Successful: $SUCCESSFUL"
-echo "Failed: $((TOTAL-SUCCESSFUL))"
-echo
-echo "Results saved to: $RESULTS_FILE"
-echo "CSV data saved to: $CSV_FILE"
-echo "======================================"
-
-# Print successful scenarios with their times
-if [ $SUCCESSFUL -gt 0 ]; then
-    echo
-    echo "Successful Scenarios:"
-    echo "------------------------------------"
-    grep "SUCCESS" "$RESULTS_FILE" | sort
-fi

@@ -81,9 +81,7 @@ object ToolHandler {
 
     @Tool(
         name = "getUiHierarchy",
-        description = "Get the current UI hierarchy in a compact format. " +
-                "Shows UI elements with their properties and locations on screen in a hierarchical structure. " +
-                "Only includes relevant properties (clickable, focusable, etc. when true; enabled when false).",
+        description = "call this to show UI elements with their properties and locations on screen in a hierarchical structure.",
         parameters = [],
         requiresAccessibility = true
     )
@@ -95,7 +93,7 @@ object ToolHandler {
             val appInfo = "App: ${activeWindow.packageName}"
             val hierarchy = buildCompactHierarchy(activeWindow)
             System.out.println("HERE IT IS\n" + hierarchy);
-            "$appInfo (coordinates are [left, top, right, bottom])\n$hierarchy"
+            "$appInfo (coordinates are of form: [x-coordinate of the left edge, y-coordinate of the top edge, x-coordinate of the right edge, y-coordinate of the bottom edge])\n$hierarchy"
         } catch (e: Exception) {
             "ERROR: Failed to get UI hierarchy: ${e.message}"
         }
@@ -130,14 +128,14 @@ object ToolHandler {
             val hasNoAttributes = attributes.isEmpty()
             val hasSingleChild = node.childCount == 1
             
-            // Skip this node if it has no attributes and only one child
             if (hasNoAttributes && hasSingleChild && node.getChild(0) != null) {
-                // Skip this level and directly return the child's hierarchy with the same depth
                 return buildCompactHierarchy(node.getChild(0), depth)
             }
             
-            // Format bounds compactly
-            val boundsStr = "[${bounds.left},${bounds.top},${bounds.right},${bounds.bottom}]"
+            // Format bounds compactly with midpoint
+            val midX = (bounds.left + bounds.right) / 2
+            val midY = (bounds.top + bounds.bottom) / 2
+            val boundsStr = "[${bounds.left},${bounds.top},${bounds.right},${bounds.bottom}] midpoint=($midX,$midY)"
             
             // Build the node line
             val indent = "  ".repeat(depth)

@@ -1,15 +1,9 @@
 package xyz.block.gosling.features.launcher
 
-import android.Manifest
 import android.app.Activity
 import android.content.Context
 import android.content.Intent
-import android.content.pm.PackageManager
 import android.content.pm.ResolveInfo
-import android.os.Bundle
-import android.speech.RecognitionListener
-import android.speech.RecognizerIntent
-import android.speech.SpeechRecognizer
 import android.widget.Toast
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.gestures.Orientation
@@ -44,15 +38,15 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
-import androidx.core.app.ActivityCompat
-import androidx.core.content.ContextCompat
 import androidx.core.graphics.drawable.toBitmap
+import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import xyz.block.gosling.features.agent.AgentServiceManager
 import xyz.block.gosling.features.agent.AgentStatus
-import xyz.block.gosling.ui.theme.GoslingTheme
+import xyz.block.gosling.shared.services.VoiceRecognitionService
+import xyz.block.gosling.shared.theme.GoslingTheme
 
 /**
  * The main launcher screen composable that displays the home screen with a clock
@@ -256,77 +250,23 @@ private fun startVoiceRecognition(context: Context) {
         return
     }
 
-    // Check for permission
-    if (ContextCompat.checkSelfPermission(context, Manifest.permission.RECORD_AUDIO)
-        != PackageManager.PERMISSION_GRANTED
-    ) {
+    val voiceRecognitionManager = VoiceRecognitionService(context)
 
-        ActivityCompat.requestPermissions(
-            activity,
-            arrayOf(Manifest.permission.RECORD_AUDIO),
-            1
-        )
+    // Check for permission
+    if (!voiceRecognitionManager.hasRecordAudioPermission()) {
+        voiceRecognitionManager.requestRecordAudioPermission(activity)
         return
     }
 
-    // Create speech recognizer
-    val speechRecognizer = SpeechRecognizer.createSpeechRecognizer(context)
-    val intent = Intent(RecognizerIntent.ACTION_RECOGNIZE_SPEECH).apply {
-        putExtra(
-            RecognizerIntent.EXTRA_LANGUAGE_MODEL,
-            RecognizerIntent.LANGUAGE_MODEL_FREE_FORM
-        )
-        putExtra(RecognizerIntent.EXTRA_PARTIAL_RESULTS, true)
-    }
-
-    // Set up recognition listener
-    speechRecognizer.setRecognitionListener(object : RecognitionListener {
-        override fun onResults(results: Bundle) {
-            val voiceCommand = results.getStringArrayList(SpeechRecognizer.RESULTS_RECOGNITION)
-                ?.firstOrNull()
-
-            if (voiceCommand != null && voiceCommand.isNotEmpty()) {
+    // Start voice recognition
+    voiceRecognitionManager.startVoiceRecognition(
+        object : VoiceRecognitionService.VoiceRecognitionCallback {
+            override fun onVoiceCommandReceived(command: String) {
                 // Process the command with the Agent
-                processAgentCommand(context, voiceCommand)
+                processAgentCommand(context, command)
             }
-
-            speechRecognizer.destroy()
         }
-
-        override fun onPartialResults(partialResults: Bundle) {
-            // Handle partial results if needed
-        }
-
-        override fun onError(error: Int) {
-            val errorMessage = when (error) {
-                SpeechRecognizer.ERROR_NO_MATCH -> "No speech detected"
-                SpeechRecognizer.ERROR_AUDIO -> "Audio recording error"
-                SpeechRecognizer.ERROR_CLIENT -> "Client side error"
-                SpeechRecognizer.ERROR_INSUFFICIENT_PERMISSIONS -> "Insufficient permissions"
-                SpeechRecognizer.ERROR_NETWORK -> "Network error"
-                SpeechRecognizer.ERROR_NETWORK_TIMEOUT -> "Network timeout"
-                SpeechRecognizer.ERROR_SERVER -> "Server error"
-                SpeechRecognizer.ERROR_SPEECH_TIMEOUT -> "No speech input"
-                else -> "Error: $error"
-            }
-
-            Toast.makeText(context, errorMessage, Toast.LENGTH_SHORT).show()
-            speechRecognizer.destroy()
-        }
-
-        override fun onReadyForSpeech(params: Bundle) {
-            Toast.makeText(context, "Listening...", Toast.LENGTH_SHORT).show()
-        }
-
-        override fun onBeginningOfSpeech() {}
-        override fun onRmsChanged(rmsdB: Float) {}
-        override fun onBufferReceived(buffer: ByteArray?) {}
-        override fun onEndOfSpeech() {}
-        override fun onEvent(eventType: Int, params: Bundle) {}
-    })
-
-    // Start listening
-    speechRecognizer.startListening(intent)
+    )
 }
 
 /**
@@ -387,7 +327,7 @@ private fun processAgentCommand(context: Context, command: String) {
             }
         }
 
-        kotlinx.coroutines.CoroutineScope(Dispatchers.IO).launch {
+        CoroutineScope(Dispatchers.IO).launch {
             try {
                 agent.processCommand(
                     userInput = command,

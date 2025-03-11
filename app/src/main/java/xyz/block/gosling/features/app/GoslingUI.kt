@@ -1,17 +1,11 @@
-package xyz.block.gosling
+package xyz.block.gosling.features.app
 
-import android.Manifest
 import android.app.Activity
 import android.content.ComponentName
 import android.content.Context
 import android.content.Intent
 import android.content.ServiceConnection
-import android.content.pm.PackageManager
-import android.os.Bundle
 import android.os.IBinder
-import android.speech.RecognitionListener
-import android.speech.RecognizerIntent
-import android.speech.SpeechRecognizer
 import android.util.Log
 import android.widget.Toast
 import androidx.compose.foundation.Image
@@ -55,12 +49,13 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.unit.dp
-import androidx.core.app.ActivityCompat
-import androidx.core.content.ContextCompat
 import kotlinx.coroutines.launch
+import xyz.block.gosling.GoslingApplication
+import xyz.block.gosling.R
 import xyz.block.gosling.features.agent.Agent
 import xyz.block.gosling.features.agent.AgentServiceManager
 import xyz.block.gosling.features.agent.AgentStatus
+import xyz.block.gosling.shared.services.VoiceRecognitionService
 
 data class ChatMessage(
     val text: String,
@@ -91,10 +86,10 @@ fun GoslingUI(
     var isOutputMode by remember { mutableStateOf(false) }
     var boundService by remember { mutableStateOf<Agent?>(null) }
     var showPresetQueries by remember { mutableStateOf(false) }
-
-    var speechRecognizer by remember { mutableStateOf<SpeechRecognizer?>(null) }
     val scope = rememberCoroutineScope()
     val listState = rememberLazyListState()
+
+    var voiceRecognitionManager by remember { mutableStateOf<VoiceRecognitionService?>(null) }
 
     // Scroll to bottom when returning to app
     LaunchedEffect(GoslingApplication.isMainActivityRunning) {
@@ -121,22 +116,6 @@ fun GoslingUI(
 
         onDispose {
             context.unbindService(serviceConnection)
-        }
-    }
-
-    fun requestAudioPermission(activity: Activity, onResult: (Boolean) -> Unit) {
-        if (ContextCompat.checkSelfPermission(
-                activity,
-                Manifest.permission.RECORD_AUDIO
-            ) == PackageManager.PERMISSION_GRANTED
-        ) {
-            onResult(true)
-        } else {
-            ActivityCompat.requestPermissions(
-                activity,
-                arrayOf(Manifest.permission.RECORD_AUDIO),
-                1
-            )
         }
     }
 
@@ -226,76 +205,47 @@ fun GoslingUI(
     LaunchedEffect(isVoiceMode) {
         if (isVoiceMode) {
             val activity = context as? Activity ?: return@LaunchedEffect
-            requestAudioPermission(activity) { granted ->
-                if (!granted) {
-                    isVoiceMode = false
-                    return@requestAudioPermission
-                }
 
-                val recognizer = SpeechRecognizer.createSpeechRecognizer(context)
-                val intent = Intent(RecognizerIntent.ACTION_RECOGNIZE_SPEECH).apply {
-                    putExtra(
-                        RecognizerIntent.EXTRA_LANGUAGE_MODEL,
-                        RecognizerIntent.LANGUAGE_MODEL_FREE_FORM
-                    )
-                    putExtra(RecognizerIntent.EXTRA_PARTIAL_RESULTS, true)
-                }
+            // Initialize VoiceRecognitionManager if not already done
+            if (voiceRecognitionManager == null) {
+                voiceRecognitionManager = VoiceRecognitionService(context)
+            }
 
-                recognizer.setRecognitionListener(object : RecognitionListener {
-                    override fun onResults(results: Bundle?) {
-                        val voiceCommand =
-                            results?.getStringArrayList(SpeechRecognizer.RESULTS_RECOGNITION)
-                                ?.firstOrNull()
-                        if (!voiceCommand.isNullOrEmpty()) {
-                            inputText = voiceCommand
-                            executeCommand(voiceCommand)
-                        }
+            // Check and request permissions if needed
+            if (!voiceRecognitionManager!!.hasRecordAudioPermission()) {
+                voiceRecognitionManager!!.requestRecordAudioPermission(activity)
+                isVoiceMode = false
+                return@LaunchedEffect
+            }
+
+            // Start voice recognition with callback
+            voiceRecognitionManager!!.startVoiceRecognition(
+                object : VoiceRecognitionService.VoiceRecognitionCallback {
+                    override fun onVoiceCommandReceived(command: String) {
+                        inputText = command
+                        executeCommand(command)
                     }
 
-                    override fun onPartialResults(partialResults: Bundle?) {
-                        val partial =
-                            partialResults?.getStringArrayList(SpeechRecognizer.RESULTS_RECOGNITION)
-                                ?.firstOrNull()
-                        if (!partial.isNullOrEmpty()) {
-                            inputText = partial
-                        }
+                    override fun onPartialResult(partialCommand: String) {
+                        inputText = partialCommand
                     }
 
-                    override fun onError(error: Int) {
-                        val errorMessage = when (error) {
-                            SpeechRecognizer.ERROR_NO_MATCH -> "No speech detected. If you're using an emulator, please use the keyboard instead as emulators don't support voice input."
-                            SpeechRecognizer.ERROR_AUDIO -> "Audio recording error"
-                            SpeechRecognizer.ERROR_CLIENT -> "Client side error"
-                            SpeechRecognizer.ERROR_INSUFFICIENT_PERMISSIONS -> "Insufficient permissions"
-                            SpeechRecognizer.ERROR_NETWORK -> "Network error"
-                            SpeechRecognizer.ERROR_NETWORK_TIMEOUT -> "Network timeout"
-                            SpeechRecognizer.ERROR_SERVER -> "Server error"
-                            SpeechRecognizer.ERROR_SPEECH_TIMEOUT -> "No speech input"
-                            else -> "Error: $error"
-                        }
+                    override fun onError(errorMessage: String) {
                         inputText = errorMessage
                         isVoiceMode = false
                     }
 
-                    override fun onReadyForSpeech(params: Bundle?) {
+                    override fun onListening() {
                         inputText = "Listening..."
                     }
 
-                    override fun onBeginningOfSpeech() {
-                        inputText = "Listening..."
+                    override fun onSpeechEnd() {
+                        // Optional: Handle speech end if needed
                     }
-
-                    override fun onRmsChanged(rmsdB: Float) {}
-                    override fun onBufferReceived(buffer: ByteArray?) {}
-                    override fun onEndOfSpeech() {}
-                    override fun onEvent(eventType: Int, params: Bundle?) {}
-                })
-
-                recognizer.startListening(intent)
-                speechRecognizer = recognizer
-            }
+                }
+            )
         } else {
-            speechRecognizer?.destroy()
+            voiceRecognitionManager?.stopVoiceRecognition()
         }
     }
 

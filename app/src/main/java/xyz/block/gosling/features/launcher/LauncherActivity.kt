@@ -5,8 +5,8 @@ import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
 import xyz.block.gosling.GoslingApplication
-import xyz.block.gosling.OverlayService
-import xyz.block.gosling.ui.theme.GoslingTheme
+import xyz.block.gosling.features.overlay.OverlayService
+import xyz.block.gosling.shared.theme.GoslingTheme
 
 /**
  * LauncherActivity serves as a custom Android home screen (launcher).

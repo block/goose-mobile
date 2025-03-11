@@ -80,12 +80,12 @@
         </service>
 
         <service
-            android:name=".SessionService"
+            android:name=".features.assistant.AssistantSessionService"
             android:exported="true"
             android:permission="android.permission.BIND_VOICE_INTERACTION" />
 
         <service
-            android:name=".GoslingAccessibilityService"
+            android:name=".features.accessibility.GoslingAccessibilityService"
             android:exported="false"
             android:foregroundServiceType="dataSync"
             android:permission="android.permission.BIND_ACCESSIBILITY_SERVICE">
@@ -103,7 +103,7 @@
             android:exported="false"
             android:foregroundServiceType="dataSync" />
         <service
-            android:name=".OverlayService"
+            android:name=".features.overlay.OverlayService"
             android:foregroundServiceType="dataSync" />
 
     </application>

@@ -1,4 +1,4 @@
-package xyz.block.gosling.ui.theme
+package xyz.block.gosling.shared.theme
 
 import android.os.Build
 import androidx.compose.foundation.isSystemInDarkTheme

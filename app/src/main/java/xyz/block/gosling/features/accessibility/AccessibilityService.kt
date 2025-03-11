@@ -1,4 +1,4 @@
-package xyz.block.gosling
+package xyz.block.gosling.features.accessibility
 
 import android.accessibilityservice.AccessibilityService
 import android.accessibilityservice.AccessibilityServiceInfo
@@ -9,6 +9,7 @@ import android.app.PendingIntent
 import android.content.Intent
 import android.view.accessibility.AccessibilityEvent
 import androidx.core.app.NotificationCompat
+import xyz.block.gosling.R
 import xyz.block.gosling.features.agent.Agent
 import xyz.block.gosling.features.app.MainActivity
 import xyz.block.gosling.features.settings.SettingsStore

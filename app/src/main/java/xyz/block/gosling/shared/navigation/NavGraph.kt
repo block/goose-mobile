@@ -1,4 +1,4 @@
-package xyz.block.gosling.navigation
+package xyz.block.gosling.shared.navigation
 
 import androidx.compose.runtime.Composable
 import androidx.navigation.NavHostController
@@ -30,7 +30,6 @@ fun NavGraph(
     ) {
         composable(Screen.Main.route) {
             MainScreen(
-                settingsStore = settingsStore,
                 onNavigateToSettings = { navController.navigate(Screen.Settings.route) },
                 isAccessibilityEnabled = isAccessibilityEnabled
             )

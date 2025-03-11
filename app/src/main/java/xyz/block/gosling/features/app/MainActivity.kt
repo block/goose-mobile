@@ -20,13 +20,12 @@ import androidx.compose.runtime.setValue
 import androidx.core.content.edit
 import androidx.core.net.toUri
 import androidx.navigation.compose.rememberNavController
-import xyz.block.gosling.ChatMessage
 import xyz.block.gosling.GoslingApplication
-import xyz.block.gosling.OverlayService
 import xyz.block.gosling.features.agent.AgentServiceManager
+import xyz.block.gosling.features.overlay.OverlayService
 import xyz.block.gosling.features.settings.SettingsStore
-import xyz.block.gosling.navigation.NavGraph
-import xyz.block.gosling.ui.theme.GoslingTheme
+import xyz.block.gosling.shared.navigation.NavGraph
+import xyz.block.gosling.shared.theme.GoslingTheme
 
 class MainActivity : ComponentActivity() {
     companion object {
@@ -143,7 +142,7 @@ class MainActivity : ComponentActivity() {
             if (OverlayService.getInstance() == null) {
                 startService(Intent(this, OverlayService::class.java))
             }
-            
+
             // Bind to the agent service
             agentServiceManager.bindAndStartAgent { agent ->
                 // Agent is now started as a foreground service and has a status listener set up
@@ -156,7 +155,7 @@ class MainActivity : ComponentActivity() {
         super.onPause()
         GoslingApplication.isMainActivityRunning = false
         OverlayService.getInstance()?.updateOverlayVisibility()
-        
+
         // Unbind the agent service to prevent leaks
         agentServiceManager.unbindAgent()
     }
@@ -165,7 +164,7 @@ class MainActivity : ComponentActivity() {
         super.onDestroy()
         GoslingApplication.isMainActivityRunning = false
         OverlayService.getInstance()?.updateOverlayVisibility()
-        
+
         // Ensure the agent service is unbound
         agentServiceManager.unbindAgent()
     }

@@ -11,7 +11,7 @@ import android.os.Bundle
 import android.view.accessibility.AccessibilityNodeInfo
 import org.json.JSONObject
 import xyz.block.gosling.GoslingApplication
-import xyz.block.gosling.OverlayService
+import xyz.block.gosling.features.overlay.OverlayService
 import java.util.Locale
 
 @Target(AnnotationTarget.FUNCTION)
@@ -87,62 +87,63 @@ object ToolHandler {
     )
     fun getUiHierarchy(accessibilityService: AccessibilityService, args: JSONObject): String {
         return try {
-            val activeWindow = accessibilityService.rootInActiveWindow 
+            val activeWindow = accessibilityService.rootInActiveWindow
                 ?: return "ERROR: No active window found"
 
             val appInfo = "App: ${activeWindow.packageName}"
             val hierarchy = buildCompactHierarchy(activeWindow)
-            System.out.println("HERE IT IS\n" + hierarchy);
+            System.out.println("HERE IT IS\n" + hierarchy)
             "$appInfo (coordinates are of form: [x-coordinate of the left edge, y-coordinate of the top edge, x-coordinate of the right edge, y-coordinate of the bottom edge])\n$hierarchy"
         } catch (e: Exception) {
             "ERROR: Failed to get UI hierarchy: ${e.message}"
         }
     }
-    
+
     private fun buildCompactHierarchy(node: AccessibilityNodeInfo, depth: Int = 0): String {
         try {
             val bounds = Rect().also { node.getBoundsInScreen(it) }
             val attributes = mutableListOf<String>()
-            
+
             // Add key attributes in a compact format
-            node.text?.toString()?.takeIf { it.isNotEmpty() }?.let { 
-                attributes.add("text=\"$it\"") 
+            node.text?.toString()?.takeIf { it.isNotEmpty() }?.let {
+                attributes.add("text=\"$it\"")
             }
-            
-            node.contentDescription?.toString()?.takeIf { it.isNotEmpty() }?.let { 
-                attributes.add("desc=\"$it\"") 
+
+            node.contentDescription?.toString()?.takeIf { it.isNotEmpty() }?.let {
+                attributes.add("desc=\"$it\"")
             }
-            
-            node.viewIdResourceName?.takeIf { it.isNotEmpty() }?.let { 
-                attributes.add("id=\"$it\"") 
+
+            node.viewIdResourceName?.takeIf { it.isNotEmpty() }?.let {
+                attributes.add("id=\"$it\"")
             }
-            
+
             // Add interactive properties only when true
             if (node.isClickable) attributes.add("clickable")
             if (node.isFocusable) attributes.add("focusable")
             if (node.isScrollable) attributes.add("scrollable")
             if (node.isEditable) attributes.add("editable")
             if (!node.isEnabled) attributes.add("disabled")
-            
+
             // Check if this is a "meaningless" container that should be skipped
             val hasNoAttributes = attributes.isEmpty()
             val hasSingleChild = node.childCount == 1
-            
+
             if (hasNoAttributes && hasSingleChild && node.getChild(0) != null) {
                 return buildCompactHierarchy(node.getChild(0), depth)
             }
-            
+
             // Format bounds compactly with midpoint
             val midX = (bounds.left + bounds.right) / 2
             val midY = (bounds.top + bounds.bottom) / 2
-            val boundsStr = "[${bounds.left},${bounds.top},${bounds.right},${bounds.bottom}] midpoint=($midX,$midY)"
-            
+            val boundsStr =
+                "[${bounds.left},${bounds.top},${bounds.right},${bounds.bottom}] midpoint=($midX,$midY)"
+
             // Build the node line
             val indent = "  ".repeat(depth)
             val nodeType = node.className?.toString()?.substringAfterLast('.') ?: "View"
             val attrStr = if (attributes.isNotEmpty()) " " + attributes.joinToString(" ") else ""
             val nodeLine = "$indent$nodeType$attrStr $boundsStr"
-            
+
             // Process children if any
             val childrenStr = if (node.childCount > 0) {
                 val childrenLines = mutableListOf<String>()
@@ -157,9 +158,9 @@ object ToolHandler {
                 }
                 "\n" + childrenLines.joinToString("\n")
             } else ""
-            
+
             return nodeLine + childrenStr
-            
+
         } catch (e: Exception) {
             return "ERROR: Failed to serialize node: ${e.message}"
         }

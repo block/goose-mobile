@@ -19,7 +19,7 @@ import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.JsonArray
 import kotlinx.serialization.json.encodeToJsonElement
 import org.json.JSONObject
-import xyz.block.gosling.GoslingAccessibilityService
+import xyz.block.gosling.features.accessibility.GoslingAccessibilityService
 import xyz.block.gosling.features.agent.ToolHandler.callTool
 import xyz.block.gosling.features.agent.ToolHandler.getSerializableToolDefinitions
 import xyz.block.gosling.features.settings.SettingsStore

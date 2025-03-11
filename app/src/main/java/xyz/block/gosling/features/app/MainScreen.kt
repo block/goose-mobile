@@ -24,14 +24,10 @@ import androidx.compose.runtime.remember
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
-import xyz.block.gosling.ChatMessage
-import xyz.block.gosling.GoslingUI
-import xyz.block.gosling.features.settings.SettingsStore
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun MainScreen(
-    settingsStore: SettingsStore,
     onNavigateToSettings: () -> Unit,
     isAccessibilityEnabled: Boolean,
     modifier: Modifier = Modifier
@@ -44,7 +40,6 @@ fun MainScreen(
         }
     }
 
-    // Effect to save messages when they change
     LaunchedEffect(messages.size) {
         activity.saveMessages(messages)
     }
@@ -101,4 +96,5 @@ fun MainScreen(
             }
         }
     }
-} 
+}
+

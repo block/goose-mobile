@@ -1,11 +1,16 @@
 package xyz.block.gosling.features.onboarding
 
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.imePadding
+import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.text.KeyboardOptions
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.Button
 import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.ExperimentalMaterial3Api
@@ -41,68 +46,70 @@ fun LLMConfigStep(
         it.identifier to it.displayName
     }
 
-    Column(
-        modifier = Modifier
-            .fillMaxSize()
-            .padding(top = 32.dp),
-        horizontalAlignment = Alignment.CenterHorizontally,
-        verticalArrangement = Arrangement.SpaceBetween
-    ) {
+    Box(modifier = Modifier.fillMaxSize()) {
         Column(
-            modifier = Modifier.fillMaxWidth(),
+            modifier = Modifier
+                .fillMaxSize()
+                .verticalScroll(rememberScrollState()),
             verticalArrangement = Arrangement.spacedBy(24.dp)
         ) {
             Column(
-                modifier = Modifier.fillMaxWidth(),
-                verticalArrangement = Arrangement.spacedBy(8.dp)
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(top = 32.dp),
+                verticalArrangement = Arrangement.spacedBy(24.dp)
             ) {
-                Text(text = "Model")
-                ExposedDropdownMenuBox(
-                    expanded = expanded,
-                    onExpandedChange = { expanded = it }
+                Column(
+                    modifier = Modifier.fillMaxWidth(),
+                    verticalArrangement = Arrangement.spacedBy(8.dp)
                 ) {
-                    OutlinedTextField(
-                        value = models.find { it.first == llmModel }?.second ?: llmModel,
-                        onValueChange = {},
-                        readOnly = true,
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .menuAnchor(),
-                        trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = expanded) }
-                    )
-
-                    ExposedDropdownMenu(
+                    Text(text = "Model")
+                    ExposedDropdownMenuBox(
                         expanded = expanded,
-                        onDismissRequest = { expanded = false }
+                        onExpandedChange = { expanded = it }
                     ) {
-                        models.forEach { (modelId, displayName) ->
-                            DropdownMenuItem(
-                                text = { Text(displayName) },
-                                onClick = {
-                                    llmModel = modelId
-                                    currentModel = AiModel.fromIdentifier(modelId)
-                                    apiKey = settingsStore.getApiKey(currentModel.provider)
-                                    expanded = false
-                                }
-                            )
+                        OutlinedTextField(
+                            value = models.find { it.first == llmModel }?.second ?: llmModel,
+                            onValueChange = {},
+                            readOnly = true,
+                            modifier = Modifier.fillMaxWidth(),
+                            trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = expanded) }
+                        )
+
+                        ExposedDropdownMenu(
+                            expanded = expanded,
+                            onDismissRequest = { expanded = false }
+                        ) {
+                            models.forEach { (modelId, displayName) ->
+                                DropdownMenuItem(
+                                    text = { Text(displayName) },
+                                    onClick = {
+                                        llmModel = modelId
+                                        currentModel = AiModel.fromIdentifier(modelId)
+                                        apiKey = settingsStore.getApiKey(currentModel.provider)
+                                        expanded = false
+                                    }
+                                )
+                            }
                         }
                     }
                 }
-            }
-            Column(
-                modifier = Modifier.fillMaxWidth(),
-                verticalArrangement = Arrangement.spacedBy(8.dp)
-            ) {
-                Text(text = "API Key")
-                OutlinedTextField(
-                    value = apiKey,
-                    onValueChange = { apiKey = it },
+                Column(
                     modifier = Modifier.fillMaxWidth(),
-                    visualTransformation = PasswordVisualTransformation(),
-                    keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Password)
-                )
+                    verticalArrangement = Arrangement.spacedBy(8.dp)
+                ) {
+                    Text(text = "API Key")
+                    OutlinedTextField(
+                        value = apiKey,
+                        onValueChange = { apiKey = it },
+                        modifier = Modifier.fillMaxWidth(),
+                        visualTransformation = PasswordVisualTransformation(),
+                        keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Password)
+                    )
+                }
             }
         }
+
         Button(
             onClick = {
                 settingsStore.llmModel = llmModel
@@ -110,8 +117,11 @@ fun LLMConfigStep(
                 onComplete()
             },
             modifier = Modifier
+                .align(Alignment.BottomCenter)
                 .fillMaxWidth()
-                .padding(vertical = 32.dp),
+                .padding(bottom = 16.dp)
+                .navigationBarsPadding()
+                .imePadding(),
             enabled = llmModel.isNotEmpty() && apiKey.isNotEmpty(),
         ) {
             Text("Complete Setup")

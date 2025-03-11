@@ -7,5 +7,3 @@ MESSAGE="What is the weather like?"
 # Input text and click submit
 input_text "$MESSAGE"
 click_submit
-
-sleep 30

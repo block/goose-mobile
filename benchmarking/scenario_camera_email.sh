@@ -8,6 +8,4 @@ MESSAGE="Take a picture using the camera and attach that to a new email. Save th
 input_text "$MESSAGE"
 click_submit
 
-sleep 30
-
-echo "The picture should be in the drafts (but it may just show the mail screen, that is ok)"
+echo "This will save picture in drafts, doesn't matter what screen shows as long as you can check the ui"

@@ -15,5 +15,3 @@ MESSAGE=${1:-"Add contact named $CONTACT"}
 # Input text and click submit
 input_text "$MESSAGE"
 click_submit
-
-sleep 30

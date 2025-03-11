@@ -8,4 +8,4 @@ MESSAGE="Turn on the flash light"
 input_text "$MESSAGE"
 click_submit
 
-sleep 30
+echo "should show the flashlight screen"

@@ -47,14 +47,3 @@ input_and_submit() {
     input_text "$message"
     click_submit
 }
-
-# Function to calculate time difference from START_TIME
-get_elapsed_time() {
-    local end_time=$(date +%s.%N)
-    local time_diff=$(echo "$end_time - $START_TIME" | bc)
-    echo "$time_diff"
-}
-
-#echo "Dumping UI hierarchy..."
-#adb shell uiautomator dump
-#adb pull /sdcard/window_dump.xml

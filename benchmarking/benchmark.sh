@@ -112,6 +112,16 @@ for script in $SCENARIO_SCRIPTS; do
     # Save the script output to the test directory
     echo "$OUTPUT" > "$TEST_DIR/script_output.txt"
 
+    # Poll for session dump files every 2 seconds until they appear
+    echo "Waiting for session to finish..."
+    while true; do
+        FILES=$(adb shell ls /storage/emulated/0/Android/data/xyz.block.gosling/files/session_dumps/ 2>/dev/null)
+        if [ -n "$FILES" ]; then
+            echo "Session dump files found: $FILES"
+            break
+        fi
+        sleep 2
+    done
 
     # Collect diagnostics after test completes
     collect_diagnostics "$TEST_DIR"

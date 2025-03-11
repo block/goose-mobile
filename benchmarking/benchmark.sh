@@ -1,11 +1,20 @@
 #!/bin/bash
 
-# Benchmark script for running all scenario scripts and recording results
+# Benchmark script for running all scenario scripts or a specific one
 # Created: $(date)
 
 # Source common functions
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 source "$SCRIPT_DIR/benchmark_common.sh"
+
+# Default timeout in seconds
+TIMEOUT=90
+
+# Process command line arguments
+SPECIFIC_SCENARIO=""
+if [ $# -gt 0 ]; then
+    SPECIFIC_SCENARIO="$1"
+fi
 
 echo "======================================"
 echo "Gosling Benchmarking Tool"
@@ -62,7 +71,20 @@ RESULTS_DIR="benchmark_results"
 mkdir -p "$RESULTS_DIR"
 
 # Find all scenario scripts
-SCENARIO_SCRIPTS=$(find . -name "scenario_*.sh" -type f | sort)
+if [ -n "$SPECIFIC_SCENARIO" ]; then
+    # If a specific scenario was provided, only run that one
+    SCENARIO_FILE="./scenario_${SPECIFIC_SCENARIO}.sh"
+    if [ -f "$SCENARIO_FILE" ]; then
+        SCENARIO_SCRIPTS="$SCENARIO_FILE"
+        echo "Running specific scenario: $SPECIFIC_SCENARIO"
+    else
+        echo "Error: Scenario script not found: $SCENARIO_FILE"
+        exit 1
+    fi
+else
+    # Otherwise find all scenario scripts
+    SCENARIO_SCRIPTS=$(find . -name "scenario_*.sh" -type f | sort)
+fi
 
 # Check if any scenario scripts were found
 if [ -z "$SCENARIO_SCRIPTS" ]; then
@@ -70,7 +92,7 @@ if [ -z "$SCENARIO_SCRIPTS" ]; then
     exit 1
 fi
 
-echo "Found $(echo "$SCENARIO_SCRIPTS" | wc -l | tr -d ' ') scenario scripts to run"
+echo "Found $(echo "$SCENARIO_SCRIPTS" | wc -l | tr -d ' ') scenario script(s) to run"
 echo
 
 # Function to extract scenario name from filename
@@ -112,14 +134,25 @@ for script in $SCENARIO_SCRIPTS; do
     # Save the script output to the test directory
     echo "$OUTPUT" > "$TEST_DIR/script_output.txt"
 
-    # Poll for session dump files every 2 seconds until they appear
-    echo "Waiting for session to finish..."
+    # Poll for session dump files every 2 seconds until they appear or timeout
+    echo "Waiting for session to finish (timeout: ${TIMEOUT}s)..."
+    start_time=$(date +%s)
     while true; do
-        FILES=$(adb shell ls /storage/emulated/0/Android/data/xyz.block.gosling/files/session_dumps/ 2>/dev/null)
-        if [ -n "$FILES" ]; then
-            echo "Session dump files found: $FILES"
+        # Check if timeout has been reached
+        current_time=$(date +%s)
+        elapsed_time=$((current_time - start_time))
+        
+        if [ $elapsed_time -ge $TIMEOUT ]; then
+            echo "Timeout reached after ${elapsed_time} seconds. Continuing without session dumps."
             break
         fi
+        
+        FILES=$(adb shell ls /storage/emulated/0/Android/data/xyz.block.gosling/files/session_dumps/ 2>/dev/null)
+        if [ -n "$FILES" ]; then
+            echo "Session dump files found after ${elapsed_time} seconds: $FILES"
+            break
+        fi
+        echo "Waiting for session dump files to appear... (${elapsed_time}s elapsed)"
         sleep 2
     done
 

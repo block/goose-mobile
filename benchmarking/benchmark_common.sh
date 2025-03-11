@@ -6,9 +6,13 @@
 INPUT_X=640
 INPUT_Y=2460
 
+# Keyboard icon center coordinates
+KEYBOARD_X=898
+KEYBOARD_Y=2580
+
 # Submit button center coordinates
 SUBMIT_X=640
-SUBMIT_Y=2664
+SUBMIT_Y=2568
 
 # Function to escape spaces in a string
 escape_spaces() {
@@ -18,6 +22,11 @@ escape_spaces() {
 
 # Function to click on the input field and enter text
 input_text() {
+
+    echo "Clicking keyboard icon first..."
+    adb shell input tap $KEYBOARD_X $KEYBOARD_Y
+    sleep 1
+
     local message="$1"
     
     # Click on input field
@@ -34,6 +43,7 @@ input_text() {
 
 # Function to click the submit button and record start time
 click_submit() {
+
     echo "Clicking submit button..."
     START_TIME=$(date +%s.%N)
     adb shell input tap $SUBMIT_X $SUBMIT_Y

@@ -315,7 +315,12 @@ object ToolHandler {
         requiresAccessibility = true
     )
     fun enterText(accessibilityService: AccessibilityService, args: JSONObject): String {
-        val text = args.getString("text")
+
+        val text = if (args.optBoolean("submit", false)) {
+            args.getString("text")
+        } else {
+            args.getString("text") + "\n"
+        }
 
         val targetNode = if (args.has("id")) {
             accessibilityService.rootInActiveWindow?.findAccessibilityNodeInfosByViewId(
@@ -336,12 +341,10 @@ object ToolHandler {
             AccessibilityNodeInfo.ACTION_ARGUMENT_SET_TEXT_CHARSEQUENCE,
             text
         )
+
+
         val setTextResult =
             targetNode.performAction(AccessibilityNodeInfo.ACTION_SET_TEXT, arguments)
-
-        if (args.optBoolean("submit", false) && setTextResult) {
-            Runtime.getRuntime().exec(arrayOf("input", "keyevent", "KEYCODE_ENTER"))
-        }
 
         return if (setTextResult) {
             "Entered text: \"$text\""

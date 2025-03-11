@@ -158,6 +158,9 @@ class Agent : Service() {
                 |After each tool call and before the next step, write down what you see on the screen that helped 
                 |you resolve this step. Keep iterating until you complete the task or have exhausted all possible approaches.
                 |
+                |When you think you are finished, double check to make sure you are done (sometimes you need to click more to continue).
+                |Use a screenshot if necessary to check.
+                |
                 |Remember: DO NOT ask the user for help or additional information - you must solve the problem autonomously.
                 """.trimMargin()
 

@@ -409,7 +409,6 @@ class Agent : Service() {
                     
                     // Add handling rules if they exist
                     if (messageHandlingPreferences.isNotEmpty()) {
-                        append("\n\nHandling rules:\n")
                         append(messageHandlingPreferences)
                     }
                 }

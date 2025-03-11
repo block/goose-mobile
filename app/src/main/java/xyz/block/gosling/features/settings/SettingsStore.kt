@@ -31,6 +31,7 @@ class SettingsStore(context: Context) {
         private const val KEY_API_KEY_PREFIX = "api_key_"
         private const val KEY_ACCESSIBILITY_ENABLED = "accessibility_enabled"
         private const val KEY_PROCESS_NOTIFICATIONS = "process_notifications"
+        private const val KEY_MESSAGE_HANDLING_PREFERENCES = "message_handling_preferences"
         private val DEFAULT_LLM_MODEL = AiModel.AVAILABLE_MODELS.first().identifier
     }
 
@@ -59,4 +60,8 @@ class SettingsStore(context: Context) {
     var shouldProcessNotifications: Boolean
         get() = prefs.getBoolean(KEY_PROCESS_NOTIFICATIONS, false)
         set(value) = prefs.edit { putBoolean(KEY_PROCESS_NOTIFICATIONS, value) }
+        
+    var messageHandlingPreferences: String
+        get() = prefs.getString(KEY_MESSAGE_HANDLING_PREFERENCES, "") ?: ""
+        set(value) = prefs.edit { putString(KEY_MESSAGE_HANDLING_PREFERENCES, value) }
 } 

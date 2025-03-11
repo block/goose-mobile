@@ -392,15 +392,27 @@ class Agent : Service() {
     ) {
         scope.launch {
             try {
-                val prompt = """
-                    Here's the notification:
-                    App: $packageName
-                    Title: $title
-                    Content: $content
-                    Category: $category
+                // Get message handling preferences from settings
+                val settings = SettingsStore(this@Agent)
+                val messageHandlingPreferences = settings.messageHandlingPreferences
+                
+                val prompt = buildString {
+                    append("""
+                        Here's the notification:
+                        App: $packageName
+                        Title: $title
+                        Content: $content
+                        Category: $category
+                        
+                        Please analyze this notification and take appropriate action if needed.
+                    """.trimIndent())
                     
-                    Please analyze this notification and take appropriate action if needed.
-                """.trimIndent()
+                    // Add handling rules if they exist
+                    if (messageHandlingPreferences.isNotEmpty()) {
+                        append("\n\nHandling rules:\n")
+                        append(messageHandlingPreferences)
+                    }
+                }
 
                 processCommand(
                     prompt,

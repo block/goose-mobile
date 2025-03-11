@@ -55,6 +55,7 @@ fun SettingsScreen(
     var currentModel by remember { mutableStateOf(AiModel.fromIdentifier(llmModel)) }
     var apiKey by remember { mutableStateOf(settingsStore.getApiKey(currentModel.provider)) }
     var shouldProcessNotifications by remember { mutableStateOf(settingsStore.shouldProcessNotifications) }
+    var messageHandlingPreferences by remember { mutableStateOf(settingsStore.messageHandlingPreferences) }
     var showResetDialog by remember { mutableStateOf(false) }
     var expanded by remember { mutableStateOf(false) }
 
@@ -232,6 +233,33 @@ fun SettingsScreen(
                                     settingsStore.shouldProcessNotifications = it
                                 }
                             )
+                        }
+                        
+                        // Message handling preferences text area - only visible when notifications are processed
+                        if (shouldProcessNotifications) {
+                            Column(
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .padding(top = 16.dp),
+                                verticalArrangement = Arrangement.spacedBy(8.dp)
+                            ) {
+                                Text(
+                                    text = "Message handling preferences",
+                                    style = MaterialTheme.typography.bodyLarge
+                                )
+                                OutlinedTextField(
+                                    value = messageHandlingPreferences,
+                                    onValueChange = {
+                                        messageHandlingPreferences = it
+                                        settingsStore.messageHandlingPreferences = it
+                                    },
+                                    modifier = Modifier
+                                        .fillMaxWidth()
+                                        .padding(vertical = 4.dp),
+                                    minLines = 3,
+                                    maxLines = 5
+                                )
+                            }
                         }
                     } else {
                         Text(

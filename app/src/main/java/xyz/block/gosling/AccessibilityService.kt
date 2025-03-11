@@ -80,8 +80,13 @@ class GoslingAccessibilityService : AccessibilityService() {
         val agent = Agent.getInstance() ?: return
         val parcelableData = event.parcelableData
         if (parcelableData is Notification) {
+
+            val parcel = parcelableData as Notification
             val packageName = event.packageName?.toString() ?: return
             if (packageName == "xyz.block.gosling") return
+
+            System.out.println(parcel)
+
 
             // Create an AgentServiceManager to handle notifications
             val agentServiceManager = xyz.block.gosling.features.agent.AgentServiceManager(this)

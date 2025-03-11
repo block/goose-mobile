@@ -7,10 +7,10 @@ import android.app.NotificationChannel
 import android.app.NotificationManager
 import android.app.PendingIntent
 import android.content.Intent
-import android.graphics.Bitmap
 import android.view.accessibility.AccessibilityEvent
 import androidx.core.app.NotificationCompat
 import xyz.block.gosling.features.agent.Agent
+import xyz.block.gosling.features.app.MainActivity
 import xyz.block.gosling.features.settings.SettingsStore
 
 class GoslingAccessibilityService : AccessibilityService() {

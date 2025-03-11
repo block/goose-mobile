@@ -1,10 +1,10 @@
-package xyz.block.gosling
+package xyz.block.gosling.features.app
 
 import android.Manifest
+import android.annotation.SuppressLint
 import android.content.Context
 import android.content.Intent
 import android.content.pm.PackageManager
-import android.net.Uri
 import android.os.Build
 import android.os.Bundle
 import android.provider.Settings
@@ -14,34 +14,18 @@ import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
 import androidx.activity.result.ActivityResultLauncher
 import androidx.activity.result.contract.ActivityResultContracts
-import androidx.compose.foundation.layout.Box
-import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.fillMaxSize
-import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.padding
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.Settings
-import androidx.compose.material3.Badge
-import androidx.compose.material3.Icon
-import androidx.compose.material3.IconButton
-import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.Scaffold
-import androidx.compose.material3.Text
-import androidx.compose.runtime.Composable
-import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableStateListOf
 import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
-import androidx.compose.ui.Alignment
-import androidx.compose.ui.Modifier
-import androidx.compose.ui.platform.LocalContext
-import androidx.compose.ui.unit.dp
+import androidx.core.content.edit
+import androidx.core.net.toUri
+import androidx.navigation.compose.rememberNavController
+import xyz.block.gosling.ChatMessage
+import xyz.block.gosling.GoslingApplication
+import xyz.block.gosling.OverlayService
 import xyz.block.gosling.features.agent.AgentServiceManager
-import xyz.block.gosling.features.onboarding.Onboarding
-import xyz.block.gosling.features.settings.SettingsScreen
 import xyz.block.gosling.features.settings.SettingsStore
+import xyz.block.gosling.navigation.NavGraph
 import xyz.block.gosling.ui.theme.GoslingTheme
 
 class MainActivity : ComponentActivity() {
@@ -58,10 +42,10 @@ class MainActivity : ComponentActivity() {
     private lateinit var agentServiceManager: AgentServiceManager
 
     internal fun saveMessages(messages: List<ChatMessage>) {
-        val json = messages.map { message ->
+        val json = messages.joinToString(",", "[", "]") { message ->
             """{"text":"${message.text}","isUser":${message.isUser},"timestamp":${message.timestamp}}"""
-        }.joinToString(",", "[", "]")
-        sharedPreferences.edit().putString(MESSAGES_KEY, json).apply()
+        }
+        sharedPreferences.edit { putString(MESSAGES_KEY, json) }
     }
 
     internal fun loadMessages(): List<ChatMessage> {
@@ -83,6 +67,7 @@ class MainActivity : ComponentActivity() {
         }
     }
 
+    @SuppressLint("UseKtx")
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         settingsStore = SettingsStore(this)
@@ -94,7 +79,7 @@ class MainActivity : ComponentActivity() {
             // If not granted, request it
             val intent = Intent(
                 Settings.ACTION_MANAGE_OVERLAY_PERMISSION,
-                Uri.parse("package:$packageName")
+                "package:$packageName".toUri()
             )
             startActivity(intent)
         } else {
@@ -121,14 +106,13 @@ class MainActivity : ComponentActivity() {
         enableEdgeToEdge()
         setContent {
             GoslingTheme {
-                Scaffold(modifier = Modifier.fillMaxSize()) { innerPadding ->
-                    MainContent(
-                        modifier = Modifier.padding(innerPadding),
-                        settingsStore = settingsStore,
-                        openAccessibilitySettings = { openAccessibilitySettings() },
-                        isAccessibilityEnabled = isAccessibilityEnabled
-                    )
-                }
+                val navController = rememberNavController()
+                NavGraph(
+                    navController = navController,
+                    settingsStore = settingsStore,
+                    openAccessibilitySettings = { openAccessibilitySettings() },
+                    isAccessibilityEnabled = isAccessibilityEnabled
+                )
             }
         }
 
@@ -179,91 +163,6 @@ class MainActivity : ComponentActivity() {
     private fun openAccessibilitySettings() {
         val intent = Intent(Settings.ACTION_ACCESSIBILITY_SETTINGS)
         accessibilitySettingsLauncher.launch(intent)
-    }
-}
-
-@Composable
-fun MainContent(
-    modifier: Modifier = Modifier,
-    settingsStore: SettingsStore,
-    openAccessibilitySettings: () -> Unit,
-    isAccessibilityEnabled: Boolean
-) {
-    var showSetup by remember { mutableStateOf(settingsStore.isFirstTime) }
-    var showSettings by remember { mutableStateOf(false) }
-    val context = LocalContext.current
-    val activity = context as MainActivity
-    val messages = remember {
-        mutableStateListOf<ChatMessage>().apply {
-            addAll(activity.loadMessages())
-        }
-    }
-
-    // Effect to save messages when they change
-    LaunchedEffect(messages.size) {
-        activity.saveMessages(messages)
-    }
-
-    if (showSetup) {
-        Onboarding(
-            onSetupComplete = { showSetup = false },
-            modifier = modifier,
-            settingsStore = settingsStore,
-            openAccessibilitySettings = openAccessibilitySettings,
-            isAccessibilityEnabled = isAccessibilityEnabled
-        )
-    } else if (showSettings) {
-        SettingsScreen(
-            settingsStore = settingsStore,
-            onBack = { showSettings = false },
-            openAccessibilitySettings = openAccessibilitySettings,
-            isAccessibilityEnabled = isAccessibilityEnabled
-        )
-    } else {
-        Column(
-            modifier = modifier.fillMaxSize()
-        ) {
-            // Settings button in top-right corner with badge
-            Box(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(8.dp)
-            ) {
-                IconButton(
-                    onClick = { showSettings = true },
-                    modifier = Modifier.align(Alignment.TopEnd)
-                ) {
-                    Icon(
-                        Icons.Default.Settings,
-                        contentDescription = "Settings",
-                        tint = MaterialTheme.colorScheme.onSurface
-                    )
-                }
-                if (!isAccessibilityEnabled) {
-                    Badge(
-                        modifier = Modifier
-                            .align(Alignment.TopEnd),
-                        containerColor = MaterialTheme.colorScheme.error
-                    ) {
-                        Text("!")
-                    }
-                }
-            }
-
-            // Main UI content
-            Box(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .weight(1f)
-            ) {
-                GoslingUI(
-                    context = LocalContext.current,
-                    messages = messages,
-                    onMessageAdded = { messages.add(it) },
-                    onMessageRemoved = { messages.remove(it) }
-                )
-            }
-        }
     }
 }
 

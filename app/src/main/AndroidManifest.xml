@@ -28,7 +28,7 @@
         android:theme="@style/Theme.Gosling">
 
         <activity
-            android:name=".MainActivity"
+            android:name=".features.app.MainActivity"
             android:exported="true"
             android:theme="@style/Theme.Gosling">
             <intent-filter>

@@ -18,11 +18,9 @@ import kotlinx.serialization.encodeToString
 import kotlinx.serialization.json.Json
 import org.json.JSONObject
 import xyz.block.gosling.GoslingAccessibilityService
-import xyz.block.gosling.IntentScanner
 import xyz.block.gosling.features.agent.ToolHandler.callTool
 import xyz.block.gosling.features.agent.ToolHandler.getSerializableToolDefinitions
 import xyz.block.gosling.features.settings.SettingsStore
-import xyz.block.gosling.formatForLLM
 import java.io.File
 import java.net.HttpURLConnection
 import java.net.URL
@@ -395,9 +393,10 @@ class Agent : Service() {
                 // Get message handling preferences from settings
                 val settings = SettingsStore(this@Agent)
                 val messageHandlingPreferences = settings.messageHandlingPreferences
-                
+
                 val prompt = buildString {
-                    append("""
+                    append(
+                        """
                         Here's the notification:
                         App: $packageName
                         Title: $title
@@ -405,8 +404,9 @@ class Agent : Service() {
                         Category: $category
                         
                         Please analyze this notification and take appropriate action if needed.
-                    """.trimIndent())
-                    
+                    """.trimIndent()
+                    )
+
                     // Add handling rules if they exist
                     if (messageHandlingPreferences.isNotEmpty()) {
                         append(messageHandlingPreferences)

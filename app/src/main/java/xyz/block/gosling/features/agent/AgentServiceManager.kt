@@ -10,8 +10,8 @@ import android.content.Intent
 import android.content.ServiceConnection
 import android.os.IBinder
 import androidx.core.app.NotificationCompat
-import xyz.block.gosling.MainActivity
 import xyz.block.gosling.R
+import xyz.block.gosling.features.app.MainActivity
 
 /**
  * Manages the Agent service lifecycle and notifications.
@@ -58,15 +58,15 @@ class AgentServiceManager(private val context: Context) {
         val serviceConnection = object : ServiceConnection {
             override fun onServiceConnected(name: ComponentName?, service: IBinder?) {
                 val agent = (service as Agent.AgentBinder).getService()
-                
+
                 // Start as foreground service
                 startAgentForeground(agent)
-                
+
                 // Set up status listener
                 agent.setStatusListener { status ->
                     updateNotification(status)
                 }
-                
+
                 // Call the callback with the agent
                 callback(agent)
             }
@@ -75,7 +75,7 @@ class AgentServiceManager(private val context: Context) {
                 // Service disconnected
             }
         }
-        
+
         // Start and bind to the service
         context.startForegroundService(serviceIntent)
         context.bindService(serviceIntent, serviceConnection, Context.BIND_AUTO_CREATE)
@@ -85,12 +85,12 @@ class AgentServiceManager(private val context: Context) {
      * Updates the notification based on Agent status
      */
     fun updateNotification(status: AgentStatus) {
-        val message = when(status) {
+        val message = when (status) {
             is AgentStatus.Processing -> status.message
             is AgentStatus.Success -> status.message
             is AgentStatus.Error -> "Error: ${status.message}"
         }
-        
+
         val notification = createNotification(message)
         val notificationManager =
             context.getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager

@@ -1,4 +1,4 @@
-package xyz.block.gosling
+package xyz.block.gosling.features.agent
 
 import android.content.Context
 import android.content.Intent

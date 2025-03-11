@@ -95,6 +95,7 @@ class GoslingAccessibilityService : AccessibilityService() {
             val rawText = event.text.joinToString(" ")
             val extras = parcelableData.extras
 
+
             if (extras == null) {
                 agent.handleNotification(
                     packageName = packageName,
@@ -112,18 +113,6 @@ class GoslingAccessibilityService : AccessibilityService() {
             val content = extras.getCharSequence(Notification.EXTRA_BIG_TEXT)?.toString()
                 ?: extras.getCharSequence(Notification.EXTRA_TEXT)?.toString()
                 ?: rawText
-
-            val context = extras.getCharSequence(Notification.EXTRA_SUB_TEXT)?.toString()
-                ?: extras.getCharSequence(Notification.EXTRA_SUMMARY_TEXT)?.toString()
-                ?: ""
-
-            val largeIcon = extras.getParcelable<Bitmap>(Notification.EXTRA_LARGE_ICON)
-            val picture = extras.getParcelable<Bitmap>(Notification.EXTRA_PICTURE)
-            val image = picture ?: largeIcon
-
-            val actions = parcelableData.actions?.map { action ->
-                action.title.toString()
-            } ?: emptyList()
 
             agent.handleNotification(
                 packageName = packageName,

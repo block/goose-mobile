@@ -609,6 +609,15 @@ class Agent : Service() {
 //            "time_coverage_percentage": 99.88861280095966
 //        }
 
+// Optional ids & packageName
+//        "annotations": {
+//            "total_input_tokens": 25026.0,
+//            "total_output_tokens": 252.0,
+//            "total_wall_time": 10.954,
+//            "total_annotated_time": 10.937000000000001,
+//            "time_coverage_percentage": 99.84480555048385
+//        }
+
         return Message(
             role = "stats",
             content = "Conversation Statistics - ${

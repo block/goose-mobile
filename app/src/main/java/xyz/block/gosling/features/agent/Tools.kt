@@ -92,7 +92,7 @@ object ToolHandler {
                     || node.isEditable) && node.isEnabled
 
             return NodeInfo(
-                className = node.className?.toString(),
+                className = node.className?.toString()?.removePrefix("android.widget."),
                 packageName = node.packageName?.toString()
                     .takeIf { parentPackageName != node.packageName },
                 text = node.text?.toString()?.takeIf { it.isNotEmpty() },
@@ -137,11 +137,16 @@ object ToolHandler {
         description = "Get the current UI hierarchy as a JSON string. " +
                 "This shows all UI elements, their properties, and locations on screen. " +
                 "clickable, focusable, scrollable, and editable properties are only mentioned " +
-                "when true, enabled only when false.",
+                "when true, enabled only when false. packagename is only mentioned when it is " +
+                "different from the parent node's package name. assume class name to be in " +
+                "android.widget if not fully specified.",
         parameters = [],
-        requiresAccessibility = true
+        requiresAccessibility = true,
     )
-    fun getUiHierarchy(accessibilityService: AccessibilityService, args: JSONObject): String {
+    fun getUiHierarchy(
+        accessibilityService: AccessibilityService,
+        args: JSONObject
+    ): String {
         val json = Json {
             prettyPrint = false
             ignoreUnknownKeys = true
@@ -300,7 +305,10 @@ object ToolHandler {
     @Tool(
         name = "enterText",
         description = "Enter text into the a text field. Make sure the field you want the " +
-                "text to enter into is focused. Click it if needed, don't assume.",
+                "text to enter into is focused. Click it if needed, don't assume. If you want " +
+                "to enter text into two fields, make sure the second one is focused, don't assume " +
+                "submit worked on the first and you keep just keep typing. Get the uihierarchy to " +
+                "confirm if needed.",
         parameters = [
             ParameterDef(
                 name = "text",

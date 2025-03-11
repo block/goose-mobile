@@ -2,6 +2,7 @@ package xyz.block.gosling.features.app
 
 import android.app.Activity
 import android.content.Context
+import android.content.Intent
 import android.widget.Toast
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
@@ -347,6 +348,13 @@ private fun processAgentCommand(
                 is AgentStatus.Success -> {
                     android.os.Handler(context.mainLooper).post {
                         onMessageReceived(status.message, false)
+
+                        // Create an intent to bring MainActivity to the foreground
+                        val intent = Intent(context, MainActivity::class.java).apply {
+                            flags = Intent.FLAG_ACTIVITY_NEW_TASK or 
+                                   Intent.FLAG_ACTIVITY_REORDER_TO_FRONT
+                        }
+                        context.startActivity(intent)
 
                         Toast.makeText(
                             context,

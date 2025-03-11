@@ -9,7 +9,6 @@ import android.os.IBinder
 import android.util.Log
 import android.widget.Toast
 import androidx.compose.foundation.Image
-import androidx.compose.foundation.clickable
 import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -19,16 +18,12 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Keyboard
 import androidx.compose.material.icons.filled.Mic
 import androidx.compose.material3.Button
-import androidx.compose.material3.Card
-import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
@@ -57,19 +52,6 @@ import xyz.block.gosling.features.agent.AgentServiceManager
 import xyz.block.gosling.features.agent.AgentStatus
 import xyz.block.gosling.shared.services.VoiceRecognitionService
 
-data class ChatMessage(
-    val text: String,
-    val isUser: Boolean,
-    val timestamp: Long = System.currentTimeMillis()
-)
-
-private val predefinedQueries = listOf(
-    "What's the weather like?",
-    "Add contact named James Gosling",
-    "Show me the best beer garden in Berlin in maps",
-    "Turn on flashlight",
-    "Take a picture using the camera and attach that to a new email. Save the email in drafts"
-)
 
 @Composable
 fun GoslingUI(
@@ -252,54 +234,10 @@ fun GoslingUI(
     Box(
         modifier = modifier.fillMaxSize()
     ) {
-        Column(
-            modifier = Modifier.fillMaxSize()
+        Box(
+            modifier = Modifier.fillMaxSize(),
+            contentAlignment = Alignment.BottomCenter
         ) {
-            // Chat messages
-            Box(
-                modifier = Modifier
-                    .weight(1f)
-                    .fillMaxWidth()
-                    .padding(bottom = 8.dp)
-            ) {
-                LazyColumn(
-                    modifier = Modifier
-                        .fillMaxSize()
-                        .padding(horizontal = 16.dp),
-                    state = listState,
-                    verticalArrangement = Arrangement.spacedBy(8.dp, alignment = Alignment.Bottom),
-                    reverseLayout = true
-                ) {
-                    items(messages.asReversed()) { message ->
-                        Card(
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .padding(
-                                    start = if (message.isUser) 32.dp else 0.dp,
-                                    end = if (!message.isUser) 32.dp else 0.dp
-                                ),
-                            shape = RoundedCornerShape(12.dp),
-                            colors = CardDefaults.cardColors(
-                                containerColor = if (message.isUser)
-                                    MaterialTheme.colorScheme.primaryContainer
-                                else
-                                    MaterialTheme.colorScheme.secondaryContainer
-                            )
-                        ) {
-                            Text(
-                                text = message.text,
-                                modifier = Modifier.padding(12.dp),
-                                style = MaterialTheme.typography.bodyLarge,
-                                color = if (message.isUser)
-                                    MaterialTheme.colorScheme.onPrimaryContainer
-                                else
-                                    MaterialTheme.colorScheme.onSecondaryContainer
-                            )
-                        }
-                    }
-                }
-            }
-
             Surface(
                 modifier = Modifier.fillMaxWidth(),
                 color = MaterialTheme.colorScheme.surfaceContainer,
@@ -373,33 +311,6 @@ fun GoslingUI(
                                     focusedBorderColor = MaterialTheme.colorScheme.primary,
                                 )
                             )
-
-                            if (showPresetQueries) {
-                                Card(
-                                    modifier = Modifier
-                                        .fillMaxWidth()
-                                        .padding(top = 60.dp),
-                                    elevation = CardDefaults.cardElevation(defaultElevation = 4.dp)
-                                ) {
-                                    Column(
-                                        modifier = Modifier.fillMaxWidth()
-                                    ) {
-                                        predefinedQueries.forEach { query ->
-                                            Text(
-                                                text = query,
-                                                modifier = Modifier
-                                                    .fillMaxWidth()
-                                                    .clickable {
-                                                        inputText = query
-                                                        showPresetQueries = false
-                                                        executeCommand(query)
-                                                    }
-                                                    .padding(16.dp)
-                                            )
-                                        }
-                                    }
-                                }
-                            }
                         }
 
                         Button(

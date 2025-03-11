@@ -1,6 +1,8 @@
 package xyz.block.gosling.features.launcher
 
+import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.padding
@@ -10,24 +12,19 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.outlined.Keyboard
 import androidx.compose.material.icons.outlined.Mic
 import androidx.compose.material3.Icon
-import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.unit.dp
 
-/**
- * A component that displays microphone and keyboard icons side by side.
- *
- * @param onMicrophoneClick Callback for when the microphone icon is clicked
- * @param onKeyboardClick Callback for when the keyboard icon is clicked
- */
 @Composable
 fun InputOptions(
     onMicrophoneClick: () -> Unit,
-    onKeyboardClick: () -> Unit
+    onKeyboardClick: () -> Unit,
+    onKeyboardLongPress: () -> Unit = {}
 ) {
     Row(
         horizontalArrangement = Arrangement.Center,
@@ -45,27 +42,29 @@ fun InputOptions(
         InputIcon(
             icon = Icons.Outlined.Keyboard,
             contentDescription = "Keyboard Input",
-            onClick = onKeyboardClick
+            onClick = onKeyboardClick,
+            onLongPress = onKeyboardLongPress
         )
     }
 }
 
-/**
- * A clean icon button without background.
- *
- * @param icon The icon to display
- * @param contentDescription Content description for accessibility
- * @param onClick Callback for when the icon is clicked
- */
 @Composable
 private fun InputIcon(
     icon: ImageVector,
     contentDescription: String,
-    onClick: () -> Unit
+    onClick: () -> Unit,
+    onLongPress: () -> Unit = {}
 ) {
-    IconButton(
-        onClick = onClick,
-        modifier = Modifier.size(72.dp)
+    Box(
+        modifier = Modifier
+            .size(72.dp)
+            .pointerInput(Unit) {
+                detectTapGestures(
+                    onLongPress = { onLongPress() },
+                    onTap = { onClick() }
+                )
+            },
+        contentAlignment = Alignment.Center
     ) {
         Icon(
             imageVector = icon,

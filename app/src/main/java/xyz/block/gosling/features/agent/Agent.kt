@@ -34,7 +34,7 @@ class AgentException(message: String) : Exception(message)
 
 sealed class AgentStatus {
     data class Processing(val message: String) : AgentStatus()
-    data class Success(val message: String) : AgentStatus()
+    data class Success(val message: String, val milliseconds: Double = 0.0) : AgentStatus()
     data class Error(val message: String) : AgentStatus()
 }
 
@@ -92,7 +92,7 @@ class Agent : Service() {
         job.cancel()
         job = SupervisorJob()
         scope = CoroutineScope(Dispatchers.IO + job)
-        updateStatus(AgentStatus.Success("Agent cancelled"))
+        updateStatus(AgentStatus.Success("Agent cancelled", 0.0))
     }
 
     fun isCancelled(): Boolean {
@@ -275,8 +275,6 @@ class Agent : Service() {
                             else -> Triple("Unknown response format", null, emptyMap())
                         }
 
-                        updateStatus(AgentStatus.Processing(assistantReply))
-
                         if (isCancelled) {
                             updateStatus(AgentStatus.Success("Operation cancelled"))
                             return@withContext "Operation cancelled by user"
@@ -372,11 +370,13 @@ class Agent : Service() {
                     }.encodeToString(messagesWithStats))
                 }
 
+                val completionTime = (System.currentTimeMillis() - startTime) / 1000.0
                 val completionMessage =
                     "Task completed successfully in %.1f seconds".format(
                         (System.currentTimeMillis() - startTime) / 1000.0
                     )
-                updateStatus(AgentStatus.Success(completionMessage))
+
+                updateStatus(AgentStatus.Success(completionMessage, completionTime))
                 return@withContext completionMessage
             }
         } catch (e: Exception) {

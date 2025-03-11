@@ -9,14 +9,11 @@ import androidx.compose.foundation.clickable
 import androidx.compose.foundation.gestures.Orientation
 import androidx.compose.foundation.gestures.draggable
 import androidx.compose.foundation.gestures.rememberDraggableState
-import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
-import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
-import androidx.compose.material3.BottomSheetDefaults
 import androidx.compose.material3.BottomSheetScaffold
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.MaterialTheme
@@ -135,17 +132,6 @@ fun LauncherScreen() {
             )
         },
         sheetPeekHeight = 0.dp,
-        sheetDragHandle = {
-            // Custom drag handle
-            Box(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(vertical = 8.dp),
-                contentAlignment = Alignment.Center
-            ) {
-                BottomSheetDefaults.DragHandle()
-            }
-        }
     ) { innerPadding ->
         Surface(
             modifier = Modifier
@@ -170,20 +156,17 @@ fun LauncherScreen() {
                 },
             color = MaterialTheme.colorScheme.background
         ) {
-            // Home screen content
             Column(
                 modifier = Modifier
                     .fillMaxSize()
                     .padding(16.dp),
                 horizontalAlignment = Alignment.CenterHorizontally
             ) {
-                // Clock widget at the top
                 Spacer(modifier = Modifier.height(48.dp))
                 ClockWidget(currentTime = currentTime)
 
                 Spacer(modifier = Modifier.weight(0.8f))
 
-                // Input options (microphone and keyboard)
                 InputOptions(
                     onMicrophoneClick = {
                         // Start voice recognition for agent commands
@@ -195,10 +178,8 @@ fun LauncherScreen() {
                     }
                 )
 
-                // Remove test notification button
-                Spacer(modifier = Modifier.weight(0.2f))
+                Spacer(modifier = Modifier.height(32.dp))
 
-                // Instructions at the bottom
                 Text(
                     text = "Swipe up or tap to open app drawer",
                     style = MaterialTheme.typography.bodyMedium,
@@ -269,16 +250,10 @@ private fun startVoiceRecognition(context: Context) {
     )
 }
 
-/**
- * Processes a command with the Agent service.
- */
 private fun processAgentCommand(context: Context, command: String) {
     Toast.makeText(context, command, Toast.LENGTH_SHORT).show()
 
-    // Create an AgentServiceManager to handle notifications
     val agentServiceManager = AgentServiceManager(context)
-
-    // Bind to the Agent service and start it as a foreground service
     agentServiceManager.bindAndStartAgent { agent ->
         // Set up status listener for UI updates (in addition to notifications)
         agent.setStatusListener { status ->

@@ -137,14 +137,18 @@ class MainActivity : ComponentActivity() {
         isAccessibilityEnabled = isEnabled
         Log.d("Gosling", "MainActivity: Updated accessibility state on resume: $isEnabled")
 
-        // Start services if overlay permission was just granted
+        // Start services if overlay permission is granted
         if (Settings.canDrawOverlays(this)) {
+            // Start the overlay service if it's not running
+            if (OverlayService.getInstance() == null) {
+                startService(Intent(this, OverlayService::class.java))
+            }
+            
+            // Bind to the agent service
             agentServiceManager.bindAndStartAgent { agent ->
                 // Agent is now started as a foreground service and has a status listener set up
                 Log.d("MainActivity", "Agent service started successfully")
             }
-
-            startService(Intent(this, OverlayService::class.java))
         }
     }
 
@@ -152,12 +156,18 @@ class MainActivity : ComponentActivity() {
         super.onPause()
         GoslingApplication.isMainActivityRunning = false
         OverlayService.getInstance()?.updateOverlayVisibility()
+        
+        // Unbind the agent service to prevent leaks
+        agentServiceManager.unbindAgent()
     }
 
     override fun onDestroy() {
         super.onDestroy()
         GoslingApplication.isMainActivityRunning = false
         OverlayService.getInstance()?.updateOverlayVisibility()
+        
+        // Ensure the agent service is unbound
+        agentServiceManager.unbindAgent()
     }
 
     private fun openAccessibilitySettings() {

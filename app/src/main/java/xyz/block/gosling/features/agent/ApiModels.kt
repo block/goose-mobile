@@ -2,6 +2,7 @@ package xyz.block.gosling.features.agent
 
 import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
+import kotlinx.serialization.json.JsonElement
 import kotlinx.serialization.json.JsonObject
 
 // Common models
@@ -15,7 +16,7 @@ data class Message(
     @SerialName("tool_calls")
     val toolCalls: List<ToolCall>? = null,
     @SerialName("annotations")
-    val annotations: Map<String, Double>? = null
+    val annotations: JsonElement? = null
 )
 
 @Serializable

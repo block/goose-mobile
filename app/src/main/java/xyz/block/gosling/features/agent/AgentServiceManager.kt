@@ -9,6 +9,7 @@ import android.content.Context
 import android.content.Intent
 import android.content.ServiceConnection
 import android.os.IBinder
+import android.util.Log
 import androidx.core.app.NotificationCompat
 import xyz.block.gosling.R
 import xyz.block.gosling.features.app.MainActivity
@@ -22,7 +23,11 @@ class AgentServiceManager(private val context: Context) {
     companion object {
         const val NOTIFICATION_CHANNEL_ID = "agent_service"
         const val NOTIFICATION_ID = 2
+        private const val TAG = "AgentServiceManager"
     }
+
+    private var serviceConnection: ServiceConnection? = null
+    private var isBound = false
 
     init {
         createNotificationChannel()
@@ -54,8 +59,13 @@ class AgentServiceManager(private val context: Context) {
      * Binds to the Agent service and starts it as a foreground service
      */
     fun bindAndStartAgent(callback: (Agent) -> Unit) {
+        if (isBound) {
+            Log.d(TAG, "Service is already bound, skipping bind")
+            return
+        }
+
         val serviceIntent = Intent(context, Agent::class.java)
-        val serviceConnection = object : ServiceConnection {
+        serviceConnection = object : ServiceConnection {
             override fun onServiceConnected(name: ComponentName?, service: IBinder?) {
                 val agent = (service as Agent.AgentBinder).getService()
 
@@ -73,12 +83,32 @@ class AgentServiceManager(private val context: Context) {
 
             override fun onServiceDisconnected(name: ComponentName?) {
                 // Service disconnected
+                isBound = false
+                serviceConnection = null
             }
         }
 
         // Start and bind to the service
         context.startForegroundService(serviceIntent)
-        context.bindService(serviceIntent, serviceConnection, Context.BIND_AUTO_CREATE)
+        val bound = context.bindService(serviceIntent, serviceConnection!!, Context.BIND_AUTO_CREATE)
+        isBound = bound
+        Log.d(TAG, "Service bind attempt result: $bound")
+    }
+
+    /**
+     * Unbinds from the Agent service
+     */
+    fun unbindAgent() {
+        if (isBound && serviceConnection != null) {
+            try {
+                context.unbindService(serviceConnection!!)
+                Log.d(TAG, "Service unbound successfully")
+            } catch (e: Exception) {
+                Log.e(TAG, "Error unbinding service: ${e.message}")
+            }
+            isBound = false
+            serviceConnection = null
+        }
     }
 
     /**

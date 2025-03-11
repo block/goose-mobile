@@ -16,6 +16,8 @@ import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import kotlinx.serialization.encodeToString
 import kotlinx.serialization.json.Json
+import kotlinx.serialization.json.JsonArray
+import kotlinx.serialization.json.encodeToJsonElement
 import org.json.JSONObject
 import xyz.block.gosling.GoslingAccessibilityService
 import xyz.block.gosling.features.agent.ToolHandler.callTool
@@ -224,6 +226,7 @@ class Agent : Service() {
                         if (retryCount >= maxRetries) {
                             val errorMsg = "Failed after $maxRetries attempts: ${e.message}"
                             updateStatus(AgentStatus.Error(errorMsg))
+                            Log.e("Agent", "Error processing response", e)
                             return@withContext errorMsg
                         }
                         continue
@@ -348,7 +351,17 @@ class Agent : Service() {
                         val annotations = messageAnnotations
                             .firstOrNull { it.messageIndex == index }
                             ?.annotations ?: emptyMap()
-                        message.copy(annotations = annotations)
+
+                        // If annotations are empty, we need to use an empty array to match OpenAI's format
+                        // Otherwise, we can use the annotations map directly
+                        val jsonAnnotations = if (annotations.isEmpty()) {
+                            JsonArray(emptyList())
+                        } else {
+                            // Let kotlinx.serialization handle the conversion from Map to JsonObject
+                            Json.encodeToJsonElement(annotations)
+                        }
+
+                        message.copy(annotations = jsonAnnotations)
                     }
 
                     val messagesWithStats = listOf(statsMessage) + annotatedMessages
@@ -614,18 +627,21 @@ class Agent : Service() {
             annotation.annotations["duration"] ?: 0.0
         }
 
+        // Create a map of statistics and let kotlinx.serialization handle the conversion
+        val statsMap = mapOf(
+            "total_input_tokens" to totalInputTokens,
+            "total_output_tokens" to totalOutputTokens,
+            "total_wall_time" to totalTime,
+            "total_annotated_time" to summedAnnotationTime,
+            "time_coverage_percentage" to (summedAnnotationTime / totalTime * 100)
+        )
+
         return Message(
             role = "stats",
             content = "Conversation Statistics - ${
                 LocalDateTime.now().format(DateTimeFormatter.ISO_LOCAL_DATE_TIME)
             }",
-            annotations = mapOf(
-                "total_input_tokens" to totalInputTokens,
-                "total_output_tokens" to totalOutputTokens,
-                "total_wall_time" to totalTime,
-                "total_annotated_time" to summedAnnotationTime,
-                "time_coverage_percentage" to (summedAnnotationTime / totalTime * 100)
-            )
+            annotations = Json.encodeToJsonElement(statsMap)
         )
     }
 }

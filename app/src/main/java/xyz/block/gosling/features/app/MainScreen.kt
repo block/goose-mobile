@@ -88,36 +88,43 @@ fun MainScreen(
     val listState = rememberLazyListState()
     var showPresetQueries by remember { mutableStateOf(false) }
 
-    // Step 0: discover mMCPs and what tools they offer
-    val availableMCPs = context.packageManager.queryIntentActivities(Intent("com.example.mMCP.ACTION_TOOL_ADVERTISE"), 0)
-    availableMCPs.forEach{ resolveInfo ->
-        val activityInfo = resolveInfo.activityInfo
-        println("\nFound mMCP provider:")
-        println("- Package: ${activityInfo.packageName}")
-        println("- Activity: ${activityInfo.name}")
+    fun sendMessage() {
 
-        val ai = context.packageManager.getActivityInfo(
-            android.content.ComponentName(activityInfo.packageName, activityInfo.name),
-            android.content.pm.PackageManager.GET_META_DATA
+
+        // Step 0: discover mMCPs and what tools they offer
+        val availableMCPs = context.packageManager.queryIntentActivities(
+            Intent("com.example.mMCP.ACTION_TOOL_ADVERTISE"),
+            0
         )
+        availableMCPs.forEach { resolveInfo ->
+            val activityInfo = resolveInfo.activityInfo
+            println("\nFound mMCP provider:")
+            println("- Package: ${activityInfo.packageName}")
+            println("- Activity: ${activityInfo.name}")
 
-        println("- Metadata bundle: ${ai.metaData}")
-        val manifest = ai.metaData?.getString("mMCP_manifest")
-        println("MCP Manifest ${manifest}")
-        val jsonObject = org.json.JSONObject(manifest)
-        println("instructions ${jsonObject.getString("instructions")}")
-        println("tools ${jsonObject.getString("tools")}")
+            val ai = context.packageManager.getActivityInfo(
+                android.content.ComponentName(activityInfo.packageName, activityInfo.name),
+                android.content.pm.PackageManager.GET_META_DATA
+            )
 
+            println("- Metadata bundle: ${ai.metaData}")
+            val manifest = ai.metaData?.getString("mMCP_manifest")
+            println("MCP Manifest ${manifest}")
+            val jsonObject = org.json.JSONObject(manifest)
+            println("instructions ${jsonObject.getString("instructions")}")
+            println("tools ${jsonObject.getString("tools")}")
+
+        }
+
+        // Step 1: Trigger mMCP action when settings page is shown
+        val params = JSONObject(mapOf("name" to "Mic"))
+        val intent = Intent("com.example.mMCP.ACTION_TOOL_CALL").apply {
+            setPackage("org.breezyweather.debug")
+            putExtra("tool_name", "say_hi")
+            putExtra("parameters", params.toString())
+        }
+        context.startActivityForResult(intent, 1001)
     }
-
-    // Step 1: Trigger mMCP action when settings page is shown
-    val params = JSONObject(mapOf("name" to "Mic"))
-    val intent = Intent("com.example.mMCP.ACTION_TOOL_CALL").apply {
-        setPackage("org.breezyweather.debug")
-        putExtra("tool_name", "say_hi")
-        putExtra("parameters", params.toString())
-    }
-    context.startActivityForResult(intent, 1001)
 
 
 
@@ -309,6 +316,7 @@ fun MainScreen(
                         textInput = ""
                     },
                     onSubmit = {
+                        //sendMessage()
                         if (textInput.isNotEmpty()) {
                             messages.add(ChatMessage(text = textInput, isUser = true))
                             processAgentCommand(

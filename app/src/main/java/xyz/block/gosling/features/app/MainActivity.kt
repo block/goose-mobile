@@ -2,6 +2,7 @@ package xyz.block.gosling.features.app
 
 import android.Manifest
 import android.annotation.SuppressLint
+import android.app.ComponentCaller
 import android.content.Context
 import android.content.Intent
 import android.content.pm.PackageManager
@@ -67,6 +68,36 @@ class MainActivity : ComponentActivity() {
     }
 
     @SuppressLint("UseKtx")
+    override fun onActivityResult(
+        requestCode: Int,
+        resultCode: Int,
+        data: Intent?,
+        caller: ComponentCaller
+    ) {
+        super.onActivityResult(requestCode, resultCode, data, caller)
+        if (requestCode == 1001) {
+            println("Step 2: Received mMCP callback response")
+            when (resultCode) {
+                RESULT_OK -> {
+                    val result = data?.getStringExtra("result")
+                    println("mMCP response: $result")
+                    Log.d("Gosling", "mMCP success response: $result")
+                }
+                RESULT_CANCELED -> {
+                    val error = data?.getStringExtra("error")
+                    println("mMCP error response: $error")
+                    Log.d("Gosling", "mMCP error response: $error")
+                }
+                else -> {
+                    println("mMCP unknown response code: $resultCode")
+                    Log.d("Gosling", "mMCP unknown response code: $resultCode")
+                }
+            }
+        }
+
+    }
+
+    @SuppressLint("UseKtx")
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         settingsStore = SettingsStore(this)
@@ -123,6 +154,8 @@ class MainActivity : ComponentActivity() {
                 )
             }
         }
+
+
     }
 
     override fun onResume() {

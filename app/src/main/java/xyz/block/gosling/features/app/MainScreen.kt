@@ -47,6 +47,7 @@ import androidx.compose.ui.unit.dp
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
+import org.json.JSONObject
 import xyz.block.gosling.R
 import xyz.block.gosling.features.agent.AgentServiceManager
 import xyz.block.gosling.features.agent.AgentStatus
@@ -86,6 +87,40 @@ fun MainScreen(
     var textInput by remember { mutableStateOf("") }
     val listState = rememberLazyListState()
     var showPresetQueries by remember { mutableStateOf(false) }
+
+    // Step 0: discover mMCPs and what tools they offer
+    val availableMCPs = context.packageManager.queryIntentActivities(Intent("com.example.mMCP.ACTION_TOOL_ADVERTISE"), 0)
+    availableMCPs.forEach{ resolveInfo ->
+        val activityInfo = resolveInfo.activityInfo
+        println("\nFound mMCP provider:")
+        println("- Package: ${activityInfo.packageName}")
+        println("- Activity: ${activityInfo.name}")
+
+        val ai = context.packageManager.getActivityInfo(
+            android.content.ComponentName(activityInfo.packageName, activityInfo.name),
+            android.content.pm.PackageManager.GET_META_DATA
+        )
+
+        println("- Metadata bundle: ${ai.metaData}")
+        val manifest = ai.metaData?.getString("mMCP_manifest")
+        println("MCP Manifest ${manifest}")
+        val jsonObject = org.json.JSONObject(manifest)
+        println("instructions ${jsonObject.getString("instructions")}")
+        println("tools ${jsonObject.getString("tools")}")
+
+    }
+
+    // Step 1: Trigger mMCP action when settings page is shown
+    val params = JSONObject(mapOf("name" to "Mic"))
+    val intent = Intent("com.example.mMCP.ACTION_TOOL_CALL").apply {
+        setPackage("org.breezyweather.debug")
+        putExtra("tool_name", "say_hi")
+        putExtra("parameters", params.toString())
+    }
+    context.startActivityForResult(intent, 1001)
+
+
+
 
     LaunchedEffect(messages.size) {
         activity.saveMessages(messages.toList())

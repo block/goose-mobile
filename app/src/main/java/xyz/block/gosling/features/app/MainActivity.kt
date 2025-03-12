@@ -82,19 +82,50 @@ class MainActivity : ComponentActivity() {
                     val result = data?.getStringExtra("result")
                     println("mMCP response: $result")
                     Log.d("Gosling", "mMCP success response: $result")
+                    
+                    // Check if this is an async tool result
+                    val toolCallId = data?.getStringExtra("tool_call_id")
+                    if (toolCallId != null) {
+                        // Complete the async tool call with the result
+                        val toolResult = result ?: "No result provided"
+                        xyz.block.gosling.features.agent.AsyncToolRegistry.completeToolCall(toolCallId, toolResult)
+                        Log.d("Gosling", "Completed async tool call $toolCallId with result: $toolResult")
+                    }
                 }
                 RESULT_CANCELED -> {
                     val error = data?.getStringExtra("error")
                     println("mMCP error response: $error")
                     Log.d("Gosling", "mMCP error response: $error")
+                    
+                    // Check if this is an async tool result
+                    val toolCallId = data?.getStringExtra("tool_call_id")
+                    if (toolCallId != null) {
+                        // Complete the async tool call with an error
+                        val errorMessage = error ?: "Operation was cancelled"
+                        xyz.block.gosling.features.agent.AsyncToolRegistry.completeToolCall(
+                            toolCallId, 
+                            "Error: $errorMessage"
+                        )
+                        Log.d("Gosling", "Completed async tool call $toolCallId with error: $errorMessage")
+                    }
                 }
                 else -> {
                     println("mMCP unknown response code: $resultCode")
                     Log.d("Gosling", "mMCP unknown response code: $resultCode")
+                    
+                    // Check if this is an async tool result
+                    val toolCallId = data?.getStringExtra("tool_call_id")
+                    if (toolCallId != null) {
+                        // Complete the async tool call with an error about the unknown response code
+                        xyz.block.gosling.features.agent.AsyncToolRegistry.completeToolCall(
+                            toolCallId, 
+                            "Error: Unknown response code $resultCode"
+                        )
+                        Log.d("Gosling", "Completed async tool call $toolCallId with unknown response code: $resultCode")
+                    }
                 }
             }
         }
-
     }
 
     @SuppressLint("UseKtx")

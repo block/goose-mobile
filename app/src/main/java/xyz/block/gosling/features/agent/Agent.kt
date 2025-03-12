@@ -581,35 +581,98 @@ class Agent : Service() {
         }
     }
 
-    private fun executeTools(
+    private suspend fun executeTools(
         toolCalls: List<InternalToolCall>?,
         context: Context
     ): Pair<List<Map<String, String>>, List<Map<String, Double>>> {
         if (toolCalls == null || isCancelled) return Pair(emptyList(), emptyList())
 
         val annotations: MutableList<Map<String, Double>> = mutableListOf()
+        val results = mutableListOf<Map<String, String>>()
 
-        val results = toolCalls.mapIndexed { index, toolCall ->
+        // Process tools sequentially to handle potential dependencies
+        for ((index, toolCall) in toolCalls.withIndex()) {
             if (isCancelled) {
                 annotations.add(emptyMap())
-                return@mapIndexed mapOf(
+                results.add(mapOf(
                     "tool_call_id" to "cancelled_${System.currentTimeMillis()}_$index",
                     "output" to "Operation cancelled by user",
                     "name" to "cancelled"
-                )
+                ))
+                continue
             }
 
             val toolCallId = "call_${System.currentTimeMillis()}_$index"
             val startTime = System.currentTimeMillis()
-            val result = callTool(toolCall, context, GoslingAccessibilityService.getInstance())
+            
+            // Handle async tool calls differently
+            val result = if (isAsyncTool(toolCall.name)) {
+                // Start async operation and wait for result
+                callAsyncTool(toolCall, context, toolCallId)
+            } else {
+                // Regular synchronous tool call
+                callTool(toolCall, context, GoslingAccessibilityService.getInstance())
+            }
+            
             annotations.add(mapOf("duration" to (System.currentTimeMillis() - startTime) / 1000.0))
-            mapOf(
+            results.add(mapOf(
                 "tool_call_id" to toolCallId,
                 "output" to result,
                 "name" to toolCall.name
-            )
+            ))
         }
+        
         return Pair(results, annotations)
+    }
+    
+    /**
+     * Determines if a tool should be handled asynchronously
+     */
+    private fun isAsyncTool(toolName: String): Boolean {
+        // For now, we don't have any async tools
+        // This will be expanded as we add async tools
+        return when (toolName) {
+            // Add async tool names here
+            else -> false
+        }
+    }
+
+    /**
+     * Handles execution of asynchronous tools
+     */
+    private suspend fun callAsyncTool(
+        toolCall: InternalToolCall,
+        context: Context,
+        toolCallId: String
+    ): String {
+        // Create a CompletableDeferred to wait for the result
+        val resultDeferred = kotlinx.coroutines.CompletableDeferred<String>()
+        
+        // Register the deferred in the global registry
+        AsyncToolRegistry.register(toolCallId, resultDeferred)
+        
+        try {
+            // Start the activity
+            val intent = Intent("com.example.ACTION_TOOL_CALL")
+            intent.putExtra("tool_name", toolCall.name)
+            intent.putExtra("parameters", toolCall.arguments.toString())
+            intent.putExtra("tool_call_id", toolCallId)
+            
+            // Use application context to start activity
+            intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+            context.startActivity(intent)
+            
+            // Wait for the result with timeout
+            return kotlinx.coroutines.withTimeout(30000) { // 30 seconds timeout
+                resultDeferred.await()
+            }
+        } catch (e: kotlinx.coroutines.TimeoutCancellationException) {
+            return "Error: Operation timed out after 30 seconds"
+        } catch (e: Exception) {
+            return "Error executing ${toolCall.name}: ${e.message}"
+        } finally {
+            AsyncToolRegistry.unregister(toolCallId)
+        }
     }
 
     private fun calculateConversationStats(

@@ -68,39 +68,51 @@ object AsyncToolRegistry {
     fun unregister(id: String) {
         registry.remove(id)
     }
+    
+    fun completeToolCall(id: String, result: String): Boolean {
+        val deferred = registry[id] ?: return false
+        deferred.complete(result)
+        registry.remove(id)
+        return true
+    }
 }
 ```
 
 ### 4. Handle Results in MainActivity
 
-In `MainActivity.kt`, we need to process results from async activities and forward them to our registry:
+In `MainActivity.kt`, we process results from async activities and forward them to our registry:
 
 ```kotlin
 override fun onActivityResult(requestCode: Int, resultCode: Int, data: Intent?) {
     super.onActivityResult(requestCode, resultCode, data)
     
-    // Handle tool call results (like in MainScreen.kt example)
-    if (requestCode == 1001 && resultCode == Activity.RESULT_OK) {
-        val toolCallId = data?.getStringExtra("tool_call_id")
-        val result = data?.getStringExtra("result") ?: "No result provided"
-        
-        // Complete the deferred to resume the suspended coroutine
-        toolCallId?.let {
-            AsyncToolRegistry.getDeferred(it)?.complete(result)
+    // Handle tool call results
+    val toolCallId = data?.getStringExtra("tool_call_id")
+    if (toolCallId != null) {
+        when (resultCode) {
+            Activity.RESULT_OK -> {
+                val result = data.getStringExtra("result") ?: "No result provided"
+                AsyncToolRegistry.completeToolCall(toolCallId, result)
+            }
+            else -> {
+                val error = data.getStringExtra("error") ?: "Operation was cancelled"
+                AsyncToolRegistry.completeToolCall(toolCallId, "Error: $error")
+            }
         }
     }
 }
 ```
 
-## Benefits
-- Seamlessly integrates with existing coroutine structure
-- LLM doesn't need to know about async implementation details
-- Provides timeout mechanisms to prevent indefinite waiting
-- Maintains the sequential execution model where needed
+## Implementation Status
+
+✅ Created AsyncToolRegistry to track pending operations  
+✅ Modified executeTools to detect and handle async tools  
+✅ Added callAsyncTool method using CompletableDeferred  
+✅ Updated MainActivity to handle activity results  
+✅ Verified the build compiles successfully  
 
 ## Next Steps
-1. Define which tools should be async vs sync
-2. Implement the `isAsyncTool()` helper function
-3. Create the AsyncToolRegistry
-4. Update MainActivity to handle results
-5. Test with real async operations
+1. Create actual async tools by adding entries to the `isAsyncTool()` function
+2. Test the implementation with real external activities
+3. Consider adding timeout handling and error recovery mechanisms
+4. Update documentation for tool developers

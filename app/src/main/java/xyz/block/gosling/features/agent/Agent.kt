@@ -30,7 +30,9 @@ import java.time.LocalDateTime
 import java.time.format.DateTimeFormatter
 import kotlin.math.pow
 
-class AgentException(message: String) : Exception(message)
+open class AgentException(message: String) : Exception(message)
+
+class ApiKeyException(message: String) : AgentException(message)
 
 sealed class AgentStatus {
     data class Processing(val message: String) : AgentStatus()
@@ -54,6 +56,12 @@ class Agent : Service() {
     companion object {
         private var instance: Agent? = null
         fun getInstance(): Agent? = instance
+        private const val TAG = "Agent"
+        private val jsonFormat = Json {
+            prettyPrint = true
+            encodeDefaults = true
+            ignoreUnknownKeys = true
+        }
     }
 
     inner class AgentBinder : Binder() {
@@ -221,6 +229,14 @@ class Agent : Service() {
                             return@withContext "Operation cancelled by user"
                         }
 
+                        // Don't retry for API key errors
+                        if (e is ApiKeyException) {
+                            val errorMsg = "API key error: ${e.message}"
+                            updateStatus(AgentStatus.Error(errorMsg))
+                            Log.e("Agent", "API key error", e)
+                            return@withContext errorMsg
+                        }
+
                         retryCount++
 
                         if (retryCount >= maxRetries) {
@@ -364,10 +380,7 @@ class Agent : Service() {
 
                     val messagesWithStats = listOf(statsMessage) + annotatedMessages
 
-                    File(conversationsDir, "${sanitizedCommand}.json").writeText(Json {
-                        prettyPrint = true
-                        encodeDefaults = true
-                    }.encodeToString(messagesWithStats))
+                    File(conversationsDir, "${sanitizedCommand}.json").writeText(jsonFormat.encodeToString(messagesWithStats))
                 }
 
                 val completionTime = (System.currentTimeMillis() - startTime) / 1000.0
@@ -489,11 +502,7 @@ class Agent : Service() {
 
             connection.doOutput = true
 
-            val json = Json {
-                prettyPrint = true
-                ignoreUnknownKeys = true
-                encodeDefaults = true
-            }
+            val json = jsonFormat
 
             val requestBody = when (model.provider) {
                 ModelProvider.OPENAI -> {
@@ -539,7 +548,15 @@ class Agent : Service() {
             val responseCode = connection.responseCode
             if (responseCode != HttpURLConnection.HTTP_OK) {
                 val errorResponse = connection.errorStream?.bufferedReader()?.use { it.readText() }
-                throw AgentException("Error calling LLM: $errorResponse")
+                    ?: when (responseCode) {
+                        HttpURLConnection.HTTP_UNAUTHORIZED -> "Unauthorized - API key may be invalid"
+                        HttpURLConnection.HTTP_FORBIDDEN -> "Forbidden - Access denied"
+                        HttpURLConnection.HTTP_NOT_FOUND -> "Not found - Invalid API endpoint"
+                        HttpURLConnection.HTTP_BAD_REQUEST -> "Bad request"
+                        else -> "HTTP Error $responseCode"
+                    }
+
+                handleHttpError(responseCode, errorResponse)
             }
 
             val response = connection.inputStream.bufferedReader().use { it.readText() }
@@ -573,7 +590,16 @@ class Agent : Service() {
                 }
 
                 e.message?.contains("timeout") == true -> "Request timed out. Please try again."
-                else -> "Error calling LLM: ${e.message}"
+                else -> {
+                    if (e.message != null && isApiKeyError(
+                            HttpURLConnection.HTTP_UNAUTHORIZED,
+                            e.message!!
+                        )
+                    ) {
+                        throw ApiKeyException(e.message!!)
+                    }
+                    "Error calling LLM: ${e.message}"
+                }
             }
             throw AgentException(message)
         } finally {
@@ -643,5 +669,17 @@ class Agent : Service() {
             }",
             annotations = Json.encodeToJsonElement(statsMap)
         )
+    }
+
+    private fun isApiKeyError(responseCode: Int, errorResponse: String): Boolean {
+        return responseCode == HttpURLConnection.HTTP_UNAUTHORIZED
+    }
+
+    private fun handleHttpError(responseCode: Int, errorResponse: String): Nothing {
+        if (isApiKeyError(responseCode, errorResponse)) {
+            throw ApiKeyException(errorResponse)
+        }
+        
+        throw AgentException(errorResponse)
     }
 }

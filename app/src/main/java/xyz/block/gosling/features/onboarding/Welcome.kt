@@ -32,6 +32,7 @@ fun WelcomeStep(
 ) {
     val context = LocalContext.current
     var isAssistantEnabled by remember { mutableStateOf(false) }
+    var isDefaultLauncher by remember { mutableStateOf(false) }
 
     fun checkAssistantStatus() {
         val settingSecure = Settings.Secure.getString(
@@ -41,8 +42,16 @@ fun WelcomeStep(
         isAssistantEnabled = settingSecure?.contains(context.packageName) == true
     }
 
+    fun checkLauncherStatus() {
+        val intent = Intent(Intent.ACTION_MAIN)
+        intent.addCategory(Intent.CATEGORY_HOME)
+        val resolveInfo = context.packageManager.resolveActivity(intent, 0)
+        isDefaultLauncher = resolveInfo?.activityInfo?.packageName == context.packageName
+    }
+
     LaunchedEffect(Unit) {
         checkAssistantStatus()
+        checkLauncherStatus()
     }
 
     DisposableEffect(Unit) {
@@ -51,6 +60,7 @@ fun WelcomeStep(
             override fun onActivityResumed(activity: android.app.Activity) {
                 if (activity == context) {
                     checkAssistantStatus()
+                    checkLauncherStatus()
                 }
             }
 
@@ -145,6 +155,37 @@ fun WelcomeStep(
                     )
                 ) {
                     Text(if (isAssistantEnabled) "Assistant Enabled" else "Set as Default Assistant")
+                }
+            }
+
+            Column(
+                modifier = Modifier.fillMaxWidth(),
+                verticalArrangement = Arrangement.spacedBy(8.dp)
+            ) {
+                Text(
+                    text = "Set Default Home App",
+                    style = MaterialTheme.typography.titleLarge,
+                )
+                Text(
+                    text = "Make Gosling your default home screen to access its features with a single tap.",
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                )
+                Button(
+                    onClick = {
+                        val intent = Intent(Settings.ACTION_HOME_SETTINGS)
+                        context.startActivity(intent)
+                    },
+                    modifier = Modifier.fillMaxWidth(),
+                    enabled = !isDefaultLauncher,
+                    colors = ButtonDefaults.buttonColors(
+                        containerColor = if (isDefaultLauncher)
+                            MaterialTheme.colorScheme.secondary
+                        else
+                            MaterialTheme.colorScheme.primary
+                    )
+                ) {
+                    Text(if (isDefaultLauncher) "Home App Enabled" else "Set as Default Home")
                 }
             }
         }

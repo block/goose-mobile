@@ -351,8 +351,8 @@ private fun processAgentCommand(
 
                         // Create an intent to bring MainActivity to the foreground
                         val intent = Intent(context, MainActivity::class.java).apply {
-                            flags = Intent.FLAG_ACTIVITY_NEW_TASK or 
-                                   Intent.FLAG_ACTIVITY_REORDER_TO_FRONT
+                            flags = Intent.FLAG_ACTIVITY_NEW_TASK or
+                                    Intent.FLAG_ACTIVITY_REORDER_TO_FRONT
                         }
                         context.startActivity(intent)
 

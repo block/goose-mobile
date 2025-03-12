@@ -296,6 +296,8 @@ class Agent : Service() {
                             return@withContext "Operation cancelled by user"
                         }
 
+                        updateStatus(AgentStatus.Processing(assistantReply))
+
                         val (toolResults, toolAnnotations) = executeTools(toolCalls, context)
 
                         val toolCallsWithIds = toolCalls?.mapIndexed { index, toolCall ->

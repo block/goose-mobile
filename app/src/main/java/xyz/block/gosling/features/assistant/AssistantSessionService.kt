@@ -24,21 +24,14 @@ class AssistantSessionService : VoiceInteractionSessionService() {
         override fun onShow(args: Bundle?, showFlags: Int) {
             super.onShow(args, showFlags)
 
-            Log.d("GOS", "onShow!")
-
             val intent = Intent(context, AssistantActivity::class.java).apply {
                 addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
             }
-            Log.d("GOS", "starting gosling assistant")
             context.startActivity(intent)
-
-            Log.d("GOS", "starting speech")
             startSpeechRecognition()
         }
 
         private fun startSpeechRecognition() {
-            Log.d("GOS", "Creating VoiceRecognitionManager...")
-
             voiceRecognitionManager = VoiceRecognitionService(context)
 
             // Start voice recognition with a callback

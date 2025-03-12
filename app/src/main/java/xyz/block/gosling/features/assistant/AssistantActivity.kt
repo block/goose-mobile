@@ -2,7 +2,6 @@ package xyz.block.gosling.features.assistant
 
 import android.content.Intent
 import android.graphics.Color
-import android.graphics.drawable.ColorDrawable
 import android.os.Bundle
 import android.view.Gravity
 import android.view.WindowManager
@@ -10,6 +9,7 @@ import android.widget.Toast
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.compose.runtime.mutableStateOf
+import androidx.core.graphics.drawable.toDrawable
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
@@ -18,6 +18,7 @@ import kotlinx.coroutines.launch
 import xyz.block.gosling.GoslingApplication
 import xyz.block.gosling.features.agent.AgentServiceManager
 import xyz.block.gosling.features.agent.AgentStatus
+import xyz.block.gosling.features.overlay.OverlayService
 import xyz.block.gosling.shared.services.VoiceRecognitionService
 import xyz.block.gosling.shared.theme.GoslingTheme
 
@@ -27,8 +28,6 @@ class AssistantActivity : ComponentActivity() {
     private var currentAgentManager: AgentServiceManager? = null
     private var currentJob: Job? = null
     private val currentTranscription = mutableStateOf("Listening...")
-    private var isProcessingCommand = false
-    private var commandProcessingJob: Job? = null
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -39,7 +38,7 @@ class AssistantActivity : ComponentActivity() {
             return
         }
 
-        window.setBackgroundDrawable(ColorDrawable(Color.TRANSPARENT))
+        window.setBackgroundDrawable(Color.TRANSPARENT.toDrawable())
 
         window.attributes.apply {
             dimAmount = 0f
@@ -110,15 +109,13 @@ class AssistantActivity : ComponentActivity() {
     }
 
     private fun processAgentCommand(command: String) {
-        // Cancel any existing job
         currentJob?.cancel()
-
-        // Unbind any existing service
         currentAgentManager?.unbindAgent()
 
-        // Create new agent manager
         val agentServiceManager = AgentServiceManager(this)
         currentAgentManager = agentServiceManager
+
+        OverlayService.getInstance()?.setIsPerformingAction(true)
 
         agentServiceManager.bindAndStartAgent { agent ->
             agent.setStatusListener { status ->
@@ -141,6 +138,7 @@ class AssistantActivity : ComponentActivity() {
                                 status.message,
                                 Toast.LENGTH_LONG
                             ).show()
+                            OverlayService.getInstance()?.setIsPerformingAction(false)
                         }
                         finish()
                     }
@@ -152,6 +150,7 @@ class AssistantActivity : ComponentActivity() {
                                 "Error: ${status.message}",
                                 Toast.LENGTH_LONG
                             ).show()
+                            OverlayService.getInstance()?.setIsPerformingAction(false)
                         }
                         finish()
                     }
@@ -182,12 +181,8 @@ class AssistantActivity : ComponentActivity() {
 
     override fun onDestroy() {
         super.onDestroy()
-        // Cancel any ongoing jobs
         currentJob?.cancel()
-        commandProcessingJob?.cancel()
-        // Unbind the service if it exists
         currentAgentManager?.unbindAgent()
-        // Stop voice recognition
         voiceRecognitionManager.stopVoiceRecognition()
     }
 }

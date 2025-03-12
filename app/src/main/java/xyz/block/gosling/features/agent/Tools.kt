@@ -11,7 +11,6 @@ import android.os.Bundle
 import android.view.accessibility.AccessibilityNodeInfo
 import org.json.JSONObject
 import xyz.block.gosling.GoslingApplication
-import xyz.block.gosling.features.overlay.OverlayService
 import java.util.Locale
 
 @Target(AnnotationTarget.FUNCTION)
@@ -484,8 +483,6 @@ object ToolHandler {
         val toolAnnotation = toolMethod.getAnnotation(Tool::class.java)
             ?: return "Tool annotation not found for: ${toolCall.name}"
 
-        OverlayService.getInstance()?.setPerformingAction(true)
-
         if (!GoslingApplication.shouldHideOverlay()) {
             //Delay to let the overlay hide...
             Thread.sleep(100)
@@ -521,8 +518,6 @@ object ToolHandler {
             return toolMethod.invoke(ToolHandler, toolCall.arguments) as String
         } catch (e: Exception) {
             "Error executing ${toolCall.name}: ${e.message}"
-        } finally {
-            OverlayService.getInstance()?.setPerformingAction(false)
         }
     }
 

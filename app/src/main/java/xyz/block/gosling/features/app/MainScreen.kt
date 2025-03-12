@@ -3,6 +3,7 @@ package xyz.block.gosling.features.app
 import android.app.Activity
 import android.content.Context
 import android.content.Intent
+import android.util.Log
 import android.widget.Toast
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
@@ -46,12 +47,14 @@ import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.unit.dp
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import xyz.block.gosling.R
 import xyz.block.gosling.features.agent.AgentServiceManager
 import xyz.block.gosling.features.agent.AgentStatus
 import xyz.block.gosling.features.launcher.InputOptions
 import xyz.block.gosling.features.launcher.KeyboardInputDrawer
+import xyz.block.gosling.features.overlay.OverlayService
 import xyz.block.gosling.shared.services.VoiceRecognitionService
 
 data class ChatMessage(
@@ -89,11 +92,18 @@ fun MainScreen(
 
     LaunchedEffect(messages.size) {
         activity.saveMessages(messages.toList())
-        // Scroll to the latest message
         if (messages.isNotEmpty()) {
-            listState.animateScrollToItem(messages.size - 1)
+            delay(100) // Small delay to ensure layout is ready
+            listState.scrollToItem(0) // Scroll to top (which is the bottom with reverseLayout)
         }
     }
+
+    // LaunchedEffect(Unit) {
+    //     if (messages.isNotEmpty()) {
+    //         delay(100) // Small delay to ensure layout is ready
+    //         listState.scrollToItem(0) // Scroll to top (which is the bottom with reverseLayout)
+    //     }
+    // }
 
     Scaffold(
         topBar = {
@@ -160,11 +170,8 @@ fun MainScreen(
                             .fillMaxSize()
                             .padding(horizontal = 16.dp),
                         state = listState,
-                        verticalArrangement = Arrangement.spacedBy(
-                            8.dp,
-                            alignment = Alignment.Bottom
-                        ),
-                        reverseLayout = true
+                        verticalArrangement = Arrangement.spacedBy(8.dp),
+                        reverseLayout = true // This will make newest messages appear at the bottom
                     ) {
                         items(messages.asReversed()) { message ->
                             Card(
@@ -325,29 +332,37 @@ private fun processAgentCommand(
     command: String,
     onMessageReceived: (String, Boolean) -> Unit
 ) {
+    Log.d("wes", "Starting to process command: $command")
     val agentServiceManager = AgentServiceManager(context)
     val activity = context as MainActivity
 
+    OverlayService.getInstance()?.setIsPerformingAction(true)
+
     agentServiceManager.bindAndStartAgent { agent ->
+        Log.d("wes", "Agent bound and started, setting status listener")
         agent.setStatusListener { status ->
+            Log.d("wes", "Status listener called with: $status")
             when (status) {
                 is AgentStatus.Processing -> {
-                    if (status.message.isEmpty() || status.message == "null") return@setStatusListener
+                    if (status.message.isEmpty() || status.message == "null") {
+                        Log.d("wes", "Ignoring empty/null processing message")
+                        return@setStatusListener
+                    }
                     android.os.Handler(context.mainLooper).post {
-                        Toast.makeText(
-                            context,
-                            status.message,
-                            Toast.LENGTH_SHORT
-                        ).show()
-                        if (status.message != "Thinking..." && status.message != "Processing...") {
-                            onMessageReceived(status.message, false)
-                        }
+                        Log.d("wes", "Processing status: ${status.message}")
+                        onMessageReceived(status.message, false)
+                        Toast.makeText(context, status.message, Toast.LENGTH_SHORT).show()
+                        OverlayService.getInstance()?.updateStatus(status)
                     }
                 }
 
                 is AgentStatus.Success -> {
                     android.os.Handler(context.mainLooper).post {
+                        Log.d("wes", "Success status: ${status.message}")
                         onMessageReceived(status.message, false)
+                        Toast.makeText(context, status.message, Toast.LENGTH_SHORT).show()
+                        OverlayService.getInstance()?.updateStatus(status)
+                        OverlayService.getInstance()?.setIsPerformingAction(false)
 
                         // Create an intent to bring MainActivity to the foreground
                         val intent = Intent(context, MainActivity::class.java).apply {
@@ -355,38 +370,34 @@ private fun processAgentCommand(
                                     Intent.FLAG_ACTIVITY_REORDER_TO_FRONT
                         }
                         context.startActivity(intent)
-
-                        Toast.makeText(
-                            context,
-                            status.message,
-                            Toast.LENGTH_LONG
-                        ).show()
                     }
                 }
 
                 is AgentStatus.Error -> {
                     android.os.Handler(context.mainLooper).post {
+                        Log.d("wes", "Error status: ${status.message}")
                         val errorMessage = "Error: ${status.message}"
                         onMessageReceived(errorMessage, false)
-
-                        Toast.makeText(
-                            context,
-                            errorMessage,
-                            Toast.LENGTH_SHORT
-                        ).show()
+                        Toast.makeText(context, errorMessage, Toast.LENGTH_SHORT).show()
+                        OverlayService.getInstance()?.updateStatus(status)
+                        OverlayService.getInstance()?.setIsPerformingAction(false)
                     }
                 }
             }
         }
 
+        Log.d("wes", "Starting command processing on IO dispatcher")
         CoroutineScope(Dispatchers.IO).launch {
             try {
+                Log.d("wes", "Calling agent.processCommand")
                 agent.processCommand(
                     userInput = command,
                     context = context,
                     isNotificationReply = false
                 )
+                Log.d("wes", "Finished agent.processCommand")
             } catch (e: Exception) {
+                Log.e("wes", "Error processing command", e)
                 // Handle exceptions
                 android.os.Handler(context.mainLooper).post {
                     val errorMessage = "Error: ${e.message}"

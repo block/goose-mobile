@@ -44,6 +44,7 @@ import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import xyz.block.gosling.features.agent.AgentServiceManager
 import xyz.block.gosling.features.agent.AgentStatus
+import xyz.block.gosling.features.overlay.OverlayService
 import xyz.block.gosling.shared.services.VoiceRecognitionService
 import xyz.block.gosling.shared.theme.GoslingTheme
 
@@ -215,9 +216,6 @@ fun LauncherScreen() {
     }
 }
 
-/**
- * Preview function for the LauncherScreen.
- */
 @Preview(showBackground = true)
 @Composable
 fun LauncherScreenPreview() {
@@ -226,9 +224,6 @@ fun LauncherScreenPreview() {
     }
 }
 
-/**
- * Starts voice recognition to capture user commands for the Agent.
- */
 private fun startVoiceRecognition(context: Context) {
     val activity = context as? Activity
     if (activity == null) {
@@ -238,17 +233,14 @@ private fun startVoiceRecognition(context: Context) {
 
     val voiceRecognitionManager = VoiceRecognitionService(context)
 
-    // Check for permission
     if (!voiceRecognitionManager.hasRecordAudioPermission()) {
         voiceRecognitionManager.requestRecordAudioPermission(activity)
         return
     }
 
-    // Start voice recognition
     voiceRecognitionManager.startVoiceRecognition(
         object : VoiceRecognitionService.VoiceRecognitionCallback {
             override fun onVoiceCommandReceived(command: String) {
-                // Process the command with the Agent
                 processAgentCommand(context, command)
             }
         }
@@ -259,14 +251,13 @@ private fun processAgentCommand(context: Context, command: String) {
     Toast.makeText(context, command, Toast.LENGTH_SHORT).show()
 
     val agentServiceManager = AgentServiceManager(context)
+    OverlayService.getInstance()?.setIsPerformingAction(true)
+
     agentServiceManager.bindAndStartAgent { agent ->
-        // Set up status listener for UI updates (in addition to notifications)
         agent.setStatusListener { status ->
-            // Update UI based on status
             when (status) {
                 is AgentStatus.Processing -> {
                     if (status.message.isEmpty() || status.message == "null") return@setStatusListener
-                    // Show processing status
                     android.os.Handler(context.mainLooper).post {
                         Toast.makeText(
                             context,
@@ -278,30 +269,29 @@ private fun processAgentCommand(context: Context, command: String) {
 
                 is AgentStatus.Success -> {
                     android.os.Handler(context.mainLooper).post {
-                        // Launch home screen instead of showing a notification
                         val homeIntent = Intent(Intent.ACTION_MAIN).apply {
                             addCategory(Intent.CATEGORY_HOME)
                             flags = Intent.FLAG_ACTIVITY_NEW_TASK
                         }
                         context.startActivity(homeIntent)
 
-                        // Also show a toast with the message
                         Toast.makeText(
                             context,
                             status.message,
                             Toast.LENGTH_LONG
                         ).show()
+                        OverlayService.getInstance()?.setIsPerformingAction(false)
                     }
                 }
 
                 is AgentStatus.Error -> {
-                    // Show error status
                     android.os.Handler(context.mainLooper).post {
                         Toast.makeText(
                             context,
                             "Error: ${status.message}",
                             Toast.LENGTH_SHORT
                         ).show()
+                        OverlayService.getInstance()?.setIsPerformingAction(false)
                     }
                 }
             }

@@ -3,6 +3,7 @@ package xyz.block.gosling.features.launcher
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.imePadding
+import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.foundation.text.KeyboardOptions
@@ -45,7 +46,7 @@ fun KeyboardInputDrawer(
         Column(
             modifier = Modifier
                 .fillMaxWidth()
-                .padding(horizontal = 24.dp, vertical = 16.dp)
+                .padding(horizontal = 24.dp)
                 .imePadding(),
             horizontalAlignment = Alignment.CenterHorizontally
         ) {
@@ -54,7 +55,7 @@ fun KeyboardInputDrawer(
                 onValueChange = onValueChange,
                 modifier = Modifier
                     .fillMaxWidth()
-                    .padding(bottom = 24.dp)
+                    .padding(bottom = 16.dp)
                     .focusRequester(focusRequester),
                 placeholder = { Text("What can gosling do for you?") },
                 singleLine = false,
@@ -72,15 +73,19 @@ fun KeyboardInputDrawer(
                 enabled = value.isNotEmpty(),
                 modifier = Modifier
                     .fillMaxWidth()
-                    .padding(bottom = 32.dp)
+                    .padding(bottom = 16.dp)
+                    .navigationBarsPadding()
+                    .imePadding(),
             ) {
                 Text("Submit")
             }
         }
 
         // Request focus when the drawer appears
-        LaunchedEffect(Unit) {
-            focusRequester.requestFocus()
+        LaunchedEffect(sheetState.currentValue) {
+            if (sheetState.currentValue == androidx.compose.material3.SheetValue.Expanded) {
+                focusRequester.requestFocus()
+            }
         }
     }
 }

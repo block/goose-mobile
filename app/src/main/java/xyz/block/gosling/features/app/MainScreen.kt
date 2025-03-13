@@ -5,13 +5,25 @@ import android.content.Context
 import android.content.Intent
 import android.util.Log
 import android.widget.Toast
+import androidx.compose.animation.core.RepeatMode
+import androidx.compose.animation.core.animateFloat
+import androidx.compose.animation.core.infiniteRepeatable
+import androidx.compose.animation.core.rememberInfiniteTransition
+import androidx.compose.animation.core.tween
+import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.PaddingValues
+import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.absoluteOffset
+import androidx.compose.foundation.layout.calculateEndPadding
+import androidx.compose.foundation.layout.calculateStartPadding
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.imePadding
 import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
@@ -20,6 +32,8 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.Send
+import androidx.compose.material.icons.filled.Mic
 import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material3.Badge
 import androidx.compose.material3.BadgedBox
@@ -32,6 +46,8 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextField
+import androidx.compose.material3.TextFieldDefaults
 import androidx.compose.material3.TopAppBar
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
@@ -42,18 +58,18 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.scale
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.painterResource
+import androidx.compose.ui.unit.LayoutDirection
 import androidx.compose.ui.unit.dp
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import xyz.block.gosling.R
 import xyz.block.gosling.features.agent.AgentServiceManager
 import xyz.block.gosling.features.agent.AgentStatus
-import xyz.block.gosling.features.launcher.InputOptions
-import xyz.block.gosling.features.launcher.KeyboardInputDrawer
 import xyz.block.gosling.features.overlay.OverlayService
 import xyz.block.gosling.shared.services.VoiceRecognitionService
 
@@ -71,7 +87,7 @@ private val predefinedQueries = listOf(
     "Take a picture using the camera and attach that to a new email. Save the email in drafts"
 )
 
-@OptIn(ExperimentalMaterial3Api::class)
+@OptIn(ExperimentalMaterial3Api::class, ExperimentalFoundationApi::class)
 @Composable
 fun MainScreen(
     onNavigateToSettings: () -> Unit,
@@ -85,25 +101,25 @@ fun MainScreen(
             addAll(activity.loadMessages())
         }
     }
-    var showKeyboardDrawer by remember { mutableStateOf(false) }
     var textInput by remember { mutableStateOf("") }
     val listState = rememberLazyListState()
     var showPresetQueries by remember { mutableStateOf(false) }
+    var isRecording by remember { mutableStateOf(false) }
+
+    val pulseAnim = rememberInfiniteTransition()
+    val scale by pulseAnim.animateFloat(
+        initialValue = 1f,
+        targetValue = 1.2f,
+        animationSpec = infiniteRepeatable(
+            animation = tween(1000),
+            repeatMode = RepeatMode.Reverse
+        )
+    )
 
     LaunchedEffect(messages.size) {
         activity.saveMessages(messages.toList())
-        if (messages.isNotEmpty()) {
-            delay(100) // Small delay to ensure layout is ready
-            listState.scrollToItem(0) // Scroll to top (which is the bottom with reverseLayout)
-        }
+        listState.scrollToItem(0)
     }
-
-    // LaunchedEffect(Unit) {
-    //     if (messages.isNotEmpty()) {
-    //         delay(100) // Small delay to ensure layout is ready
-    //         listState.scrollToItem(0) // Scroll to top (which is the bottom with reverseLayout)
-    //     }
-    // }
 
     Scaffold(
         topBar = {
@@ -134,101 +150,158 @@ fun MainScreen(
                     }
                 }
             )
-        }
-    ) { paddingValues ->
-        Box(
-            modifier = modifier
-                .fillMaxSize()
-                .padding(top = paddingValues.calculateTopPadding())
-        ) {
-            Column(
-                modifier = Modifier.fillMaxSize()
+        },
+        bottomBar = {
+            Surface(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .imePadding(),
+                tonalElevation = 2.dp,
+                shadowElevation = 0.dp,
+                shape = RoundedCornerShape(topStart = 16.dp, topEnd = 16.dp),
+                color = MaterialTheme.colorScheme.surfaceContainer
             ) {
-                // Chat messages
-                Box(
+                Row(
                     modifier = Modifier
-                        .weight(1f)
                         .fillMaxWidth()
-                        .padding(bottom = 8.dp)
+                        .padding(16.dp)
+                        .navigationBarsPadding(),
+                    horizontalArrangement = Arrangement.spacedBy(8.dp),
+                    verticalAlignment = Alignment.CenterVertically
                 ) {
-                    if (messages.isEmpty()) {
-                        Column(
-                            modifier = Modifier.fillMaxSize(),
-                            horizontalAlignment = Alignment.CenterHorizontally,
-                            verticalArrangement = Arrangement.Center
-                        ) {
-                            Icon(
-                                painter = painterResource(id = R.drawable.goose),
-                                contentDescription = "Goose",
-                                tint = MaterialTheme.colorScheme.onBackground,
-                                modifier = Modifier.size(80.dp)
-                            )
-                        }
-                    }
-                    LazyColumn(
+                    IconButton(
+                        onClick = {
+                            isRecording = true
+                            startVoiceRecognition(context, messages) { isRecording = false }
+                        },
                         modifier = Modifier
-                            .fillMaxSize()
-                            .padding(horizontal = 16.dp),
-                        state = listState,
-                        verticalArrangement = Arrangement.spacedBy(8.dp),
-                        reverseLayout = true // This will make newest messages appear at the bottom
+                            .size(48.dp)
+                            .scale(if (isRecording) scale else 1f)
                     ) {
-                        items(messages.asReversed()) { message ->
-                            Card(
-                                modifier = Modifier
-                                    .fillMaxWidth()
-                                    .padding(
-                                        start = if (message.isUser) 32.dp else 0.dp,
-                                        end = if (!message.isUser) 32.dp else 0.dp
-                                    ),
-                                shape = RoundedCornerShape(12.dp),
-                                colors = CardDefaults.cardColors(
-                                    containerColor = if (message.isUser)
-                                        MaterialTheme.colorScheme.primaryContainer
-                                    else
-                                        MaterialTheme.colorScheme.secondaryContainer
-                                )
-                            ) {
-                                Text(
-                                    text = message.text,
-                                    modifier = Modifier.padding(12.dp),
-                                    style = MaterialTheme.typography.bodyLarge,
-                                    color = if (message.isUser)
-                                        MaterialTheme.colorScheme.onPrimaryContainer
-                                    else
-                                        MaterialTheme.colorScheme.onSecondaryContainer
-                                )
-                            }
-                        }
+                        Icon(
+                            imageVector = Icons.Default.Mic,
+                            contentDescription = "Voice Input",
+                            tint = if (isRecording)
+                                MaterialTheme.colorScheme.primary
+                            else
+                                MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                    }
+
+                    TextField(
+                        value = textInput,
+                        onValueChange = { textInput = it },
+                        modifier = Modifier.weight(1f),
+                        placeholder = { Text("What can gosling do for you?") },
+                        colors = TextFieldDefaults.colors(
+                            unfocusedContainerColor = MaterialTheme.colorScheme.surfaceContainerHigh,
+                            focusedContainerColor = MaterialTheme.colorScheme.surfaceContainerHigh,
+                            focusedIndicatorColor = Color.Transparent,
+                            unfocusedIndicatorColor = Color.Transparent,
+                            disabledIndicatorColor = Color.Transparent,
+                            unfocusedPlaceholderColor = MaterialTheme.colorScheme.onSurfaceVariant.copy(
+                                alpha = 0.38f
+                            ),
+                            focusedPlaceholderColor = MaterialTheme.colorScheme.onSurfaceVariant.copy(
+                                alpha = 0.38f
+                            ),
+                        ),
+                        shape = RoundedCornerShape(24.dp),
+                        singleLine = true
+                    )
+
+                    Box(
+                        modifier = Modifier
+                            .size(48.dp)
+                            .combinedClickable(
+                                onClick = {
+                                    if (textInput.isNotEmpty()) {
+                                        messages.add(ChatMessage(text = textInput, isUser = true))
+                                        processAgentCommand(context, textInput) { message, isUser ->
+                                            messages.add(
+                                                ChatMessage(
+                                                    text = message,
+                                                    isUser = isUser
+                                                )
+                                            )
+                                        }
+                                        textInput = ""
+                                    }
+                                },
+                                onLongClick = { showPresetQueries = !showPresetQueries }
+                            ),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        Icon(
+                            imageVector = Icons.AutoMirrored.Filled.Send,
+                            contentDescription = "Send Message",
+                            tint = if (textInput.isNotEmpty())
+                                MaterialTheme.colorScheme.primary
+                            else
+                                MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.38f)
+                        )
                     }
                 }
-
-                // Input options
-                Surface(
-                    modifier = Modifier.fillMaxWidth(),
-                    tonalElevation = 2.dp,
-                    shadowElevation = 0.dp,
-                    shape = RoundedCornerShape(topStart = 16.dp, topEnd = 16.dp),
-                    color = MaterialTheme.colorScheme.surfaceContainer
+            }
+        }
+    ) { paddingValues ->
+        Box(modifier = Modifier.fillMaxSize()) {
+            if (messages.isEmpty()) {
+                Column(
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .padding(paddingValues),
+                    horizontalAlignment = Alignment.CenterHorizontally,
+                    verticalArrangement = Arrangement.Center
                 ) {
-                    Column(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .padding(horizontal = 16.dp, vertical = 8.dp)
-                            .navigationBarsPadding(),
-                        horizontalAlignment = Alignment.CenterHorizontally
-                    ) {
-                        InputOptions(
-                            onMicrophoneClick = {
-                                startVoiceRecognition(context, messages)
-                            },
-                            onKeyboardClick = {
-                                showKeyboardDrawer = true
-                            },
-                            onKeyboardLongPress = {
-                                showPresetQueries = true
-                            }
-                        )
+                    Icon(
+                        painter = painterResource(id = R.drawable.goose),
+                        contentDescription = "Goose",
+                        tint = MaterialTheme.colorScheme.onBackground,
+                        modifier = Modifier.size(80.dp)
+                    )
+                }
+            } else {
+                LazyColumn(
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .padding(horizontal = 16.dp),
+                    contentPadding = PaddingValues(
+                        start = paddingValues.calculateStartPadding(LayoutDirection.Ltr),
+                        top = paddingValues.calculateTopPadding(),
+                        end = paddingValues.calculateEndPadding(LayoutDirection.Ltr),
+                        bottom = paddingValues.calculateBottomPadding() + 8.dp
+                    ),
+                    state = listState,
+                    verticalArrangement = Arrangement.spacedBy(8.dp),
+                    reverseLayout = true
+                ) {
+                    items(messages.asReversed()) { message ->
+                        Card(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .padding(
+                                    start = if (message.isUser) 32.dp else 0.dp,
+                                    end = if (!message.isUser) 32.dp else 0.dp
+                                ),
+                            shape = RoundedCornerShape(12.dp),
+                            colors = CardDefaults.cardColors(
+                                containerColor = if (message.isUser)
+                                    MaterialTheme.colorScheme.primaryContainer
+                                else
+                                    MaterialTheme.colorScheme.secondaryContainer
+                            )
+                        ) {
+                            Text(
+                                text = message.text,
+                                modifier = Modifier.padding(12.dp),
+                                style = MaterialTheme.typography.bodyLarge,
+                                color = if (message.isUser)
+                                    MaterialTheme.colorScheme.onPrimaryContainer
+                                else
+                                    MaterialTheme.colorScheme.onSecondaryContainer
+                            )
+                        }
                     }
                 }
             }
@@ -236,15 +309,14 @@ fun MainScreen(
             if (showPresetQueries) {
                 Card(
                     modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(horizontal = 16.dp)
                         .align(Alignment.BottomCenter)
-                        .padding(bottom = 180.dp),
+                        .padding(
+                            horizontal = 16.dp,
+                        )
+                        .padding(bottom = paddingValues.calculateBottomPadding() + 8.dp),
                     elevation = CardDefaults.cardElevation(defaultElevation = 4.dp)
                 ) {
-                    Column(
-                        modifier = Modifier.fillMaxWidth()
-                    ) {
+                    Column(modifier = Modifier.fillMaxWidth()) {
                         predefinedQueries.forEach { query ->
                             Text(
                                 text = query,
@@ -253,10 +325,7 @@ fun MainScreen(
                                     .clickable {
                                         showPresetQueries = false
                                         messages.add(ChatMessage(text = query, isUser = true))
-                                        processAgentCommand(
-                                            context,
-                                            query
-                                        ) { message, isUser ->
+                                        processAgentCommand(context, query) { message, isUser ->
                                             messages.add(
                                                 ChatMessage(
                                                     text = message,
@@ -271,38 +340,19 @@ fun MainScreen(
                     }
                 }
             }
-
-            if (showKeyboardDrawer) {
-                KeyboardInputDrawer(
-                    value = textInput,
-                    onValueChange = { textInput = it },
-                    onDismiss = {
-                        showKeyboardDrawer = false
-                        textInput = ""
-                    },
-                    onSubmit = {
-                        if (textInput.isNotEmpty()) {
-                            messages.add(ChatMessage(text = textInput, isUser = true))
-                            processAgentCommand(
-                                context,
-                                textInput
-                            ) { message, isUser ->
-                                messages.add(ChatMessage(text = message, isUser = isUser))
-                            }
-                        }
-                        showKeyboardDrawer = false
-                        textInput = ""
-                    }
-                )
-            }
         }
     }
 }
 
-private fun startVoiceRecognition(context: Context, messages: MutableList<ChatMessage>) {
+private fun startVoiceRecognition(
+    context: Context,
+    messages: MutableList<ChatMessage>,
+    onRecordingComplete: () -> Unit
+) {
     val activity = context as? Activity
     if (activity == null) {
         Toast.makeText(context, "Cannot start voice recognition", Toast.LENGTH_SHORT).show()
+        onRecordingComplete()
         return
     }
 
@@ -311,6 +361,7 @@ private fun startVoiceRecognition(context: Context, messages: MutableList<ChatMe
     // Check for permission
     if (!voiceRecognitionManager.hasRecordAudioPermission()) {
         voiceRecognitionManager.requestRecordAudioPermission(activity)
+        onRecordingComplete()
         return
     }
 
@@ -322,6 +373,17 @@ private fun startVoiceRecognition(context: Context, messages: MutableList<ChatMe
                 processAgentCommand(context, command) { message, isUser ->
                     messages.add(ChatMessage(text = message, isUser = isUser))
                 }
+                onRecordingComplete()
+            }
+
+            override fun onSpeechEnd() {
+                onRecordingComplete()
+            }
+
+            override fun onError(errorMessage: String) {
+                super.onError(errorMessage)
+                Toast.makeText(context, errorMessage, Toast.LENGTH_SHORT).show()
+                onRecordingComplete()
             }
         }
     )

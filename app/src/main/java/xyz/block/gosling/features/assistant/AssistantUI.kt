@@ -74,8 +74,7 @@ fun AssistantUI(
                     )
                 }
             }
-
-            // Voice indicator
+            
             Box(
                 modifier = Modifier
                     .size(64.dp)

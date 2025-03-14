@@ -32,6 +32,7 @@ import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -39,6 +40,8 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.unit.dp
+import kotlinx.coroutines.launch
+import xyz.block.gosling.features.agent.AgentServiceManager
 import xyz.block.gosling.features.agent.AiModel
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -47,7 +50,7 @@ fun SettingsScreen(
     settingsStore: SettingsStore,
     onBack: () -> Unit,
     openAccessibilitySettings: () -> Unit,
-    isAccessibilityEnabled: Boolean
+    isAccessibilityEnabled: Boolean,
 ) {
     val context = LocalContext.current
     var isAssistantEnabled by remember { mutableStateOf(false) }
@@ -58,7 +61,10 @@ fun SettingsScreen(
     var shouldProcessNotifications by remember { mutableStateOf(settingsStore.shouldProcessNotifications) }
     var messageHandlingPreferences by remember { mutableStateOf(settingsStore.messageHandlingPreferences) }
     var showResetDialog by remember { mutableStateOf(false) }
+    var showClearConversationsDialog by remember { mutableStateOf(false) }
     var expanded by remember { mutableStateOf(false) }
+    val scope = rememberCoroutineScope()
+    val agentServiceManager = remember { AgentServiceManager(context) }
 
     fun checkAssistantStatus() {
         val settingSecure = Settings.Secure.getString(
@@ -133,7 +139,7 @@ fun SettingsScreen(
             modifier = Modifier
                 .fillMaxSize()
                 .padding(paddingValues)
-                .padding(horizontal = 24.dp),
+                .padding(horizontal = 16.dp),
             horizontalAlignment = Alignment.CenterHorizontally,
             verticalArrangement = Arrangement.SpaceBetween
         ) {
@@ -159,8 +165,7 @@ fun SettingsScreen(
                                 onValueChange = {},
                                 readOnly = true,
                                 modifier = Modifier
-                                    .fillMaxWidth()
-                                    .menuAnchor(),
+                                    .fillMaxWidth(),
                                 trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = expanded) }
                             )
 
@@ -252,7 +257,7 @@ fun SettingsScreen(
                                 }
                             )
                         }
-                        
+
                         // Message handling preferences text area - only visible when notifications are processed
                         if (shouldProcessNotifications) {
                             Column(
@@ -300,19 +305,60 @@ fun SettingsScreen(
                 }
             }
 
-            // Clear Settings Button at bottom
-            Button(
-                onClick = { showResetDialog = true },
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(vertical = 32.dp),
-                colors = ButtonDefaults.buttonColors(
-                    containerColor = MaterialTheme.colorScheme.error
-                )
+            Column(
+                modifier = Modifier.fillMaxWidth(),
+                verticalArrangement = Arrangement.spacedBy(8.dp)
             ) {
-                Text("Clear saved settings")
+                Button(
+                    onClick = { showClearConversationsDialog = true },
+                    modifier = Modifier.fillMaxWidth(),
+                    colors = ButtonDefaults.buttonColors(
+                        containerColor = MaterialTheme.colorScheme.error
+                    )
+                ) {
+                    Text("Clear all conversations")
+                }
+
+                Button(
+                    onClick = { showResetDialog = true },
+                    modifier = Modifier.fillMaxWidth(),
+                    colors = ButtonDefaults.buttonColors(
+                        containerColor = MaterialTheme.colorScheme.error
+                    )
+                ) {
+                    Text("Clear saved settings")
+                }
             }
         }
+    }
+
+    if (showClearConversationsDialog) {
+        AlertDialog(
+            onDismissRequest = { showClearConversationsDialog = false },
+            title = { Text("Clear all conversations?") },
+            text = { Text("This will permanently delete all conversations. This action cannot be undone.") },
+            confirmButton = {
+                TextButton(
+                    onClick = {
+                        scope.launch {
+                            agentServiceManager.bindAndStartAgent { agent ->
+                                agent.conversationManager.clearConversations()
+                            }
+                        }
+                        showClearConversationsDialog = false
+                    },
+                ) {
+                    Text("Clear")
+                }
+            },
+            dismissButton = {
+                TextButton(
+                    onClick = { showClearConversationsDialog = false }
+                ) {
+                    Text("Cancel")
+                }
+            }
+        )
     }
 
     if (showResetDialog) {

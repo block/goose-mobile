@@ -3,6 +3,7 @@ package xyz.block.gosling.features.app
 import android.app.Activity
 import android.content.Context
 import android.content.Intent
+import android.text.format.DateUtils
 import android.util.Log
 import android.widget.Toast
 import androidx.compose.animation.core.RepeatMode
@@ -32,6 +33,7 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.ArrowForward
 import androidx.compose.material.icons.automirrored.filled.Send
 import androidx.compose.material.icons.filled.Mic
 import androidx.compose.material.icons.filled.Settings
@@ -52,7 +54,6 @@ import androidx.compose.material3.TopAppBar
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableStateListOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
@@ -70,6 +71,8 @@ import kotlinx.coroutines.launch
 import xyz.block.gosling.R
 import xyz.block.gosling.features.agent.AgentServiceManager
 import xyz.block.gosling.features.agent.AgentStatus
+import xyz.block.gosling.features.agent.Conversation
+import xyz.block.gosling.features.agent.getConversationTitle
 import xyz.block.gosling.features.overlay.OverlayService
 import xyz.block.gosling.shared.services.VoiceRecognitionService
 
@@ -87,20 +90,25 @@ private val predefinedQueries = listOf(
     "Take a picture using the camera and attach that to a new email. Save the email in drafts"
 )
 
+private fun formatDuration(durationMs: Long): String {
+    val seconds = durationMs / 1000
+    return when {
+        seconds < 60 -> "${seconds}s"
+        seconds < 3600 -> "${seconds / 60}m ${seconds % 60}s"
+        else -> "${seconds / 3600}h ${(seconds % 3600) / 60}m"
+    }
+}
+
 @OptIn(ExperimentalMaterial3Api::class, ExperimentalFoundationApi::class)
 @Composable
 fun MainScreen(
     onNavigateToSettings: () -> Unit,
+    onNavigateToConversation: (String) -> Unit,
     isAccessibilityEnabled: Boolean,
     modifier: Modifier = Modifier
 ) {
     val context = LocalContext.current
-    val activity = context as MainActivity
-    val messages = remember {
-        mutableStateListOf<ChatMessage>().apply {
-            addAll(activity.loadMessages())
-        }
-    }
+    var conversations by remember { mutableStateOf<List<Conversation>>(emptyList()) }
     var textInput by remember { mutableStateOf("") }
     val listState = rememberLazyListState()
     var showPresetQueries by remember { mutableStateOf(false) }
@@ -115,11 +123,6 @@ fun MainScreen(
             repeatMode = RepeatMode.Reverse
         )
     )
-
-    LaunchedEffect(messages.size) {
-        activity.saveMessages(messages.toList())
-        listState.scrollToItem(0)
-    }
 
     Scaffold(
         topBar = {
@@ -172,7 +175,7 @@ fun MainScreen(
                     IconButton(
                         onClick = {
                             isRecording = true
-                            startVoiceRecognition(context, messages) { isRecording = false }
+                            startVoiceRecognition(context) { isRecording = false }
                         },
                         modifier = Modifier
                             .size(48.dp)
@@ -216,14 +219,8 @@ fun MainScreen(
                             .combinedClickable(
                                 onClick = {
                                     if (textInput.isNotEmpty()) {
-                                        messages.add(ChatMessage(text = textInput, isUser = true))
                                         processAgentCommand(context, textInput) { message, isUser ->
-                                            messages.add(
-                                                ChatMessage(
-                                                    text = message,
-                                                    isUser = isUser
-                                                )
-                                            )
+                                            // Messages will be handled by the conversation manager now
                                         }
                                         textInput = ""
                                     }
@@ -246,7 +243,7 @@ fun MainScreen(
         }
     ) { paddingValues ->
         Box(modifier = Modifier.fillMaxSize()) {
-            if (messages.isEmpty()) {
+            if (conversations.isEmpty()) {
                 Column(
                     modifier = Modifier
                         .fillMaxSize()
@@ -260,12 +257,18 @@ fun MainScreen(
                         tint = MaterialTheme.colorScheme.onBackground,
                         modifier = Modifier.size(80.dp)
                     )
+                    Text(
+                        text = "No conversations yet",
+                        style = MaterialTheme.typography.bodyLarge,
+                        color = MaterialTheme.colorScheme.onBackground,
+                        modifier = Modifier.padding(top = 16.dp)
+                    )
                 }
             } else {
                 LazyColumn(
                     modifier = Modifier
                         .fillMaxSize()
-                        .padding(horizontal = 16.dp),
+                        .padding(horizontal = 8.dp),
                     contentPadding = PaddingValues(
                         start = paddingValues.calculateStartPadding(LayoutDirection.Ltr),
                         top = paddingValues.calculateTopPadding(),
@@ -273,34 +276,58 @@ fun MainScreen(
                         bottom = paddingValues.calculateBottomPadding() + 8.dp
                     ),
                     state = listState,
-                    verticalArrangement = Arrangement.spacedBy(8.dp),
-                    reverseLayout = true
+                    verticalArrangement = Arrangement.spacedBy(8.dp)
                 ) {
-                    items(messages.asReversed()) { message ->
+                    items(conversations) { conversation ->
                         Card(
                             modifier = Modifier
                                 .fillMaxWidth()
-                                .padding(
-                                    start = if (message.isUser) 32.dp else 0.dp,
-                                    end = if (!message.isUser) 32.dp else 0.dp
-                                ),
+                                .clickable {
+                                    onNavigateToConversation(conversation.id)
+                                },
                             shape = RoundedCornerShape(12.dp),
                             colors = CardDefaults.cardColors(
-                                containerColor = if (message.isUser)
-                                    MaterialTheme.colorScheme.primaryContainer
-                                else
-                                    MaterialTheme.colorScheme.secondaryContainer
+                                containerColor = MaterialTheme.colorScheme.surfaceContainer
                             )
                         ) {
-                            Text(
-                                text = message.text,
-                                modifier = Modifier.padding(12.dp),
-                                style = MaterialTheme.typography.bodyLarge,
-                                color = if (message.isUser)
-                                    MaterialTheme.colorScheme.onPrimaryContainer
-                                else
-                                    MaterialTheme.colorScheme.onSecondaryContainer
-                            )
+                            Row(
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .padding(16.dp),
+                                horizontalArrangement = Arrangement.SpaceBetween,
+                                verticalAlignment = Alignment.CenterVertically
+                            ) {
+                                Column(
+                                    modifier = Modifier.weight(1f),
+                                    verticalArrangement = Arrangement.spacedBy(4.dp)
+                                ) {
+                                    Text(
+                                        text = getConversationTitle(conversation),
+                                        style = MaterialTheme.typography.titleMedium,
+                                        color = MaterialTheme.colorScheme.onSurface
+                                    )
+                                    Text(
+                                        text = (DateUtils.getRelativeTimeSpanString(
+                                            conversation.startTime,
+                                            System.currentTimeMillis(),
+                                            DateUtils.SECOND_IN_MILLIS,
+                                            DateUtils.FORMAT_ABBREV_RELATIVE
+                                        ).toString() + (conversation.endTime?.let { endTime ->
+                                            val duration = endTime - conversation.startTime
+                                            " (${formatDuration(duration)})"
+                                        } ?: " (active)")),
+                                        style = MaterialTheme.typography.labelSmall,
+                                        color = MaterialTheme.colorScheme.onSecondaryContainer.copy(
+                                            alpha = 0.7f
+                                        )
+                                    )
+                                }
+                                Icon(
+                                    imageVector = Icons.AutoMirrored.Filled.ArrowForward,
+                                    contentDescription = "View conversation",
+                                    tint = MaterialTheme.colorScheme.onSecondaryContainer.copy(alpha = 0.7f)
+                                )
+                            }
                         }
                     }
                 }
@@ -324,14 +351,8 @@ fun MainScreen(
                                     .fillMaxWidth()
                                     .clickable {
                                         showPresetQueries = false
-                                        messages.add(ChatMessage(text = query, isUser = true))
                                         processAgentCommand(context, query) { message, isUser ->
-                                            messages.add(
-                                                ChatMessage(
-                                                    text = message,
-                                                    isUser = isUser
-                                                )
-                                            )
+                                            // Messages will be handled by the conversation manager now
                                         }
                                     }
                                     .padding(16.dp)
@@ -342,11 +363,22 @@ fun MainScreen(
             }
         }
     }
+
+    // Collect conversations from the agent
+    LaunchedEffect(Unit) {
+        val agentServiceManager = AgentServiceManager(context)
+        agentServiceManager.bindAndStartAgent { agent ->
+            CoroutineScope(Dispatchers.Main).launch {
+                agent.conversationManager.conversations.collect { updatedConversations ->
+                    conversations = updatedConversations
+                }
+            }
+        }
+    }
 }
 
 private fun startVoiceRecognition(
     context: Context,
-    messages: MutableList<ChatMessage>,
     onRecordingComplete: () -> Unit
 ) {
     val activity = context as? Activity
@@ -369,9 +401,8 @@ private fun startVoiceRecognition(
     voiceRecognitionManager.startVoiceRecognition(
         object : VoiceRecognitionService.VoiceRecognitionCallback {
             override fun onVoiceCommandReceived(command: String) {
-                messages.add(ChatMessage(text = command, isUser = true))
-                processAgentCommand(context, command) { message, isUser ->
-                    messages.add(ChatMessage(text = message, isUser = isUser))
+                processAgentCommand(context, command) { _, _ ->
+                    // Messages will be handled by the conversation manager now
                 }
                 onRecordingComplete()
             }
@@ -405,6 +436,7 @@ private fun processAgentCommand(
 
     agentServiceManager.bindAndStartAgent { agent ->
         Log.d("wes", "Agent bound and started, setting status listener")
+
         agent.setStatusListener { status ->
             Log.d("wes", "Status listener called with: $status")
             when (status) {
@@ -451,7 +483,6 @@ private fun processAgentCommand(
             }
         }
 
-        Log.d("wes", "Starting command processing on IO dispatcher")
         CoroutineScope(Dispatchers.IO).launch {
             try {
                 Log.d("wes", "Calling agent.processCommand")

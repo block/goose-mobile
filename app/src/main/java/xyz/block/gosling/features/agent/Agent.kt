@@ -1,7 +1,6 @@
 package xyz.block.gosling.features.agent
 
 import android.app.Service
-import android.content.ComponentName
 import android.content.Context
 import android.content.Intent
 import android.os.Binder
@@ -17,7 +16,6 @@ import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import kotlinx.serialization.encodeToString
 import kotlinx.serialization.json.Json
-import kotlinx.serialization.json.JsonArray
 import kotlinx.serialization.json.encodeToJsonElement
 import org.json.JSONObject
 import xyz.block.gosling.features.accessibility.GoslingAccessibilityService
@@ -41,18 +39,13 @@ sealed class AgentStatus {
     data class Error(val message: String) : AgentStatus()
 }
 
-data class MessageAnnotation(
-    val messageIndex: Int,
-    val annotations: Map<String, Double>
-)
-
-
 class Agent : Service() {
     private var job = SupervisorJob()
     private var scope = CoroutineScope(Dispatchers.IO + job)
     private val binder = AgentBinder()
     private var isCancelled = false
     private var statusListener: ((AgentStatus) -> Unit)? = null
+    lateinit var conversationManager: ConversationManager
 
     companion object {
         private var instance: Agent? = null
@@ -67,11 +60,13 @@ class Agent : Service() {
 
     inner class AgentBinder : Binder() {
         fun getService(): Agent = this@Agent
+        fun getConversationManager(): ConversationManager = conversationManager
     }
 
     override fun onCreate() {
         super.onCreate()
         instance = this
+        conversationManager = ConversationManager(this)
     }
 
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
@@ -115,7 +110,6 @@ class Agent : Service() {
     ): String {
 
         try {
-            // Reset cancelled flag at the start of a new command
             isCancelled = false
 
             val availableIntents = IntentScanner.getAvailableIntents(context)
@@ -173,39 +167,27 @@ class Agent : Service() {
                 |Remember: DO NOT ask the user for help or additional information - you must solve the problem autonomously.
                 """.trimMargin()
 
-            val messages = mutableListOf(
-                Message(
-                    role = "system",
-                    content = systemMessage
-                ),
-                Message(
-                    role = "user",
-                    content = userInput
+            val startTime = System.currentTimeMillis()
+            val newConversation = Conversation(
+                startTime = startTime,
+                messages = mutableListOf(
+                    Message(
+                        role = "system",
+                        content = systemMessage
+                    ),
+                    Message(
+                        role = "user",
+                        content = userInput
+                    )
                 )
             )
-            val messageAnnotations = mutableListOf<MessageAnnotation>()
-
-            fun addAnnotation(annotations: Map<String, Double>) {
-                val messageIndex = messages.size - 1
-                val existingAnnotation =
-                    messageAnnotations.firstOrNull { it.messageIndex == messageIndex }
-
-                if (existingAnnotation != null) {
-                    // Create new map combining existing and new annotations
-                    val updatedAnnotations = existingAnnotation.annotations + annotations
-                    messageAnnotations[messageAnnotations.indexOf(existingAnnotation)] =
-                        existingAnnotation.copy(annotations = updatedAnnotations)
-                } else {
-                    messageAnnotations.add(MessageAnnotation(messageIndex, annotations))
-                }
-            }
+            conversationManager.updateCurrentConversation(newConversation)
 
             updateStatus(AgentStatus.Processing("Thinking..."))
 
             return withContext(scope.coroutineContext) {
                 var retryCount = 0
                 val maxRetries = 3
-                val startTime = System.currentTimeMillis()
 
                 while (true) {
                     if (isCancelled) {
@@ -222,7 +204,10 @@ class Agent : Service() {
                             updateStatus(AgentStatus.Processing("Retrying... (attempt ${retryCount + 1})"))
                         }
 
-                        response = callLlm(messages, context)
+                        response = callLlm(
+                            conversationManager.currentConversation.value?.messages ?: emptyList(),
+                            context
+                        )
                         retryCount = 0
                     } catch (e: AgentException) {
                         if (isCancelled) {
@@ -307,22 +292,35 @@ class Agent : Service() {
                             toolCall to toolCallId
                         } ?: emptyList()
 
-                        messages.add(
-                            Message(
-                                role = "assistant",
-                                content = assistantReply,
-                                toolCalls = toolCallsWithIds.map { (toolCall, id) ->
-                                    ToolCall(
-                                        id = id,
-                                        function = ToolFunction(
-                                            name = toolCall.name,
-                                            arguments = toolCall.arguments.toString()
-                                        )
+                        val assistantMessage = Message(
+                            role = "assistant",
+                            content = assistantReply,
+                            toolCalls = toolCallsWithIds.map { (toolCall, id) ->
+                                ToolCall(
+                                    id = id,
+                                    function = ToolFunction(
+                                        name = toolCall.name,
+                                        arguments = toolCall.arguments.toString()
                                     )
-                                }
-                            )
+                                )
+                            }
                         )
-                        addAnnotation(annotation)
+
+                        conversationManager.updateCurrentConversation(
+                            conversationManager.currentConversation.value?.copy(
+                                messages = conversationManager.currentConversation.value?.messages?.plus(
+                                    assistantMessage
+                                )
+                                    ?: listOf(assistantMessage),
+                                annotations = conversationManager.currentConversation.value?.annotations?.plus(
+                                    MessageAnnotation(
+                                        messageIndex = (conversationManager.currentConversation.value?.messages?.size
+                                            ?: 0),
+                                        annotations = annotation
+                                    )
+                                ) ?: listOf(MessageAnnotation(0, annotation))
+                            ) ?: newConversation
+                        )
 
                         if (toolResults.isEmpty() || isCancelled) {
                             if (isCancelled) {
@@ -335,15 +333,28 @@ class Agent : Service() {
                         }
 
                         for ((result, toolAnnotation) in toolResults.zip(toolAnnotations)) {
-                            messages.add(
-                                Message(
-                                    role = "tool",
-                                    toolCallId = result["tool_call_id"].toString(),
-                                    content = result["output"].toString(),
-                                    name = result["name"].toString()
-                                )
+                            val toolMessage = Message(
+                                role = "tool",
+                                toolCallId = result["tool_call_id"].toString(),
+                                content = result["output"].toString(),
+                                name = result["name"].toString()
                             )
-                            addAnnotation(toolAnnotation)
+
+                            conversationManager.updateCurrentConversation(
+                                conversationManager.currentConversation.value?.copy(
+                                    messages = conversationManager.currentConversation.value?.messages?.plus(
+                                        toolMessage
+                                    )
+                                        ?: listOf(toolMessage),
+                                    annotations = conversationManager.currentConversation.value?.annotations?.plus(
+                                        MessageAnnotation(
+                                            messageIndex = (conversationManager.currentConversation.value?.messages?.size
+                                                ?: 0),
+                                            annotations = toolAnnotation
+                                        )
+                                    ) ?: listOf(MessageAnnotation(0, toolAnnotation))
+                                ) ?: newConversation
+                            )
                         }
                     } catch (e: Exception) {
                         Log.e("Agent", "Error processing response", e)
@@ -362,35 +373,23 @@ class Agent : Service() {
                     val conversationsDir = File(filesDir, "session_dumps")
                     conversationsDir.mkdirs()
 
-                    val statsMessage = calculateConversationStats(messageAnnotations, startTime)
+                    val statsMessage = calculateConversationStats(
+                        conversationManager.currentConversation.value?.annotations ?: emptyList(),
+                        startTime
+                    )
 
-                    val annotatedMessages = messages.mapIndexed { index, message ->
-                        val annotations = messageAnnotations
-                            .firstOrNull { it.messageIndex == index }
-                            ?.annotations ?: emptyMap()
-
-                        // If annotations are empty, we need to use an empty array to match OpenAI's format
-                        // Otherwise, we can use the annotations map directly
-                        val jsonAnnotations = if (annotations.isEmpty()) {
-                            JsonArray(emptyList())
-                        } else {
-                            // Let kotlinx.serialization handle the conversion from Map to JsonObject
-                            Json.encodeToJsonElement(annotations)
-                        }
-
-                        message.copy(annotations = jsonAnnotations)
-                    }
-
-                    val messagesWithStats = listOf(statsMessage) + annotatedMessages
-
-                    File(conversationsDir, "${sanitizedCommand}.json").writeText(jsonFormat.encodeToString(messagesWithStats))
+                    conversationManager.updateCurrentConversation(
+                        conversationManager.currentConversation.value?.copy(
+                            endTime = System.currentTimeMillis(),
+                            stats = statsMessage,
+                            isComplete = true
+                        ) ?: newConversation
+                    )
                 }
 
                 val completionTime = (System.currentTimeMillis() - startTime) / 1000.0
                 val completionMessage =
-                    "Task completed successfully in %.1f seconds".format(
-                        (System.currentTimeMillis() - startTime) / 1000.0
-                    )
+                    "Task completed successfully in %.1f seconds".format(completionTime)
 
                 updateStatus(AgentStatus.Success(completionMessage, completionTime))
                 return@withContext completionMessage
@@ -510,7 +509,8 @@ class Agent : Service() {
             val requestBody = when (model.provider) {
                 ModelProvider.OPENAI -> {
                     val toolDefinitions =
-                        when (val result = getSerializableToolDefinitions(context, model.provider)) {
+                        when (val result =
+                            getSerializableToolDefinitions(context, model.provider)) {
                             is SerializableToolDefinitions.OpenAITools -> result.definitions
                             else -> emptyList() // This should never happen for OpenAI
                         }
@@ -530,7 +530,8 @@ class Agent : Service() {
                         "${it.role}: ${it.content}"
                     }
 
-                    val tools = when (val result = getSerializableToolDefinitions(context, model.provider)) {
+                    val tools = when (val result =
+                        getSerializableToolDefinitions(context, model.provider)) {
                         is SerializableToolDefinitions.GeminiTools -> result.tools
                         else -> emptyList()
                     }
@@ -682,7 +683,7 @@ class Agent : Service() {
         if (isApiKeyError(responseCode, errorResponse)) {
             throw ApiKeyException(errorResponse)
         }
-        
+
         throw AgentException(errorResponse)
     }
 }

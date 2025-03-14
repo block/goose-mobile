@@ -81,7 +81,8 @@ object MobileMCP {
                     System.out.println("Extras: $extras")
                     if (extras != null) {
                         val result = mapOf(
-                            "componentName" to componentName,
+                            "packageName" to resolveInfo.activityInfo.packageName,
+                            "name" to resolveInfo.activityInfo.name,
                             "instructions" to (extras.getString("instructions") ?: ""),
                             "tools" to (extras.getStringArray("tools")?.toList() ?: emptyList())
                                 .associateWith { tool ->
@@ -129,21 +130,29 @@ object MobileMCP {
     // invoke a specific tool in an external app
     fun invokeTool(
         context: Context,
-        componentName: ComponentName,
+        packageName: String,
+        appName: String,
         tool: String,
         params: String
     ): String? {
         val intent = Intent("com.example.ACTION_MMCP_INVOKE").apply {
-            component = componentName
+            component = ComponentName(
+                packageName,
+                appName
+            )
             putExtra("tool", tool)
             putExtra("params", params)
         }
 
         var result: String? = null
 
+        val latch = CountDownLatch(1)
+
         val receiver = object : BroadcastReceiver() {
             override fun onReceive(context: Context?, intent: Intent?) {
                 result = getResultData()
+                System.out.println("RESULT FROM MCP ----> " + result)
+                latch.countDown()
             }
         }
 
@@ -156,6 +165,14 @@ object MobileMCP {
             null,
             null
         )
+
+        try {
+            // ✅ Wait for all broadcasts to finish (10-second timeout to avoid hanging forever)
+            latch.await(10, TimeUnit.SECONDS)
+        } catch (e: InterruptedException) {
+            System.err.println("Latch interrupted: ${e.message}")
+        }
+
 
         return result
     }

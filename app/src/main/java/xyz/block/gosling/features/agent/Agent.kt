@@ -1,6 +1,7 @@
 package xyz.block.gosling.features.agent
 
 import android.app.Service
+import android.content.ComponentName
 import android.content.Context
 import android.content.Intent
 import android.os.Binder
@@ -113,11 +114,12 @@ class Agent : Service() {
         isNotificationReply: Boolean
     ): String {
 
-        val capabilities = MobileMCP.discoverMCPs(context)
-        System.out.println("Capabilities: " + capabilities)
-        capabilities.forEach { capability ->
-            val instructions = capability["instructions"]
-            val tools = capability["tools"] as Map<*, *>
+        // example of discovering MCPs for tools
+        val mcps = MobileMCP.discoverMCPs(context)
+        System.out.println("MCPs: " + mcps)
+        mcps.forEach { mcp ->
+            val instructions = mcp["instructions"]
+            val tools = mcp["tools"] as Map<*, *>
 
             Log.d("Gosling", "Instructions: $instructions")
             tools.forEach { (toolName, toolInfo) ->
@@ -127,6 +129,12 @@ class Agent : Service() {
                 Log.d("Gosling", "Params: ${toolInfo["parameters"]}")
             }
         }
+
+
+        //example invoking a tool
+        val result = MobileMCP.invokeTool(context, "org.breezyweather.debug", appName="org.breezyweather.WeatherMCP", "getWeather", "{}" )
+        System.out.println("result from other app via MCP is " + result)
+
 
 
         try {

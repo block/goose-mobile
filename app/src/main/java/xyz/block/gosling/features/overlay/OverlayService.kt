@@ -19,6 +19,7 @@ import android.widget.TextView
 import xyz.block.gosling.GoslingApplication
 import xyz.block.gosling.R
 import xyz.block.gosling.features.agent.Agent
+import xyz.block.gosling.features.agent.AgentServiceManager
 import xyz.block.gosling.features.agent.AgentStatus
 import java.lang.ref.WeakReference
 
@@ -39,6 +40,7 @@ class OverlayService : Service() {
     private var initialTouchY: Float = 0f
     private var currentStatus: String = "Ready"
     private var isPerformingAction: Boolean = false
+    private var activeAgentManager: AgentServiceManager? = null
 
     override fun onCreate() {
         super.onCreate()
@@ -123,18 +125,11 @@ class OverlayService : Service() {
             }
         }
 
-        // Set up cancel button click listener
         overlayCancelButton?.setOnClickListener {
             overlayCancelButton?.alpha = 0.5f
             overlayCancelButton?.isEnabled = false
+
             val agent = Agent.getInstance()
-            val agentServiceManager = xyz.block.gosling.features.agent.AgentServiceManager(this)
-
-            agent?.setStatusListener { status ->
-                agentServiceManager.updateNotification(status)
-                updateStatus(status)
-            }
-
             agent?.cancel()
 
             updateStatus(AgentStatus.Processing("Cancelling operation..."))
@@ -159,6 +154,7 @@ class OverlayService : Service() {
         overlayView?.let { windowManager.removeView(it) }
         instance?.clear()
         instance = null
+        activeAgentManager = null
         super.onDestroy()
     }
 
@@ -271,5 +267,9 @@ class OverlayService : Service() {
     fun setIsPerformingAction(isPerformingAction: Boolean) {
         this.isPerformingAction = isPerformingAction
         updateOverlayVisibility()
+    }
+
+    fun setActiveAgentManager(manager: AgentServiceManager) {
+        activeAgentManager = manager
     }
 }

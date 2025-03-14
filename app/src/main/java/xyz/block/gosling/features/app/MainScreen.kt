@@ -398,7 +398,10 @@ private fun processAgentCommand(
     val agentServiceManager = AgentServiceManager(context)
     val activity = context as MainActivity
 
-    OverlayService.getInstance()?.setIsPerformingAction(true)
+    OverlayService.getInstance()?.apply {
+        setIsPerformingAction(true)
+        setActiveAgentManager(agentServiceManager)
+    }
 
     agentServiceManager.bindAndStartAgent { agent ->
         Log.d("wes", "Agent bound and started, setting status listener")

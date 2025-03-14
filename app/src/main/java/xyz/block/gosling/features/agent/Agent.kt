@@ -131,8 +131,9 @@ class Agent : Service() {
         }
 
 
-        //example invoking a tool
-        val result = MobileMCP.invokeTool(context, "org.breezyweather.debug", appName="org.breezyweather.WeatherMCP", "getWeather", "{}" )
+        //example invoking a tool - using a hardcoded localId for testing
+
+        val result = MobileMCP.invokeTool(context, mcps[0].getValue("localId") as String, "getWeather", "{}" )
         System.out.println("result from other app via MCP is " + result)
 
 
@@ -533,7 +534,7 @@ class Agent : Service() {
             val requestBody = when (model.provider) {
                 ModelProvider.OPENAI -> {
                     val toolDefinitions =
-                        when (val result = getSerializableToolDefinitions(model.provider)) {
+                        when (val result = getSerializableToolDefinitions(context, model.provider)) {
                             is SerializableToolDefinitions.OpenAITools -> result.definitions
                             else -> emptyList() // This should never happen for OpenAI
                         }
@@ -553,7 +554,7 @@ class Agent : Service() {
                         "${it.role}: ${it.content}"
                     }
 
-                    val tools = when (val result = getSerializableToolDefinitions(model.provider)) {
+                    val tools = when (val result = getSerializableToolDefinitions(context, model.provider)) {
                         is SerializableToolDefinitions.GeminiTools -> result.tools
                         else -> emptyList()
                     }

@@ -48,8 +48,25 @@ sealed class SerializableToolDefinitions {
 }
 
 object MobileMCP {
-
-
+    // Map to store localId -> (packageName, appName) mappings
+    private val mcpRegistry = mutableMapOf<String, Pair<String, String>>()
+    
+    // Characters allowed in the localId
+    private val charPool = ('a'..'z') + ('A'..'Z') + ('0'..'9')
+    
+    // Generate a unique 3-character localId (2 letters + 1 digit)
+    private fun generateLocalId(): String {
+        val letters = (1..2).map { charPool.filter { it.isLetter() }.random() }.joinToString("")
+        val digit = charPool.filter { it.isDigit() }.random()
+        val localId = "$letters$digit"
+        
+        // Ensure the ID is unique
+        return if (mcpRegistry.containsKey(localId)) {
+            generateLocalId() // Try again if this ID is already used
+        } else {
+            localId
+        }
+    }
 
     fun discoverMCPs(context: Context): List<Map<String, Any>> {
 
@@ -80,9 +97,19 @@ object MobileMCP {
                     val extras = getResultExtras(true)
                     System.out.println("Extras: $extras")
                     if (extras != null) {
+                        val packageName = resolveInfo.activityInfo.packageName
+                        val appName = resolveInfo.activityInfo.name
+                        
+                        // Generate or retrieve a localId for this MCP
+                        val localId = mcpRegistry.entries.find { it.value == Pair(packageName, appName) }?.key
+                            ?: generateLocalId().also { 
+                                mcpRegistry[it] = Pair(packageName, appName)
+                            }
+                        
                         val result = mapOf(
-                            "packageName" to resolveInfo.activityInfo.packageName,
-                            "name" to resolveInfo.activityInfo.name,
+                            "packageName" to packageName,
+                            "name" to appName,
+                            "localId" to localId,
                             "instructions" to (extras.getString("instructions") ?: ""),
                             "tools" to (extras.getStringArray("tools")?.toList() ?: emptyList())
                                 .associateWith { tool ->
@@ -130,11 +157,16 @@ object MobileMCP {
     // invoke a specific tool in an external app
     fun invokeTool(
         context: Context,
-        packageName: String,
-        appName: String,
+        localId: String,
         tool: String,
         params: String
     ): String? {
+        // Look up the packageName and appName from the registry
+        val (packageName, appName) = mcpRegistry[localId] ?: run {
+            System.err.println("Error: Unknown MCP ID: $localId")
+            return "Error: Unknown MCP ID: $localId"
+        }
+        
         val intent = Intent("com.example.ACTION_MMCP_INVOKE").apply {
             component = ComponentName(
                 packageName,
@@ -526,13 +558,15 @@ object ToolHandler {
         }
     }
 
-    fun getSerializableToolDefinitions(provider: ModelProvider): SerializableToolDefinitions {
+
+    fun getSerializableToolDefinitions(context: Context, provider: ModelProvider): SerializableToolDefinitions {
         val methods = ToolHandler::class.java.methods
             .filter { it.isAnnotationPresent(Tool::class.java) }
 
-        return when (provider) {
+        // Get the regular tool definitions first
+        val regularToolDefinitions = when (provider) {
             ModelProvider.OPENAI -> {
-                val definitions = methods.mapNotNull { method ->
+                methods.mapNotNull { method ->
                     val tool = method.getAnnotation(Tool::class.java) ?: return@mapNotNull null
 
                     // Always create a ToolParametersObject, even for tools with no parameters
@@ -556,51 +590,126 @@ object ToolHandler {
                         )
                     )
                 }
-                SerializableToolDefinitions.OpenAITools(definitions)
             }
-
             ModelProvider.GEMINI -> {
-                val functionDeclarations = methods.mapNotNull { method ->
+                methods.mapNotNull { method ->
                     val tool = method.getAnnotation(Tool::class.java) ?: return@mapNotNull null
 
-                    // For Gemini, we can still use null for empty parameters
-                    val toolParameters = if (tool.parameters.isNotEmpty()) {
-                        ToolParametersObject(
-                            properties = tool.parameters.associate { param ->
-                                param.name to ToolParameter(
-                                    type = when (param.type.lowercase(Locale.getDefault())) {
-                                        "integer" -> "string" // Use string for integers
-                                        "boolean" -> "boolean"
-                                        "string" -> "string"
-                                        "double", "float" -> "number"
-                                        else -> "string"
-                                    },
-                                    description = param.description
-                                )
-                            },
-                            required = tool.parameters
-                                .filter { it.required }
-                                .map { it.name }
-                        )
-                    } else null
+                    // Always create a ToolParametersObject, even for tools with no parameters
+                    val toolParameters = ToolParametersObject(
+                        properties = tool.parameters.associate { param ->
+                            param.name to ToolParameter(
+                                type = when (param.type.lowercase(Locale.getDefault())) {
+                                    "integer" -> "string" // Use string for integers
+                                    "boolean" -> "boolean"
+                                    "string" -> "string"
+                                    "double", "float" -> "number"
+                                    else -> "string"
+                                },
+                                description = param.description
+                            )
+                        },
+                        required = tool.parameters
+                            .filter { it.required }
+                            .map { it.name }
+                    )
 
-                    GeminiFunctionDeclaration(
-                        name = tool.name,
-                        description = tool.description,
-                        parameters = toolParameters
+                    ToolDefinition(
+                        function = ToolFunctionDefinition(
+                            name = tool.name,
+                            description = tool.description,
+                            parameters = toolParameters
+                        )
                     )
                 }
+            }
+        }
+        
+        // Now add the MCP tools
+        val mcpTools = mutableListOf<ToolDefinition>()
+        try {
+            val mcps = MobileMCP.discoverMCPs(context)
+            
+            for (mcp in mcps) {
+                val localId = mcp["localId"] as String
 
-                val tools = listOf(
-                    GeminiTool(
-                        functionDeclarations = functionDeclarations
+                @Suppress("UNCHECKED_CAST")
+                val tools = mcp["tools"] as Map<String, Map<String, String>>
+                
+                // For each tool in this MCP, create a ToolDefinition
+                for ((toolName, toolInfo) in tools) {
+                    val toolDescription = toolInfo["description"] ?: ""
+                    
+                    // Parse the parameters JSON string into a proper structure
+                    val parametersJson = toolInfo["parameters"] ?: "{}"
+                    val parametersObj = JSONObject(parametersJson)
+                    val paramProperties = mutableMapOf<String, ToolParameter>()
+                    val requiredParams = mutableListOf<String>()
+                    
+                    // Extract parameters from the JSON
+                    parametersObj.keys().forEach { paramName ->
+                        val paramType = "string" // Default to string type for simplicity
+                        
+                        paramProperties[paramName] = ToolParameter(
+                            type = paramType,
+                            description = "Parameter for $toolName"
+                        )
+                        
+                        // Assume all parameters are required for now
+                        requiredParams.add(paramName)
+                    }
+                    
+                    // Create the tool parameters object
+                    val toolParameters = ToolParametersObject(
+                        properties = paramProperties,
+                        required = requiredParams
+                    )
+                    
+                    // Create the tool definition with a special name format to identify it as an MCP tool
+                    // Include both packageName and mcpName in the tool name
+                    val mcpToolName = "mcp_${localId}_${toolName}"
+                    
+                    mcpTools.add(
+                        ToolDefinition(
+                            function = ToolFunctionDefinition(
+                                name = mcpToolName,
+                                description = toolDescription,
+                                parameters = toolParameters
+                            )
+                        )
+                    )
+                }
+            }
+        } catch (e: Exception) {
+            System.err.println("Error loading MCP tools: ${e.message}")
+        }
+        
+        // Combine regular tools and MCP tools
+        val allTools = regularToolDefinitions + mcpTools
+        
+        return when (provider) {
+            ModelProvider.OPENAI -> SerializableToolDefinitions.OpenAITools(allTools)
+            ModelProvider.GEMINI -> {
+                // For Gemini, we need to convert the tool definitions to Gemini format
+                val functionDeclarations = allTools.map { toolDef ->
+                    GeminiFunctionDeclaration(
+                        name = toolDef.function.name,
+                        description = toolDef.function.description,
+                        parameters = toolDef.function.parameters
+                    )
+                }
+                
+                SerializableToolDefinitions.GeminiTools(
+                    listOf(
+                        GeminiTool(
+                            functionDeclarations = functionDeclarations
+                        )
                     )
                 )
-                SerializableToolDefinitions.GeminiTools(tools)
             }
         }
     }
-
+    
     fun callTool(
         toolCall: InternalToolCall,
         context: Context,

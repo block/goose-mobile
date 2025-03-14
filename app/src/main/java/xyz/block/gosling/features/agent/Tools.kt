@@ -700,7 +700,7 @@ object ToolHandler {
                     GeminiFunctionDeclaration(
                         name = toolDef.function.name,
                         description = toolDef.function.description,
-                        parameters = toolDef.function.parameters
+                        parameters = if (toolDef.function.parameters.properties.isEmpty()) null else toolDef.function.parameters
                     )
                 }
                 

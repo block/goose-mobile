@@ -625,7 +625,7 @@ object ToolHandler {
             }
         }
         
-        // Now add the MCP tools
+        // Now add the MCP tools discovered from other apps
         val mcpTools = mutableListOf<ToolDefinition>()
         try {
             val mcps = MobileMCP.discoverMCPs(context)
@@ -720,52 +720,67 @@ object ToolHandler {
             return "Operation cancelled by user"
         }
 
-        val toolMethod = ToolHandler::class.java.methods
-            .firstOrNull {
-                it.isAnnotationPresent(Tool::class.java) &&
-                        it.getAnnotation(Tool::class.java)?.name == toolCall.name
-            }
-            ?: return "Unknown tool call: ${toolCall.name}"
-
-        val toolAnnotation = toolMethod.getAnnotation(Tool::class.java)
-            ?: return "Tool annotation not found for: ${toolCall.name}"
-
-        if (!GoslingApplication.shouldHideOverlay()) {
-            //Delay to let the overlay hide...
-            Thread.sleep(100)
-        }
-
-        return try {
-            // Check again if cancelled after the delay
-            if (Agent.getInstance()?.isCancelled() == true) {
-                return "Operation cancelled by user"
-            }
-
-            if (toolAnnotation.requiresAccessibility) {
-                if (accessibilityService == null) {
-                    return "Accessibility service not available."
+        if (!toolCall.name.startsWith("mcp_")) {
+            val toolMethod = ToolHandler::class.java.methods
+                .firstOrNull {
+                    it.isAnnotationPresent(Tool::class.java) &&
+                            it.getAnnotation(Tool::class.java)?.name == toolCall.name
                 }
-                if (toolAnnotation.requiresContext) {
+                ?: return "Unknown tool call: ${toolCall.name}"
+
+            val toolAnnotation = toolMethod.getAnnotation(Tool::class.java)
+                ?: return "Tool annotation not found for: ${toolCall.name}"
+
+            if (!GoslingApplication.shouldHideOverlay()) {
+                //Delay to let the overlay hide...
+                Thread.sleep(100)
+            }
+
+            return try {
+                // Check again if cancelled after the delay
+                if (Agent.getInstance()?.isCancelled() == true) {
+                    return "Operation cancelled by user"
+                }
+
+                if (toolAnnotation.requiresAccessibility) {
+                    if (accessibilityService == null) {
+                        return "Accessibility service not available."
+                    }
+                    if (toolAnnotation.requiresContext) {
+                        return toolMethod.invoke(
+                            ToolHandler,
+                            accessibilityService,
+                            context,
+                            toolCall.arguments
+                        ) as String
+                    }
                     return toolMethod.invoke(
                         ToolHandler,
                         accessibilityService,
-                        context,
                         toolCall.arguments
                     ) as String
                 }
-                return toolMethod.invoke(
-                    ToolHandler,
-                    accessibilityService,
-                    toolCall.arguments
-                ) as String
+                if (toolAnnotation.requiresContext) {
+                    return toolMethod.invoke(ToolHandler, context, toolCall.arguments) as String
+                }
+                return toolMethod.invoke(ToolHandler, toolCall.arguments) as String
+            } catch (e: Exception) {
+                "Error executing ${toolCall.name}: ${e.message}"
             }
-            if (toolAnnotation.requiresContext) {
-                return toolMethod.invoke(ToolHandler, context, toolCall.arguments) as String
+
+        } else { // handle mcp calls
+            val nameParts = toolCall.name.split("_", limit = 3)
+            if (!GoslingApplication.shouldHideOverlay()) {
+                //Delay to let the overlay hide...
+                Thread.sleep(100)
             }
-            return toolMethod.invoke(ToolHandler, toolCall.arguments) as String
-        } catch (e: Exception) {
-            "Error executing ${toolCall.name}: ${e.message}"
+
+            val result = MobileMCP.invokeTool(context, nameParts[1], nameParts[2], toolCall.arguments.toString() )
+            System.out.println("TOOL CALL RESULT: " + result)
+            return "" + result;
+
         }
+
     }
 
     fun fromJson(json: JSONObject): InternalToolCall {

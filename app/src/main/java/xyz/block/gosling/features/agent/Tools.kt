@@ -670,7 +670,7 @@ object ToolHandler {
                         )
                         
                         // Create the tool definition with a special name format to identify it as an MCP tool
-                        // Include both packageName and mcpName in the tool name
+                        // we use a localId which is compact to save on space for toolName as there are limits
                         val mcpToolName = "mcp_${localId}_${toolName}"
                         
                         mcpTools.add(

@@ -113,6 +113,22 @@ class Agent : Service() {
         isNotificationReply: Boolean
     ): String {
 
+        val capabilities = MobileMCP.discoverMCPs(context)
+        System.out.println("Capabilities" + capabilities)
+        capabilities.forEach { capability ->
+            val instructions = capability["instructions"]
+            val tools = capability["tools"] as Map<*, *>
+
+            Log.d("Gosling", "Instructions: $instructions")
+            tools.forEach { (toolName, toolInfo) ->
+                toolInfo as Map<*, *>
+                Log.d("Gosling", "Tool: $toolName")
+                Log.d("Gosling", "Description: ${toolInfo["description"]}")
+                Log.d("Gosling", "Params: ${toolInfo["parameters"]}")
+            }
+        }
+
+
         try {
             // Reset cancelled flag at the start of a new command
             isCancelled = false

@@ -2,6 +2,8 @@ package xyz.block.gosling.features.agent
 
 import android.accessibilityservice.AccessibilityService
 import android.accessibilityservice.GestureDescription
+import android.content.BroadcastReceiver
+import android.content.ComponentName
 import android.content.Context
 import android.content.Intent
 import android.graphics.Path
@@ -40,6 +42,105 @@ data class InternalToolCall(
 sealed class SerializableToolDefinitions {
     data class OpenAITools(val definitions: List<ToolDefinition>) : SerializableToolDefinitions()
     data class GeminiTools(val tools: List<GeminiTool>) : SerializableToolDefinitions()
+}
+
+object MobileMCP {
+
+
+    // discover MCP "services" from other apps
+    fun discoverMCPs(context: Context): List<Map<String, Any>> {
+        val action = "com.example.ACTION_MMCP_DISCOVERY"
+        val intent = Intent(action)
+        val packageManager = context.packageManager
+        val resolveInfos = packageManager.queryBroadcastReceivers(intent, 0)
+
+        val results = mutableListOf<Map<String, Any>>()
+
+        for (resolveInfo in resolveInfos) {
+            val componentName = ComponentName(
+                resolveInfo.activityInfo.packageName,
+                resolveInfo.activityInfo.name
+            )
+
+            val broadcastIntent = Intent(action).apply {
+                component = componentName
+            }
+
+            val receiver = object : BroadcastReceiver() {
+                override fun onReceive(context: Context?, intent: Intent?) {
+                    System.out.println("MCP receive")
+                    val extras = getResultExtras(true)
+                    System.out.println("Extras " + extras)
+                    System.out.println("Intent " + intent)
+                    if (extras != null) {
+                        val result = mapOf(
+                            "componentName" to componentName,
+                            "instructions" to (extras.getString("instructions") ?: ""),
+                            "tools" to (extras.getStringArray("tools")?.toList() ?: emptyList())
+                                .associateWith { tool ->
+                                    mapOf(
+                                        "description" to (extras.getString("$tool.description") ?: ""),
+                                        "parameters" to (extras.getString("$tool.parameters") ?: "{}")
+                                    )
+                                }
+                        )
+                        System.out.println("results adding " + result.keys + " and values " + result.values)
+                        results.add(result)
+                    }
+                }
+            }
+
+            context.sendOrderedBroadcast(
+                broadcastIntent,
+                null,
+                receiver,
+                null,
+                0,
+                null,
+                null
+            )
+        }
+
+        System.out.println("returning results " + results)
+
+        return results
+    }
+
+    // invoke a specific tool in an external app
+    fun invokeTool(
+        context: Context,
+        componentName: ComponentName,
+        tool: String,
+        params: String
+    ): String? {
+        val intent = Intent("com.example.ACTION_MMCP_INVOKE").apply {
+            component = componentName
+            putExtra("tool", tool)
+            putExtra("params", params)
+        }
+
+        var result: String? = null
+
+        val receiver = object : BroadcastReceiver() {
+            override fun onReceive(context: Context?, intent: Intent?) {
+                result = getResultData()
+            }
+        }
+
+        context.sendOrderedBroadcast(
+            intent,
+            null,
+            receiver,
+            null,
+            0,
+            null,
+            null
+        )
+
+        return result
+    }
+
+
 }
 
 object ToolHandler {

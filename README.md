@@ -1,6 +1,6 @@
 # Gosling
 
-An open agent for android. WIP.
+An open agent for android to do your dirty work so you can spend more time not on your phone.
 
 
 https://github.com/user-attachments/assets/87b73419-c27a-4368-9b60-c544e4d1b575

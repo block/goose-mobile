@@ -10,10 +10,13 @@ import android.graphics.Path
 import android.graphics.Rect
 import android.net.Uri
 import android.os.Bundle
+import android.os.Looper
 import android.view.accessibility.AccessibilityNodeInfo
 import org.json.JSONObject
 import xyz.block.gosling.GoslingApplication
 import java.util.Locale
+import java.util.concurrent.CountDownLatch
+import java.util.concurrent.TimeUnit
 
 @Target(AnnotationTarget.FUNCTION)
 @Retention(AnnotationRetention.RUNTIME)
@@ -47,14 +50,19 @@ sealed class SerializableToolDefinitions {
 object MobileMCP {
 
 
-    // discover MCP "services" from other apps
+
     fun discoverMCPs(context: Context): List<Map<String, Any>> {
+
+        if (Looper.myLooper() == Looper.getMainLooper()) {
+            throw IllegalStateException("Don't call this from the main thread!")
+        }
         val action = "com.example.ACTION_MMCP_DISCOVERY"
         val intent = Intent(action)
         val packageManager = context.packageManager
         val resolveInfos = packageManager.queryBroadcastReceivers(intent, 0)
 
         val results = mutableListOf<Map<String, Any>>()
+        val latch = CountDownLatch(resolveInfos.size) // Wait for all broadcasts to finish
 
         for (resolveInfo in resolveInfos) {
             val componentName = ComponentName(
@@ -68,10 +76,9 @@ object MobileMCP {
 
             val receiver = object : BroadcastReceiver() {
                 override fun onReceive(context: Context?, intent: Intent?) {
-                    System.out.println("MCP receive")
+                    System.out.println("MCP receive from $componentName")
                     val extras = getResultExtras(true)
-                    System.out.println("Extras " + extras)
-                    System.out.println("Intent " + intent)
+                    System.out.println("Extras: $extras")
                     if (extras != null) {
                         val result = mapOf(
                             "componentName" to componentName,
@@ -84,27 +91,40 @@ object MobileMCP {
                                     )
                                 }
                         )
-                        System.out.println("results adding " + result.keys + " and values " + result.values)
+                        System.out.println("Results adding: $result")
                         results.add(result)
                     }
+                    latch.countDown() // ✅ Signal that this receiver has finished processing
                 }
             }
 
+            System.out.println("Sending broadcast to $componentName...")
+
             context.sendOrderedBroadcast(
                 broadcastIntent,
-                null,
-                receiver,
-                null,
-                0,
-                null,
-                null
+                null, // permission
+                receiver, // Attach the receiver here
+                null, // scheduler
+                0, // initial code
+                null, // initial data
+                null // No initial extras
             )
+
+            System.out.println("Broadcast finished for $componentName")
         }
 
-        System.out.println("returning results " + results)
+        try {
+            // ✅ Wait for all broadcasts to finish (5-second timeout to avoid hanging forever)
+            latch.await(5, TimeUnit.SECONDS)
+        } catch (e: InterruptedException) {
+            System.err.println("Latch interrupted: ${e.message}")
+        }
+
+        System.out.println("Returning results: $results")
 
         return results
     }
+
 
     // invoke a specific tool in an external app
     fun invokeTool(

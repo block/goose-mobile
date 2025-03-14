@@ -114,7 +114,7 @@ class Agent : Service() {
     ): String {
 
         val capabilities = MobileMCP.discoverMCPs(context)
-        System.out.println("Capabilities" + capabilities)
+        System.out.println("Capabilities: " + capabilities)
         capabilities.forEach { capability ->
             val instructions = capability["instructions"]
             val tools = capability["tools"] as Map<*, *>

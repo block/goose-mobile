@@ -141,7 +141,8 @@ object MobileMCP {
         }
 
         try {
-            // ✅ Wait for all broadcasts to finish (5-second timeout to avoid hanging forever)
+            // Wait for all broadcasts to finish (5-second timeout to avoid hanging forever), these should be fast
+            // and this is a one time wait
             latch.await(5, TimeUnit.SECONDS)
         } catch (e: InterruptedException) {
             System.err.println("Latch interrupted: ${e.message}")
@@ -198,7 +199,7 @@ object MobileMCP {
         )
 
         try {
-            // ✅ Wait for all broadcasts to finish (10-second timeout to avoid hanging forever)
+            // Wait for for the app to respond, 10 seconds as why not?
             latch.await(10, TimeUnit.SECONDS)
         } catch (e: InterruptedException) {
             System.err.println("Latch interrupted: ${e.message}")

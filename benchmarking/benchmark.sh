@@ -24,17 +24,17 @@ echo
 # Function to return to Gosling app screen
 return_to_gosling() {
     echo "Returning to Gosling app..."
-    # Press home button
-    adb shell input keyevent KEYCODE_HOME
-    sleep 1
     
-    # Try different possible package names for the Gosling app
-    echo "Attempting to launch Gosling app..."
-    
-    adb shell monkey -p "xyz.block.gosling" -c android.intent.category.LAUNCHER 1
-
-    # Wait for app to launch
+    adb shell am start -n xyz.block.gosling/.features.app.MainActivity
     sleep 2
+    
+    # Verify the app is in foreground
+    CURRENT_APP=$(adb shell dumpsys window | grep -E 'mCurrentFocus' | cut -d'/' -f1 | rev | cut -d' ' -f1 | rev)
+    if [[ "$CURRENT_APP" == *"xyz.block.gosling"* ]]; then
+        echo "Gosling app is now in foreground"
+    else
+        echo "Warning: Gosling app may not be in foreground. Current app: $CURRENT_APP"
+    fi
 }
 
 # Function to collect diagnostic data after each test

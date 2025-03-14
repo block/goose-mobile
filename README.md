@@ -8,33 +8,73 @@ https://github.com/user-attachments/assets/87b73419-c27a-4368-9b60-c544e4d1b575
 
 ## Introduction
 
-Orient users to the project here. This is a good place to start with an assumption
-that the user knows very little - so start with the Big Picture and show how this
-project fits into it.
+This is sort but but very not a "port" of goose to android.
 
-Then maybe a dive into what this project does.
+Using various capabilities of android, this allows gosling to automate end to end tasks, 
+either when needed, or using it as a home screen replacement.
 
-Diagrams and other visuals are helpful here. Perhaps code snippets showing usage.
+Very much a WIP - if you want to try this - fire it up in Android Studio!
 
-Project leads should complete, alongside this `README`:
+Gosling can also react to notifications that come in and spring into action on your behalf (you can set the rules).
+(automatically update people on your availability in a calendar for example)
+You can try any multi step task that you like, it will use the apps on hand (literally if you run it on your phone).
 
-- [CODEOWNERS](./CODEOWNERS) - set project lead(s)
-- [CONTRIBUTING.md](./CONTRIBUTING.md) - Fill out how to: install prereqs, build, test, run, access CI, chat, discuss, file issues
-- [Bug-report.md](.github/ISSUE_TEMPLATE/bug-report.md) - Fill out `Assignees` add codeowners @names
-- [config.yml](.github/ISSUE_TEMPLATE/config.yml) - remove "(/add your discord channel..)" and replace the url with your Discord channel if applicable
+in `benchmarking` there are some end to end scenarios (orchestrated with goose), but they are very simple to start with to establish a baseline.
 
-The other files in this template repo may be used as-is:
+## Extending via "mobile MCP"
 
-- [CODE_OF_CONDUCT.md](./CODE_OF_CONDUCT.md)
-- [GOVERNANCE.md](./GOVERNANCE.md)
-- [LICENSE](./LICENSE)
+MCP servers have been a wonderful addition to allow agents to take on additional functions they were never
+hard coded to do from other apps. 
 
-## Project Resources
+We are proposing a variant of this here, gosling can detect other apps that provide extensions which it can then use as tools
+This allows it to perform background tasks without switching to another app (if you like).
 
-| Resource                                   | Description                                                                   |
-| ------------------------------------------ | ----------------------------------------------------------------------------- |
-| [CODEOWNERS](./CODEOWNERS)                 | Outlines the project lead(s)                                                  |
-| [CODE_OF_CONDUCT.md](./CODE_OF_CONDUCT.md) | Expected behavior for project contributors, promoting a welcoming environment |
-| [CONTRIBUTING.md](./CONTRIBUTING.md)       | Developer guide to build, test, run, access CI, chat, discuss, file issues    |
-| [GOVERNANCE.md](./GOVERNANCE.md)           | Project governance                                                            |
-| [LICENSE](./LICENSE)                       | Apache License, Version 2.0                                                   |
+For example: looking up the weather and arranging a dog park visit with coffee could involve a few apps. Maps, weather or a google search, calendar. 
+With an extension then gosling can discover a "get_weather" tool and use that in a fraction of a second (vs switching apps).
+
+This repo: https://github.com/michaelneale/breezy-weather/ - is currently an example of a very simple app that provides an extension that gosling can discover:
+
+
+You can extend gosling with any app as simply as the following:
+
+```kotlin
+class WeatherMCP : BroadcastReceiver() {
+    override fun onReceive(context: Context?, intent: Intent?) {
+        when (intent?.action) {
+            "com.example.ACTION_MMCP_DISCOVERY" -> {
+                val bundle = Bundle().apply {
+                    putStringArray("tools", arrayOf("getWeather"))
+                    putString("getWeather.description", "Returns current weather for given location.")
+                    putString("getWeather.parameters", "{\"location\": \"string\"}")
+                }
+                setResultExtras(bundle)
+            }
+
+            "com.example.ACTION_MMCP_INVOKE" -> {
+                val tool = intent.getStringExtra("tool")
+                val params = intent.getStringExtra("params") // JSON string
+
+                val result = when (tool) {
+                    "getWeather" -> "Weather is sunny, 25°C"
+                    else -> "Unknown tool"
+                }
+
+                setResultData(result)
+            }
+        }
+    }
+}
+```
+
+and on AndroidManifest.xml:
+
+```xml
+        <receiver android:name=".WeatherMCP" android:exported="true">
+            <intent-filter>
+                <action android:name="com.example.ACTION_MMCP_DISCOVERY" />
+                <action android:name="com.example.ACTION_MMCP_INVOKE" />
+            </intent-filter>
+        </receiver>
+```
+
+Gosling will discover and make use of that - note the finer details of this contract/interface will be changing of course!

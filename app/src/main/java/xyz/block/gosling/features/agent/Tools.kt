@@ -47,15 +47,14 @@ sealed class SerializableToolDefinitions {
     data class GeminiTools(val tools: List<GeminiTool>) : SerializableToolDefinitions()
 }
 
+// a lightweight MCP client that will discover apps that can add tools
 object MobileMCP {
-    // Map to store localId -> (packageName, appName) mappings
+    // Map to store localId -> (packageName, appName) mappings to keep names short in function calls
     private val mcpRegistry = mutableMapOf<String, Pair<String, String>>()
-    
-    // Characters allowed in the localId
-    private val charPool = ('a'..'z') + ('A'..'Z') + ('0'..'9')
-    
+
     // Generate a unique 3-character localId (2 letters + 1 digit)
     private fun generateLocalId(): String {
+        val charPool = ('a'..'z') + ('A'..'Z') + ('0'..'9')
         val letters = (1..2).map { charPool.filter { it.isLetter() }.random() }.joinToString("")
         val digit = charPool.filter { it.isDigit() }.random()
         val localId = "$letters$digit"
@@ -68,12 +67,13 @@ object MobileMCP {
         }
     }
 
+    // discover MCPs that are on this device.
     fun discoverMCPs(context: Context): List<Map<String, Any>> {
 
         if (Looper.myLooper() == Looper.getMainLooper()) {
             throw IllegalStateException("Don't call this from the main thread!")
         }
-        val action = "com.example.ACTION_MMCP_DISCOVERY"
+        val action = "com.example.ACTION_MMCP_DISCOVERY" // TODO we need a permanent name for this.
         val intent = Intent(action)
         val packageManager = context.packageManager
         val resolveInfos = packageManager.queryBroadcastReceivers(intent, 0)
@@ -624,63 +624,69 @@ object ToolHandler {
             }
         }
         
-        // Now add the MCP tools discovered from other apps
+        // Check if app extensions are enabled
+        val settings = xyz.block.gosling.features.settings.SettingsStore(context)
+        val enableAppExtensions = settings.enableAppExtensions
+        
+        // Only add MCP tools if app extensions are enabled
         val mcpTools = mutableListOf<ToolDefinition>()
-        try {
-            val mcps = MobileMCP.discoverMCPs(context)
-            
-            for (mcp in mcps) {
-                val localId = mcp["localId"] as String
-
-                @Suppress("UNCHECKED_CAST")
-                val tools = mcp["tools"] as Map<String, Map<String, String>>
+        if (enableAppExtensions) {
+            try {
+                val mcps = MobileMCP.discoverMCPs(context)
                 
-                // For each tool in this MCP, create a ToolDefinition
-                for ((toolName, toolInfo) in tools) {
-                    val toolDescription = toolInfo["description"] ?: ""
+                for (mcp in mcps) {
+                    val localId = mcp["localId"] as String
+
+                    @Suppress("UNCHECKED_CAST")
+                    val tools = mcp["tools"] as Map<String, Map<String, String>>
                     
-                    // Parse the parameters JSON string into a proper structure
-                    val parametersJson = toolInfo["parameters"] ?: "{}"
-                    val parametersObj = JSONObject(parametersJson)
-                    val paramProperties = mutableMapOf<String, ToolParameter>()
-                    val requiredParams = mutableListOf<String>()
-                    
-                    // Extract parameters from the JSON
-                    parametersObj.keys().forEach { paramName ->
-                        val paramType = "string" // Default to string type for simplicity
+                    // For each tool in this MCP, create a ToolDefinition
+                    for ((toolName, toolInfo) in tools) {
+                        val toolDescription = toolInfo["description"] ?: ""
                         
-                        paramProperties[paramName] = ToolParameter(
-                            type = paramType,
-                            description = "Parameter for $toolName"
+                        // Parse the parameters JSON string into a proper structure
+                        val parametersJson = toolInfo["parameters"] ?: "{}"
+                        val parametersObj = JSONObject(parametersJson)
+                        val paramProperties = mutableMapOf<String, ToolParameter>()
+                        val requiredParams = mutableListOf<String>()
+                        
+                        // Extract parameters from the JSON
+                        parametersObj.keys().forEach { paramName ->
+                            val paramType = "string" // Default to string type for simplicity
+                            
+                            paramProperties[paramName] = ToolParameter(
+                                type = paramType,
+                                description = "Parameter for $toolName"
+                            )
+                            
+                            // Assume all parameters are required for now
+                            requiredParams.add(paramName)
+                        }
+                        
+                        // Create the tool parameters object
+                        val toolParameters = ToolParametersObject(
+                            properties = paramProperties,
+                            required = requiredParams
                         )
                         
-                        // Assume all parameters are required for now
-                        requiredParams.add(paramName)
-                    }
-                    
-                    // Create the tool parameters object
-                    val toolParameters = ToolParametersObject(
-                        properties = paramProperties,
-                        required = requiredParams
-                    )
-                    
-                    // Create the tool definition with a special name format to identify it as an MCP tool
-                    // Include both packageName and mcpName in the tool name
-                    val mcpToolName = "mcp_${localId}_${toolName}"
-                    
-                    mcpTools.add(
-                        ToolDefinition(
-                            function = ToolFunctionDefinition(
-                                name = mcpToolName,
-                                description = toolDescription,
-                                parameters = toolParameters
+                        // Create the tool definition with a special name format to identify it as an MCP tool
+                        // Include both packageName and mcpName in the tool name
+                        val mcpToolName = "mcp_${localId}_${toolName}"
+                        
+                        mcpTools.add(
+                            ToolDefinition(
+                                function = ToolFunctionDefinition(
+                                    name = mcpToolName,
+                                    description = toolDescription,
+                                    parameters = toolParameters
+                                )
                             )
                         )
-                    )
+                    }
                 }
+            } catch (e: Exception) {
+                System.err.println("Error loading MCP tools: ${e.message}")
             }
-        } catch (e: Exception) {
-            System.err.println("Error loading MCP tools: ${e.message}")
         }
         
         // Combine regular tools and MCP tools

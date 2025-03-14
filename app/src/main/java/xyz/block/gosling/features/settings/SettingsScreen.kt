@@ -54,6 +54,7 @@ fun SettingsScreen(
     var llmModel by remember { mutableStateOf(settingsStore.llmModel) }
     var currentModel by remember { mutableStateOf(AiModel.fromIdentifier(llmModel)) }
     var apiKey by remember { mutableStateOf(settingsStore.getApiKey(currentModel.provider)) }
+    var enableAppExtensions by remember { mutableStateOf(settingsStore.enableAppExtensions) }
     var shouldProcessNotifications by remember { mutableStateOf(settingsStore.shouldProcessNotifications) }
     var messageHandlingPreferences by remember { mutableStateOf(settingsStore.messageHandlingPreferences) }
     var showResetDialog by remember { mutableStateOf(false) }
@@ -207,6 +208,23 @@ fun SettingsScreen(
                     modifier = Modifier.fillMaxWidth(),
                     verticalArrangement = Arrangement.spacedBy(16.dp)
                 ) {
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Text(
+                            text = "Enable other apps to provide extensions",
+                            style = MaterialTheme.typography.bodyLarge
+                        )
+                        Switch(
+                            checked = enableAppExtensions,
+                            onCheckedChange = {
+                                enableAppExtensions = it
+                                settingsStore.enableAppExtensions = it
+                            }
+                        )
+                    }
                     if (isAccessibilityEnabled) {
                         Text(
                             text = "Notification Processing",

@@ -114,10 +114,6 @@ class Agent : Service() {
         isNotificationReply: Boolean
     ): String {
 
-        tryOutMMCP(context)
-
-
-
         try {
             // Reset cancelled flag at the start of a new command
             isCancelled = false
@@ -413,28 +409,6 @@ class Agent : Service() {
             updateStatus(AgentStatus.Error(errorMsg))
             return errorMsg
         }
-    }
-
-    private fun tryOutMMCP(context: Context) {
-        // example of discovering MCPs for tools
-        val mcps = MobileMCP.discoverMCPs(context)
-        System.out.println("MCPs: " + mcps)
-        mcps.forEach { mcp ->
-            val instructions = mcp["instructions"]
-            val tools = mcp["tools"] as Map<*, *>
-
-            Log.d("Gosling", "Instructions: $instructions")
-            tools.forEach { (toolName, toolInfo) ->
-                toolInfo as Map<*, *>
-                Log.d("Gosling", "Tool: $toolName")
-                Log.d("Gosling", "Description: ${toolInfo["description"]}")
-                Log.d("Gosling", "Params: ${toolInfo["parameters"]}")
-            }
-        }
-
-        val result =
-            MobileMCP.invokeTool(context, mcps[0].getValue("localId") as String, "getWeather", "{}")
-        System.out.println("result from other app via MCP is " + result)
     }
 
     fun handleNotification(

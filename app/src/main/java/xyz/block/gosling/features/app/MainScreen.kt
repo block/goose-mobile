@@ -382,22 +382,24 @@ private fun startVoiceRecognition(
     onRecordingComplete: () -> Unit
 ) {
     val activity = context as? Activity
+    // Create a single Toast instance that will be reused
+    val voiceToast = Toast.makeText(context, "", Toast.LENGTH_SHORT)
+
     if (activity == null) {
-        Toast.makeText(context, "Cannot start voice recognition", Toast.LENGTH_SHORT).show()
+        voiceToast.setText("Cannot start voice recognition")
+        voiceToast.show()
         onRecordingComplete()
         return
     }
 
     val voiceRecognitionManager = VoiceRecognitionService(context)
 
-    // Check for permission
     if (!voiceRecognitionManager.hasRecordAudioPermission()) {
         voiceRecognitionManager.requestRecordAudioPermission(activity)
         onRecordingComplete()
         return
     }
 
-    // Start voice recognition
     voiceRecognitionManager.startVoiceRecognition(
         object : VoiceRecognitionService.VoiceRecognitionCallback {
             override fun onVoiceCommandReceived(command: String) {
@@ -413,7 +415,8 @@ private fun startVoiceRecognition(
 
             override fun onError(errorMessage: String) {
                 super.onError(errorMessage)
-                Toast.makeText(context, errorMessage, Toast.LENGTH_SHORT).show()
+                voiceToast.setText(errorMessage)
+                voiceToast.show()
                 onRecordingComplete()
             }
         }
@@ -425,9 +428,11 @@ private fun processAgentCommand(
     command: String,
     onMessageReceived: (String, Boolean) -> Unit
 ) {
-    Log.d("wes", "Starting to process command: $command")
     val agentServiceManager = AgentServiceManager(context)
     val activity = context as MainActivity
+
+    // Create a single Toast instance that will be reused
+    val statusToast = Toast.makeText(context, "", Toast.LENGTH_SHORT)
 
     OverlayService.getInstance()?.apply {
         setIsPerformingAction(true)
@@ -435,29 +440,30 @@ private fun processAgentCommand(
     }
 
     agentServiceManager.bindAndStartAgent { agent ->
-        Log.d("wes", "Agent bound and started, setting status listener")
-
         agent.setStatusListener { status ->
-            Log.d("wes", "Status listener called with: $status")
             when (status) {
                 is AgentStatus.Processing -> {
                     if (status.message.isEmpty() || status.message == "null") {
-                        Log.d("wes", "Ignoring empty/null processing message")
+                        Log.d("MainScreen", "Ignoring empty/null processing message")
                         return@setStatusListener
                     }
                     android.os.Handler(context.mainLooper).post {
-                        Log.d("wes", "Processing status: ${status.message}")
                         onMessageReceived(status.message, false)
-                        Toast.makeText(context, status.message, Toast.LENGTH_SHORT).show()
+
+                        statusToast.setText(status.message)
+                        statusToast.show()
+
                         OverlayService.getInstance()?.updateStatus(status)
                     }
                 }
 
                 is AgentStatus.Success -> {
                     android.os.Handler(context.mainLooper).post {
-                        Log.d("wes", "Success status: ${status.message}")
                         onMessageReceived(status.message, false)
-                        Toast.makeText(context, status.message, Toast.LENGTH_SHORT).show()
+
+                        statusToast.setText(status.message)
+                        statusToast.show()
+
                         OverlayService.getInstance()?.updateStatus(status)
                         OverlayService.getInstance()?.setIsPerformingAction(false)
 
@@ -472,10 +478,12 @@ private fun processAgentCommand(
 
                 is AgentStatus.Error -> {
                     android.os.Handler(context.mainLooper).post {
-                        Log.d("wes", "Error status: ${status.message}")
                         val errorMessage = "Error: ${status.message}"
                         onMessageReceived(errorMessage, false)
-                        Toast.makeText(context, errorMessage, Toast.LENGTH_SHORT).show()
+
+                        statusToast.setText(errorMessage)
+                        statusToast.show()
+
                         OverlayService.getInstance()?.updateStatus(status)
                         OverlayService.getInstance()?.setIsPerformingAction(false)
                     }
@@ -485,22 +493,19 @@ private fun processAgentCommand(
 
         CoroutineScope(Dispatchers.IO).launch {
             try {
-                Log.d("wes", "Calling agent.processCommand")
                 agent.processCommand(
                     userInput = command,
                     context = context,
                     isNotificationReply = false
                 )
-                Log.d("wes", "Finished agent.processCommand")
             } catch (e: Exception) {
-                Log.e("wes", "Error processing command", e)
                 // Handle exceptions
                 android.os.Handler(context.mainLooper).post {
                     val errorMessage = "Error: ${e.message}"
                     onMessageReceived(errorMessage, false)
                     activity.saveMessages(activity.loadMessages())
-
-                    Toast.makeText(context, errorMessage, Toast.LENGTH_SHORT).show()
+                    statusToast.setText(errorMessage)
+                    statusToast.show()
                 }
             }
         }

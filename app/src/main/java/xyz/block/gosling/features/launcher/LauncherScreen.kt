@@ -248,7 +248,9 @@ private fun startVoiceRecognition(context: Context) {
 }
 
 private fun processAgentCommand(context: Context, command: String) {
-    Toast.makeText(context, command, Toast.LENGTH_SHORT).show()
+
+    val statusToast = Toast.makeText(context.applicationContext, command, Toast.LENGTH_LONG)
+    statusToast.show()
 
     val agentServiceManager = AgentServiceManager(context)
     OverlayService.getInstance()?.setIsPerformingAction(true)
@@ -259,38 +261,28 @@ private fun processAgentCommand(context: Context, command: String) {
                 is AgentStatus.Processing -> {
                     if (status.message.isEmpty() || status.message == "null") return@setStatusListener
                     android.os.Handler(context.mainLooper).post {
-                        Toast.makeText(
-                            context,
-                            status.message,
-                            Toast.LENGTH_SHORT
-                        ).show()
+                        statusToast.setText(status.message)
+                        statusToast.show()
                     }
                 }
 
                 is AgentStatus.Success -> {
                     android.os.Handler(context.mainLooper).post {
+                        statusToast.setText(status.message)
+                        statusToast.show()
+
                         val homeIntent = Intent(Intent.ACTION_MAIN).apply {
                             addCategory(Intent.CATEGORY_HOME)
                             flags = Intent.FLAG_ACTIVITY_NEW_TASK
                         }
                         context.startActivity(homeIntent)
-
-                        Toast.makeText(
-                            context,
-                            status.message,
-                            Toast.LENGTH_LONG
-                        ).show()
-                        OverlayService.getInstance()?.setIsPerformingAction(false)
                     }
                 }
 
                 is AgentStatus.Error -> {
                     android.os.Handler(context.mainLooper).post {
-                        Toast.makeText(
-                            context,
-                            "Error: ${status.message}",
-                            Toast.LENGTH_SHORT
-                        ).show()
+                        statusToast.setText("Error: ${status.message}")
+                        statusToast.show()
                         OverlayService.getInstance()?.setIsPerformingAction(false)
                     }
                 }
@@ -307,7 +299,8 @@ private fun processAgentCommand(context: Context, command: String) {
             } catch (e: Exception) {
                 // Handle exceptions
                 android.os.Handler(context.mainLooper).post {
-                    Toast.makeText(context, "Error: ${e.message}", Toast.LENGTH_SHORT).show()
+                    statusToast.setText("Error: ${e.message}")
+                    statusToast.show()
                 }
             }
         }

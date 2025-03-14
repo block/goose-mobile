@@ -117,27 +117,23 @@ class AssistantActivity : ComponentActivity() {
 
         OverlayService.getInstance()?.setIsPerformingAction(true)
 
+        val statusToast = Toast.makeText(applicationContext, "", Toast.LENGTH_SHORT)
+
         agentServiceManager.bindAndStartAgent { agent ->
             agent.setStatusListener { status ->
                 when (status) {
                     is AgentStatus.Processing -> {
                         if (status.message.isEmpty() || status.message == "null") return@setStatusListener
                         runOnUiThread {
-                            Toast.makeText(
-                                this,
-                                status.message,
-                                Toast.LENGTH_SHORT
-                            ).show()
+                            statusToast.setText(status.message)
+                            statusToast.show()
                         }
                     }
 
                     is AgentStatus.Success -> {
                         runOnUiThread {
-                            Toast.makeText(
-                                this,
-                                status.message,
-                                Toast.LENGTH_LONG
-                            ).show()
+                            statusToast.setText(status.message)
+                            statusToast.show()
                             OverlayService.getInstance()?.setIsPerformingAction(false)
                         }
                         finish()
@@ -145,11 +141,8 @@ class AssistantActivity : ComponentActivity() {
 
                     is AgentStatus.Error -> {
                         runOnUiThread {
-                            Toast.makeText(
-                                this,
-                                "Error: ${status.message}",
-                                Toast.LENGTH_LONG
-                            ).show()
+                            statusToast.setText(status.message)
+                            statusToast.show()
                             OverlayService.getInstance()?.setIsPerformingAction(false)
                         }
                         finish()
@@ -167,11 +160,8 @@ class AssistantActivity : ComponentActivity() {
                     )
                 } catch (e: Exception) {
                     runOnUiThread {
-                        Toast.makeText(
-                            this@AssistantActivity,
-                            "Error: ${e.message}",
-                            Toast.LENGTH_LONG
-                        ).show()
+                        statusToast.setText("Error: ${e.message}")
+                        statusToast.show()
                         finish()
                     }
                 }

@@ -4,15 +4,15 @@
 
 # Input field center coordinates
 INPUT_X=640
-INPUT_Y=2460
+INPUT_Y=2652
 
-# Keyboard icon center coordinates
-KEYBOARD_X=898
-KEYBOARD_Y=2580
+# Keyboard icon center coordinates (Voice Input button)
+KEYBOARD_X=120
+KEYBOARD_Y=2652
 
-# Submit button center coordinates
-SUBMIT_X=640
-SUBMIT_Y=2568
+# Submit button center coordinates (Send Message button)
+SUBMIT_X=1160
+SUBMIT_Y=2652
 
 # Function to escape spaces in a string
 escape_spaces() {
@@ -23,9 +23,9 @@ escape_spaces() {
 # Function to click on the input field and enter text
 input_text() {
 
-    echo "Clicking keyboard icon first..."
-    adb shell input tap $KEYBOARD_X $KEYBOARD_Y
-    sleep 1
+    #echo "Clicking keyboard icon first..."
+    #adb shell input tap $KEYBOARD_X $KEYBOARD_Y
+    #sleep 1
 
     local message="$1"
     

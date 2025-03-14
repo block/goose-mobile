@@ -110,7 +110,6 @@ object MobileMCP {
                             "packageName" to packageName,
                             "name" to appName,
                             "localId" to localId,
-                            "instructions" to (extras.getString("instructions") ?: ""),
                             "tools" to (extras.getStringArray("tools")?.toList() ?: emptyList())
                                 .associateWith { tool ->
                                     mapOf(

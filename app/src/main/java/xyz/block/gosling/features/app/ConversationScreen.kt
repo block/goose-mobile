@@ -47,12 +47,6 @@ import xyz.block.gosling.features.agent.getConversationTitle
 
 @Composable
 private fun MessageCard(message: Message, modifier: Modifier = Modifier) {
-    val now = System.currentTimeMillis()
-    Log.d(
-        "MessageCard",
-        "Message time: ${message.time}, now: $now, diff: ${now - message.time}ms"
-    )
-
     Card(
         modifier = modifier
             .fillMaxWidth()
@@ -77,10 +71,11 @@ private fun MessageCard(message: Message, modifier: Modifier = Modifier) {
                 else
                     MaterialTheme.colorScheme.onPrimaryContainer
             )
+            Text(text = message.role)
             Text(
                 text = DateUtils.getRelativeTimeSpanString(
                     message.time,
-                    now,
+                    System.currentTimeMillis(),
                     DateUtils.SECOND_IN_MILLIS,
                     DateUtils.FORMAT_SHOW_DATE or DateUtils.FORMAT_SHOW_TIME or DateUtils.FORMAT_ABBREV_RELATIVE
                 ).toString(),
@@ -206,6 +201,14 @@ fun ConversationScreen(
                     )
                 }
             } else {
+                val filteredMessages = remember(conversation?.messages) {
+                    conversation?.messages?.filter { message ->
+                        (message.role == "user" || message.role == "assistant") && 
+                        message.content != null && 
+                        message.content != "null"
+                    } ?: emptyList()
+                }
+
                 LazyColumn(
                     modifier = Modifier
                         .fillMaxSize()
@@ -213,7 +216,7 @@ fun ConversationScreen(
                     verticalArrangement = Arrangement.spacedBy(8.dp),
                     reverseLayout = true
                 ) {
-                    items(conversation?.messages?.asReversed() ?: emptyList()) { message ->
+                    items(filteredMessages.asReversed()) { message ->
                         MessageCard(message = message)
                     }
                 }

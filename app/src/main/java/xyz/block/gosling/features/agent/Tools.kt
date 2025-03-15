@@ -58,7 +58,7 @@ object MobileMCP {
         val letters = (1..2).map { charPool.filter { it.isLetter() }.random() }.joinToString("")
         val digit = charPool.filter { it.isDigit() }.random()
         val localId = "$letters$digit"
-        
+
         // Ensure the ID is unique
         return if (mcpRegistry.containsKey(localId)) {
             generateLocalId() // Try again if this ID is already used
@@ -99,13 +99,14 @@ object MobileMCP {
                     if (extras != null) {
                         val packageName = resolveInfo.activityInfo.packageName
                         val appName = resolveInfo.activityInfo.name
-                        
+
                         // Generate or retrieve a localId for this MCP
-                        val localId = mcpRegistry.entries.find { it.value == Pair(packageName, appName) }?.key
-                            ?: generateLocalId().also { 
-                                mcpRegistry[it] = Pair(packageName, appName)
-                            }
-                        
+                        val localId =
+                            mcpRegistry.entries.find { it.value == Pair(packageName, appName) }?.key
+                                ?: generateLocalId().also {
+                                    mcpRegistry[it] = Pair(packageName, appName)
+                                }
+
                         val result = mapOf(
                             "packageName" to packageName,
                             "name" to appName,
@@ -113,8 +114,10 @@ object MobileMCP {
                             "tools" to (extras.getStringArray("tools")?.toList() ?: emptyList())
                                 .associateWith { tool ->
                                     mapOf(
-                                        "description" to (extras.getString("$tool.description") ?: ""),
-                                        "parameters" to (extras.getString("$tool.parameters") ?: "{}")
+                                        "description" to (extras.getString("$tool.description")
+                                            ?: ""),
+                                        "parameters" to (extras.getString("$tool.parameters")
+                                            ?: "{}")
                                     )
                                 }
                         )
@@ -166,7 +169,7 @@ object MobileMCP {
             System.err.println("Error: Unknown MCP ID: $localId")
             return "Error: Unknown MCP ID: $localId"
         }
-        
+
         val intent = Intent("com.example.ACTION_MMCP_INVOKE").apply {
             component = ComponentName(
                 packageName,
@@ -182,7 +185,7 @@ object MobileMCP {
 
         val receiver = object : BroadcastReceiver() {
             override fun onReceive(context: Context?, intent: Intent?) {
-                result = getResultData()
+                result = resultData
                 System.out.println("RESULT FROM MCP ----> " + result)
                 latch.countDown()
             }
@@ -221,7 +224,7 @@ object ToolHandler {
         accessibilityService: AccessibilityService
     ): Boolean {
         var gestureResult = false
-        val countDownLatch = java.util.concurrent.CountDownLatch(1)
+        val countDownLatch = CountDownLatch(1)
 
         accessibilityService.dispatchGesture(
             gesture,
@@ -240,7 +243,7 @@ object ToolHandler {
         )
 
         try {
-            countDownLatch.await(2000, java.util.concurrent.TimeUnit.MILLISECONDS)
+            countDownLatch.await(2000, TimeUnit.MILLISECONDS)
         } catch (e: InterruptedException) {
             return false
         }
@@ -559,7 +562,10 @@ object ToolHandler {
     }
 
 
-    fun getSerializableToolDefinitions(context: Context, provider: ModelProvider): SerializableToolDefinitions {
+    fun getSerializableToolDefinitions(
+        context: Context,
+        provider: ModelProvider
+    ): SerializableToolDefinitions {
         val methods = ToolHandler::class.java.methods
             .filter { it.isAnnotationPresent(Tool::class.java) }
 
@@ -591,6 +597,7 @@ object ToolHandler {
                     )
                 }
             }
+
             ModelProvider.GEMINI -> {
                 methods.mapNotNull { method ->
                     val tool = method.getAnnotation(Tool::class.java) ?: return@mapNotNull null
@@ -624,56 +631,56 @@ object ToolHandler {
                 }
             }
         }
-        
+
         // Check if app extensions are enabled
         val settings = xyz.block.gosling.features.settings.SettingsStore(context)
         val enableAppExtensions = settings.enableAppExtensions
-        
+
         // Only add MCP tools if app extensions are enabled
         val mcpTools = mutableListOf<ToolDefinition>()
         if (enableAppExtensions) {
             try {
                 val mcps = MobileMCP.discoverMCPs(context)
-                
+
                 for (mcp in mcps) {
                     val localId = mcp["localId"] as String
 
                     @Suppress("UNCHECKED_CAST")
                     val tools = mcp["tools"] as Map<String, Map<String, String>>
-                    
+
                     // For each tool in this MCP, create a ToolDefinition
                     for ((toolName, toolInfo) in tools) {
                         val toolDescription = toolInfo["description"] ?: ""
-                        
+
                         // Parse the parameters JSON string into a proper structure
                         val parametersJson = toolInfo["parameters"] ?: "{}"
                         val parametersObj = JSONObject(parametersJson)
                         val paramProperties = mutableMapOf<String, ToolParameter>()
                         val requiredParams = mutableListOf<String>()
-                        
+
                         // Extract parameters from the JSON
                         parametersObj.keys().forEach { paramName ->
                             val paramType = "string" // Default to string type for simplicity
-                            
+
                             paramProperties[paramName] = ToolParameter(
                                 type = paramType,
                                 description = "Parameter for $toolName"
                             )
-                            
+
                             // Assume all parameters are required for now
                             requiredParams.add(paramName)
                         }
-                        
+
                         // Create the tool parameters object
                         val toolParameters = ToolParametersObject(
                             properties = paramProperties,
                             required = requiredParams
                         )
-                        
+
                         // Create the tool definition with a special name format to identify it as an MCP tool
                         // we use a localId which is compact to save on space for toolName as there are limits
                         val mcpToolName = "mcp_${localId}_${toolName}"
-                        
+
                         mcpTools.add(
                             ToolDefinition(
                                 function = ToolFunctionDefinition(
@@ -689,10 +696,10 @@ object ToolHandler {
                 System.err.println("Error loading MCP tools: ${e.message}")
             }
         }
-        
+
         // Combine regular tools and MCP tools
         val allTools = regularToolDefinitions + mcpTools
-        
+
         return when (provider) {
             ModelProvider.OPENAI -> SerializableToolDefinitions.OpenAITools(allTools)
             ModelProvider.GEMINI -> {
@@ -704,7 +711,7 @@ object ToolHandler {
                         parameters = if (toolDef.function.parameters.properties.isEmpty()) null else toolDef.function.parameters
                     )
                 }
-                
+
                 SerializableToolDefinitions.GeminiTools(
                     listOf(
                         GeminiTool(
@@ -715,7 +722,7 @@ object ToolHandler {
             }
         }
     }
-    
+
     fun callTool(
         toolCall: InternalToolCall,
         context: Context,
@@ -781,9 +788,14 @@ object ToolHandler {
                 Thread.sleep(100)
             }
 
-            val result = MobileMCP.invokeTool(context, nameParts[1], nameParts[2], toolCall.arguments.toString() )
+            val result = MobileMCP.invokeTool(
+                context,
+                nameParts[1],
+                nameParts[2],
+                toolCall.arguments.toString()
+            )
             System.out.println("TOOL CALL RESULT: " + result)
-            return "" + result;
+            return "" + result
 
         }
 

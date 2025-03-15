@@ -17,6 +17,11 @@ import kotlinx.coroutines.withContext
 import kotlinx.serialization.encodeToString
 import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.encodeToJsonElement
+import okhttp3.ConnectionPool
+import okhttp3.MediaType.Companion.toMediaType
+import okhttp3.OkHttpClient
+import okhttp3.Request
+import okhttp3.RequestBody.Companion.toRequestBody
 import org.json.JSONObject
 import xyz.block.gosling.features.accessibility.GoslingAccessibilityService
 import xyz.block.gosling.features.agent.ToolHandler.callTool
@@ -24,9 +29,9 @@ import xyz.block.gosling.features.agent.ToolHandler.getSerializableToolDefinitio
 import xyz.block.gosling.features.settings.SettingsStore
 import java.io.File
 import java.net.HttpURLConnection
-import java.net.URL
 import java.time.LocalDateTime
 import java.time.format.DateTimeFormatter
+import java.util.concurrent.TimeUnit
 import kotlin.math.pow
 
 open class AgentException(message: String) : Exception(message)
@@ -55,6 +60,17 @@ class Agent : Service() {
             prettyPrint = true
             encodeDefaults = true
             ignoreUnknownKeys = true
+        }
+
+        // Shared OkHttpClient instance with connection pooling
+        private val okHttpClient by lazy {
+            OkHttpClient.Builder()
+                .connectionPool(ConnectionPool(5, 5, TimeUnit.MINUTES))
+                .connectTimeout(30, TimeUnit.SECONDS)
+                .readTimeout(30, TimeUnit.SECONDS)
+                .writeTimeout(30, TimeUnit.SECONDS)
+                .retryOnConnectionFailure(true)
+                .build()
         }
     }
 
@@ -480,134 +496,100 @@ class Agent : Service() {
         }
     }
 
-    private fun callLlm(messages: List<Message>, context: Context): JSONObject {
+    private fun makeHttpCall(
+        urlString: String,
+        requestBody: String,
+        apiKey: String?,
+        model: AiModel
+    ): JSONObject {
+        val request = Request.Builder()
+            .url(urlString)
+            .post(requestBody.toRequestBody("application/json".toMediaType()))
+            .apply {
+                if (model.provider == ModelProvider.OPENAI) {
+                    addHeader("Authorization", "Bearer $apiKey")
+                }
+            }
+            .build()
+
+        okHttpClient.newCall(request).execute().use { response ->
+            if (!response.isSuccessful) {
+                val errorBody = response.body?.string() ?: ""
+                val errorResponse = errorBody.ifEmpty {
+                    when (response.code) {
+                        HttpURLConnection.HTTP_UNAUTHORIZED -> "Unauthorized - API key may be invalid"
+                        HttpURLConnection.HTTP_FORBIDDEN -> "Forbidden - Access denied"
+                        HttpURLConnection.HTTP_NOT_FOUND -> "Not found - Invalid API endpoint"
+                        HttpURLConnection.HTTP_BAD_REQUEST -> "Bad request"
+                        else -> "HTTP Error ${response.code}"
+                    }
+                }
+                handleHttpError(response.code, errorResponse)
+            }
+
+            val responseBody = response.body?.string()
+                ?: throw AgentException("Empty response body")
+
+            return JSONObject(responseBody)
+        }
+    }
+
+    private suspend fun callLlm(messages: List<Message>, context: Context): JSONObject {
         val settings = SettingsStore(context)
         val model = AiModel.fromIdentifier(settings.llmModel)
         val apiKey = settings.getApiKey(model.provider)
 
         val processedMessages = filterUiHierarchyMessages(messages)
 
-        val url = when (model.provider) {
-            ModelProvider.OPENAI -> URL("https://api.openai.com/v1/chat/completions")
-            ModelProvider.GEMINI -> URL("https://generativelanguage.googleapis.com/v1beta/models/${model.identifier}:generateContent?key=$apiKey")
+        val urlString = when (model.provider) {
+            ModelProvider.OPENAI -> "https://api.openai.com/v1/chat/completions"
+            ModelProvider.GEMINI -> "https://generativelanguage.googleapis.com/v1beta/models/${model.identifier}:generateContent?key=$apiKey"
         }
 
-        val connection = url.openConnection() as HttpURLConnection
+        val json = jsonFormat
 
-        return try {
-            connection.requestMethod = "POST"
-            connection.setRequestProperty("Content-Type", "application/json")
-
-            if (model.provider == ModelProvider.OPENAI) {
-                connection.setRequestProperty("Authorization", "Bearer $apiKey")
-            }
-
-            connection.doOutput = true
-
-            val json = jsonFormat
-
-            val requestBody = when (model.provider) {
-                ModelProvider.OPENAI -> {
-                    val toolDefinitions =
-                        when (val result =
-                            getSerializableToolDefinitions(context, model.provider)) {
-                            is SerializableToolDefinitions.OpenAITools -> result.definitions
-                            else -> emptyList() // This should never happen for OpenAI
-                        }
-
-                    val openAIRequest = OpenAIRequest(
-                        model = model.identifier,
-                        messages = processedMessages,
-                        temperature = if (model.identifier != "o3-mini") 0.1 else null,
-                        tools = toolDefinitions
-                    )
-
-                    json.encodeToString(openAIRequest)
-                }
-
-                ModelProvider.GEMINI -> {
-                    val combinedText = processedMessages.joinToString("\n") {
-                        "${it.role}: ${it.content}"
+        val requestBody = when (model.provider) {
+            ModelProvider.OPENAI -> {
+                val toolDefinitions =
+                    when (val result = getSerializableToolDefinitions(context, model.provider)) {
+                        is SerializableToolDefinitions.OpenAITools -> result.definitions
+                        else -> emptyList()
                     }
 
-                    val tools = when (val result =
-                        getSerializableToolDefinitions(context, model.provider)) {
+                val openAIRequest = OpenAIRequest(
+                    model = model.identifier,
+                    messages = processedMessages,
+                    temperature = if (model.identifier != "o3-mini") 0.1 else null,
+                    tools = toolDefinitions
+                )
+
+                json.encodeToString(openAIRequest)
+            }
+
+            ModelProvider.GEMINI -> {
+                val combinedText = processedMessages.joinToString("\n") {
+                    "${it.role}: ${it.content}"
+                }
+
+                val tools =
+                    when (val result = getSerializableToolDefinitions(context, model.provider)) {
                         is SerializableToolDefinitions.GeminiTools -> result.tools
                         else -> emptyList()
                     }
 
-                    val geminiRequest = GeminiRequest(
-                        contents = GeminiContent(
-                            parts = listOf(GeminiPart(text = combinedText))
-                        ),
-                        tools = tools
-                    )
+                val geminiRequest = GeminiRequest(
+                    contents = GeminiContent(
+                        parts = listOf(GeminiPart(text = combinedText))
+                    ),
+                    tools = tools
+                )
 
-                    json.encodeToString(geminiRequest)
-                }
+                json.encodeToString(geminiRequest)
             }
+        }
 
-            connection.outputStream.write(requestBody.toByteArray())
-
-            val responseCode = connection.responseCode
-            if (responseCode != HttpURLConnection.HTTP_OK) {
-                val errorResponse = connection.errorStream?.bufferedReader()?.use { it.readText() }
-                    ?: when (responseCode) {
-                        HttpURLConnection.HTTP_UNAUTHORIZED -> "Unauthorized - API key may be invalid"
-                        HttpURLConnection.HTTP_FORBIDDEN -> "Forbidden - Access denied"
-                        HttpURLConnection.HTTP_NOT_FOUND -> "Not found - Invalid API endpoint"
-                        HttpURLConnection.HTTP_BAD_REQUEST -> "Bad request"
-                        else -> "HTTP Error $responseCode"
-                    }
-
-                handleHttpError(responseCode, errorResponse)
-            }
-
-            val response = connection.inputStream.bufferedReader().use { it.readText() }
-
-            when (model.provider) {
-                ModelProvider.OPENAI -> {
-                    json.decodeFromString<OpenAIResponse>(response)
-                }
-
-                ModelProvider.GEMINI -> {
-                    json.decodeFromString<GeminiResponse>(response)
-                }
-            }
-
-            JSONObject(response)
-        } catch (e: Exception) {
-            val message = when {
-                e.message?.contains("Unable to resolve host") == true -> {
-                    // Check network connectivity
-                    val connectivityManager =
-                        context.getSystemService(Context.CONNECTIVITY_SERVICE) as android.net.ConnectivityManager
-                    val network = connectivityManager.activeNetwork
-                    val capabilities =
-                        network?.let { connectivityManager.getNetworkCapabilities(it) }
-
-                    if (network == null || capabilities == null) {
-                        "Network error: No active network connection"
-                    } else {
-                        "Network error: DNS resolution failed. Will retry with new connection..."
-                    }
-                }
-
-                e.message?.contains("timeout") == true -> "Request timed out. Please try again."
-                else -> {
-                    if (e.message != null && isApiKeyError(
-                            HttpURLConnection.HTTP_UNAUTHORIZED,
-                            e.message!!
-                        )
-                    ) {
-                        throw ApiKeyException(e.message!!)
-                    }
-                    "Error calling LLM: ${e.message}"
-                }
-            }
-            throw AgentException(message)
-        } finally {
-            connection.disconnect()
+        return withContext(Dispatchers.IO) {
+            makeHttpCall(urlString, requestBody, apiKey, model)
         }
     }
 

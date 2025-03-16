@@ -17,24 +17,18 @@ data class Message(
     val toolCalls: List<ToolCall>? = null,
     @SerialName("annotations")
     val annotations: JsonElement? = null,
-    val time: Long = System.currentTimeMillis()
-)
-
-@Serializable
-data class MessageAnnotation(
-    @SerialName("message_index")
-    val messageIndex: Int,
-    val annotations: Map<String, Double>
+    val time: Long = System.currentTimeMillis(),
+    @SerialName("stats")
+    val stats: Map<String, Double>? = null
 )
 
 @Serializable
 data class Conversation(
     val id: String = System.currentTimeMillis().toString(),
+    val fileName: String,
     val startTime: Long = System.currentTimeMillis(),
     val endTime: Long? = null,
     val messages: List<Message> = emptyList(),
-    val annotations: List<MessageAnnotation> = emptyList(),
-    val stats: Message? = null,
     val isComplete: Boolean = false
 )
 

@@ -5,4 +5,5 @@ local.properties
 app/build/
 .DS_Store
 session_dumps/
+benchmark_results/
 build/

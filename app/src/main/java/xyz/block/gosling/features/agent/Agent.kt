@@ -170,6 +170,7 @@ class Agent : Service() {
             val startTime = System.currentTimeMillis()
             val newConversation = Conversation(
                 startTime = startTime,
+                fileName = conversationManager.fileNameFor(userInput),
                 messages = mutableListOf(
                     Message(
                         role = "system",
@@ -303,7 +304,8 @@ class Agent : Service() {
                                         arguments = toolCall.arguments.toString()
                                     )
                                 )
-                            }
+                            },
+                            stats = annotation
                         )
 
                         conversationManager.updateCurrentConversation(
@@ -311,14 +313,7 @@ class Agent : Service() {
                                 messages = conversationManager.currentConversation.value?.messages?.plus(
                                     assistantMessage
                                 )
-                                    ?: listOf(assistantMessage),
-                                annotations = conversationManager.currentConversation.value?.annotations?.plus(
-                                    MessageAnnotation(
-                                        messageIndex = (conversationManager.currentConversation.value?.messages?.size
-                                            ?: 0),
-                                        annotations = annotation
-                                    )
-                                ) ?: listOf(MessageAnnotation(0, annotation))
+                                    ?: listOf(assistantMessage)
                             ) ?: newConversation
                         )
 
@@ -337,7 +332,8 @@ class Agent : Service() {
                                 role = "tool",
                                 toolCallId = result["tool_call_id"].toString(),
                                 content = result["output"].toString(),
-                                name = result["name"].toString()
+                                name = result["name"].toString(),
+                                stats = toolAnnotation
                             )
 
                             conversationManager.updateCurrentConversation(
@@ -345,14 +341,7 @@ class Agent : Service() {
                                     messages = conversationManager.currentConversation.value?.messages?.plus(
                                         toolMessage
                                     )
-                                        ?: listOf(toolMessage),
-                                    annotations = conversationManager.currentConversation.value?.annotations?.plus(
-                                        MessageAnnotation(
-                                            messageIndex = (conversationManager.currentConversation.value?.messages?.size
-                                                ?: 0),
-                                            annotations = toolAnnotation
-                                        )
-                                    ) ?: listOf(MessageAnnotation(0, toolAnnotation))
+                                        ?: listOf(toolMessage)
                                 ) ?: newConversation
                             )
                         }
@@ -365,23 +354,25 @@ class Agent : Service() {
                     continue
                 }
 
-                val sanitizedCommand = userInput.take(50)
-                    .replace(Regex("[^a-zA-Z0-9]"), "_")
-                    .lowercase()
 
                 context.getExternalFilesDir(null)?.let { filesDir ->
                     val conversationsDir = File(filesDir, "session_dumps")
                     conversationsDir.mkdirs()
 
                     val statsMessage = calculateConversationStats(
-                        conversationManager.currentConversation.value?.annotations ?: emptyList(),
+                        conversationManager.currentConversation.value,
                         startTime
                     )
 
                     conversationManager.updateCurrentConversation(
                         conversationManager.currentConversation.value?.copy(
+                            messages = statsMessage?.let { stats ->
+                                conversationManager.currentConversation.value?.messages?.let { existingMessages ->
+                                    listOf(stats) + existingMessages
+                                }
+                            } ?: conversationManager.currentConversation.value?.messages
+                            ?: emptyList(),
                             endTime = System.currentTimeMillis(),
-                            stats = statsMessage,
                             isComplete = true
                         ) ?: newConversation
                     )
@@ -418,7 +409,6 @@ class Agent : Service() {
     ) {
         scope.launch {
             try {
-                // Get message handling preferences from settings
                 val settings = SettingsStore(this@Agent)
                 val messageHandlingPreferences = settings.messageHandlingPreferences
 
@@ -643,35 +633,32 @@ class Agent : Service() {
     }
 
     private fun calculateConversationStats(
-        messageAnnotations: List<MessageAnnotation>,
+        conversation: Conversation?,
         startTime: Long
-    ): Message {
-        val totalInputTokens = messageAnnotations.sumOf { annotation ->
-            annotation.annotations["input_tokens"] ?: 0.0
-        }
-        val totalOutputTokens = messageAnnotations.sumOf { annotation ->
-            annotation.annotations["output_tokens"] ?: 0.0
-        }
-        val totalTime = (System.currentTimeMillis() - startTime) / 1000.0
-        val summedAnnotationTime = messageAnnotations.sumOf { annotation ->
-            annotation.annotations["duration"] ?: 0.0
-        }
+    ): Message? {
+        fun sumStats(key: String): Double =
+            conversation?.messages?.sumOf { msg -> msg.stats?.get(key) ?: 0.0 } ?: 0.0
 
-        val statsMap = mapOf(
-            "total_input_tokens" to totalInputTokens,
-            "total_output_tokens" to totalOutputTokens,
-            "total_wall_time" to totalTime,
-            "total_annotated_time" to summedAnnotationTime,
-            "time_coverage_percentage" to (summedAnnotationTime / totalTime * 100)
-        )
+        return conversation?.let {
+            val totalTime = (System.currentTimeMillis() - startTime) / 1000.0
+            val annotationTime = sumStats("duration")
 
-        return Message(
-            role = "stats",
-            content = "Conversation Statistics - ${
-                LocalDateTime.now().format(DateTimeFormatter.ISO_LOCAL_DATE_TIME)
-            }",
-            annotations = Json.encodeToJsonElement(statsMap)
-        )
+            Message(
+                role = "stats",
+                content = "Conversation Statistics - ${
+                    LocalDateTime.now().format(DateTimeFormatter.ISO_LOCAL_DATE_TIME)
+                }",
+                annotations = Json.encodeToJsonElement(
+                    mapOf(
+                        "total_input_tokens" to sumStats("input_tokens"),
+                        "total_output_tokens" to sumStats("output_tokens"),
+                        "total_wall_time" to totalTime,
+                        "total_annotated_time" to annotationTime,
+                        "time_coverage_percentage" to (annotationTime / totalTime * 100)
+                    )
+                )
+            )
+        }
     }
 
     private fun isApiKeyError(responseCode: Int, errorResponse: String): Boolean {

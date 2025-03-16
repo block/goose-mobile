@@ -42,7 +42,7 @@ class ConversationManager(context: Context) {
                         }
                     }
                     ?.sortedByDescending { it.startTime } ?: emptyList()
-                
+
                 _conversations.value = conversations
             }
         }
@@ -51,7 +51,6 @@ class ConversationManager(context: Context) {
     fun updateCurrentConversation(conversation: Conversation) {
         _currentConversation.update { conversation }
 
-        // Update the conversation in the list if it exists, add it if it doesn't
         _conversations.update { conversations ->
             val updatedList = if (conversations.any { it.id == conversation.id }) {
                 conversations.map { if (it.id == conversation.id) conversation else it }
@@ -68,10 +67,8 @@ class ConversationManager(context: Context) {
         contextRef.get()?.getExternalFilesDir(null)?.let { filesDir ->
             val conversationsDir = File(filesDir, "session_dumps")
             conversationsDir.mkdirs()
-
-            File(conversationsDir, "${conversation.id}.json").writeText(
-                json.encodeToString(conversation)
-            )
+            val file = File(conversationsDir, conversation.fileName)
+            file.writeText(json.encodeToString(conversation))
         }
     }
 
@@ -99,9 +96,31 @@ class ConversationManager(context: Context) {
         _conversations.update { conversations ->
             conversations.filterNot { it.id == conversationId }
         }
-        
+
         if (_currentConversation.value?.id == conversationId) {
             _currentConversation.value = null
         }
     }
-} 
+
+    fun fileNameFor(userInput: String): String {
+        val sanitizedCommand = userInput
+            .replace(Regex("[^a-zA-Z0-9]"), "_")
+            .lowercase().take(50)
+        var idx = 0
+
+        val directory = File(contextRef.get()?.getExternalFilesDir(null), "session_dumps")
+        val existingFiles = directory.listFiles()?.toList() ?: emptyList()
+
+        while (true) {
+            val formattedIdx = idx.toString().padStart(4, '0')
+            val fileName = "$formattedIdx-$sanitizedCommand.json"
+
+            if (!existingFiles.any {
+                    it.name.startsWith(formattedIdx)
+                }) {
+                return fileName
+            }
+            idx++
+        }
+    }
+}

@@ -1,11 +1,11 @@
-name: Android Debug Build
+name: Android Release Build
 
 on:
   workflow_dispatch:
 
 jobs:
-  build-debug:
-    name: Build Debug APK
+  build-and-release:
+    name: Build APK and Create Release
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v3
@@ -22,8 +22,33 @@ jobs:
 
       - name: Build Debug APK
         run: ./gradlew assembleDebug
+        
+      - name: Get short commit hash
+        id: commit
+        run: echo "sha=$(git rev-parse --short HEAD)" >> $GITHUB_OUTPUT
+        
+      - name: Get current date
+        id: date
+        run: echo "date=$(date +'%Y-%m-%d')" >> $GITHUB_OUTPUT
 
-      - name: Upload Debug APK
+      - name: Create GitHub Release
+        id: create_release
+        uses: softprops/action-gh-release@v1
+        with:
+          tag_name: release-${{ steps.commit.outputs.sha }}
+          name: Release ${{ steps.date.outputs.date }} (${{ steps.commit.outputs.sha }})
+          body: |
+            This is an automated build of the app.
+            Commit: ${{ github.sha }}
+            Date: ${{ steps.date.outputs.date }}
+          files: app/build/outputs/apk/debug/app-debug.apk
+          draft: false
+          prerelease: false
+          make_latest: true
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Upload Debug APK as Artifact
         uses: actions/upload-artifact@v4
         with:
           name: app-debug

@@ -2,15 +2,49 @@ package xyz.block.gosling.features.agent
 
 import android.content.Context
 import android.content.Intent
+import android.content.pm.ApplicationInfo
 import android.content.pm.PackageManager
 import android.content.pm.ResolveInfo
+import xyz.block.gosling.features.accessibility.GoslingAccessibilityService
 
 object IntentScanner {
-    fun getAvailableIntents(context: Context): List<IntentDefinition> {
-        val packageManager = context.packageManager
+    fun getAvailableIntents(
+        context: Context,
+        accessibilityService: GoslingAccessibilityService?
+    ): List<IntentDefinition> {
+        val packageManager =
+            accessibilityService?.applicationContext?.packageManager ?: context.packageManager
+
         val appLabels = mutableMapOf<String, String>()
         val intentActions = mutableMapOf<String, MutableList<IntentActionDefinition>>()
         val viewIntents = mutableMapOf<String, MutableList<String>>()
+
+        if (accessibilityService != null) {
+            val allApps = packageManager.getInstalledApplications(0)
+
+            for (appInfo in allApps) {
+                if ((appInfo.flags and ApplicationInfo.FLAG_SYSTEM) != 0) {
+                    continue
+                }
+
+                val packageName = appInfo.packageName
+                val appLabel = accessibilityService.applicationContext.packageManager
+                    .getApplicationLabel(appInfo).toString()
+
+                appLabels[packageName] = appLabel
+
+                val launchIntent = accessibilityService.applicationContext.packageManager
+                    .getLaunchIntentForPackage(packageName)
+
+                if (launchIntent != null) {
+                    val actionName = launchIntent.action ?: Intent.ACTION_MAIN
+                    val parameters = extractExtrasForAction(actionName)
+                    val newAction =
+                        IntentActionDefinition(actionName, parameters.first, parameters.second)
+                    intentActions.getOrPut(packageName) { mutableListOf() }.add(newAction)
+                }
+            }
+        }
 
         val commonIntents = listOf(
             Intent(Intent.ACTION_MAIN).apply { addCategory(Intent.CATEGORY_LAUNCHER) },

@@ -128,7 +128,10 @@ class Agent : Service() {
         try {
             isCancelled = false
 
-            val availableIntents = IntentScanner.getAvailableIntents(context)
+            val availableIntents = IntentScanner.getAvailableIntents(
+                context,
+                GoslingAccessibilityService.getInstance()
+            )
             val installedApps = availableIntents.joinToString("\n|") { it.formatForLLM() }
 
             val windowManager = context.getSystemService(Context.WINDOW_SERVICE) as WindowManager

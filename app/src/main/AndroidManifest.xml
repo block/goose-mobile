@@ -68,6 +68,16 @@
             </intent-filter>
         </activity>
 
+        <activity
+            android:name=".features.agent.DebugActivity"
+            android:exported="true"
+            android:theme="@android:style/Theme.Translucent.NoTitleBar">
+            <intent-filter>
+                <action android:name="xyz.block.gosling.DEBUG_GOSLING" />
+                <category android:name="android.intent.category.DEFAULT" />
+            </intent-filter>
+        </activity>
+
         <service
             android:name=".features.assistant.AssistantService"
             android:exported="true"

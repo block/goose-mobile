@@ -16,7 +16,7 @@ data class AppCategory(
 object IntentAppKinds {
     val paymentApps = AppCategory(
         name = "payment",
-        description = "Consider these apps when needing to make payment or check funds available",
+        description = "Consider these apps when needing to make payment or check funds available. Using screenshots is recommended to help navigate these.",
         packageNames = arrayOf(
             "com.google.android.apps.nbu.paisa.user", // Google Pay
             "net.one97.paytm", // Paytm

@@ -112,7 +112,6 @@ object IntentScanner {
         return urls
     }
 
-
     private fun extractExtrasForAction(
         action: String
     ): Pair<List<String>, List<String>> {
@@ -128,7 +127,6 @@ object IntentScanner {
         return Pair(requiredExtras, optionalExtras)
     }
 }
-
 
 data class IntentDefinition(
     val packageName: String,

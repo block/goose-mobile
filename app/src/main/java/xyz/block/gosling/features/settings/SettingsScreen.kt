@@ -4,8 +4,10 @@ import android.provider.Settings
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
@@ -44,6 +46,7 @@ import androidx.compose.ui.unit.dp
 import kotlinx.coroutines.launch
 import xyz.block.gosling.features.agent.AgentServiceManager
 import xyz.block.gosling.features.agent.AiModel
+import xyz.block.gosling.features.agent.AppUsageStats
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -61,11 +64,27 @@ fun SettingsScreen(
     var enableAppExtensions by remember { mutableStateOf(settingsStore.enableAppExtensions) }
     var shouldProcessNotifications by remember { mutableStateOf(settingsStore.shouldProcessNotifications) }
     var messageHandlingPreferences by remember { mutableStateOf(settingsStore.messageHandlingPreferences) }
+    var isUsageStatsEnabled by remember { mutableStateOf(settingsStore.isUsageStatsEnabled) }
     var showResetDialog by remember { mutableStateOf(false) }
     var showClearConversationsDialog by remember { mutableStateOf(false) }
     var expanded by remember { mutableStateOf(false) }
     val scope = rememberCoroutineScope()
     val agentServiceManager = remember { AgentServiceManager(context) }
+    
+    // Check if usage stats permission is actually granted
+    var hasUsageStatsPermission by remember { mutableStateOf(false) }
+    
+    fun checkUsageStatsPermission() {
+        hasUsageStatsPermission = AppUsageStats.hasPermission(context)
+        if (hasUsageStatsPermission) {
+            settingsStore.isUsageStatsEnabled = true
+            isUsageStatsEnabled = true
+        }
+    }
+    
+    fun openUsageStatsSettings() {
+        AppUsageStats.requestPermission(context)
+    }
 
     fun checkAssistantStatus() {
         val settingSecure = Settings.Secure.getString(
@@ -78,6 +97,7 @@ fun SettingsScreen(
     // Check on initial launch
     LaunchedEffect(Unit) {
         checkAssistantStatus()
+        checkUsageStatsPermission()
     }
 
     // Check when app regains focus
@@ -87,6 +107,7 @@ fun SettingsScreen(
             override fun onActivityResumed(activity: android.app.Activity) {
                 if (activity == context) {
                     checkAssistantStatus()
+                    checkUsageStatsPermission()
                 }
             }
 
@@ -302,6 +323,37 @@ fun SettingsScreen(
                             enabled = true,
                         ) {
                             Text("Enable Accessibility")
+                        }
+                    }
+                    
+                    // Usage Stats Permission Section
+                    Spacer(modifier = Modifier.height(24.dp))
+                    if (hasUsageStatsPermission) {
+                        Text(
+                            text = "App Usage Statistics",
+                            style = MaterialTheme.typography.titleLarge,
+                        )
+                        Text(
+                            text = "App Usage Statistics permission is granted. Gosling can see which apps you use frequently.",
+                            style = MaterialTheme.typography.bodyMedium,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                    } else {
+                        Text(
+                            text = "App Usage Statistics",
+                            style = MaterialTheme.typography.titleLarge,
+                        )
+                        Text(
+                            text = "Gosling needs permission to access app usage statistics to provide better recommendations.",
+                            style = MaterialTheme.typography.bodyMedium,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                        Button(
+                            onClick = { openUsageStatsSettings() },
+                            modifier = Modifier.fillMaxWidth(),
+                            enabled = true,
+                        ) {
+                            Text("Enable App Usage Stats")
                         }
                     }
                 }

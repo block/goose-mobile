@@ -133,6 +133,10 @@ class Agent : Service() {
                 GoslingAccessibilityService.getInstance()
             )
             val installedApps = availableIntents.joinToString("\n|") { it.formatForLLM() }
+            val recentApps = AppUsageStats.getRecentApps(context, 10)
+            val commonApps = AppUsageStats.getFrequentApps(context, 10)
+            System.out.println("RECENT APPS " + recentApps)
+            System.out.println("COMMON APPS " + commonApps)
 
             val windowManager = context.getSystemService(Context.WINDOW_SERVICE) as WindowManager
             val displayMetrics = DisplayMetrics()

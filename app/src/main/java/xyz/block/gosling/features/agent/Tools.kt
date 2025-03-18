@@ -251,6 +251,37 @@ object ToolHandler {
         return gestureResult
     }
 
+
+    @Tool(
+        name = "recentApps",
+        description = "list recently used apps",
+        parameters = [],
+        requiresContext = true
+    )
+    fun recentApps(context: Context) : String {
+        if (!AppUsageStats.hasPermission(context)) {
+            return "Don't have permission to collect app stats, consult app settings to correct this."
+        }
+        return AppUsageStats.getRecentApps(context, limit=10).joinToString { ", " }
+    }
+
+    @Tool(
+        name = "frequentlyUsedApps",
+        description = "list apps that are often used",
+        parameters = [],
+        requiresContext = true
+    )
+    fun frequentlyUsedApps(context: Context) : String {
+        if (!AppUsageStats.hasPermission(context)) {
+            return "Don't have permission to collect app stats, consult app settings to correct this."
+        }
+        return AppUsageStats.getFrequentApps(context, limit=20).joinToString { ", " }
+    }
+
+
+
+
+
     @Tool(
         name = "getUiHierarchy",
         description = "call this to show UI elements with their properties and locations on screen in a hierarchical structure.",

@@ -133,7 +133,6 @@ class Agent : Service() {
                 GoslingAccessibilityService.getInstance()
             )
             val installedApps = IntentAppKinds.groupIntentsByCategory(availableIntents)
-            val commonApps = AppUsageStats.getCommonApps(context, 10).takeIf { it.isNotEmpty() }?.joinToString(",", prefix = "These apps have been recently or frequently used: ") ?: ""
 
             val windowManager = context.getSystemService(Context.WINDOW_SERVICE) as WindowManager
             val displayMetrics = DisplayMetrics()
@@ -164,8 +163,6 @@ class Agent : Service() {
                 |The phone has the following apps installed:
                 |
                 |$installedApps
-                |
-                |$commonApps
                 |
                 |Before getting started, explicitly state the steps you want to take and which app(s) you want 
                 |use to accomplish that task. For example, open the contacts app to find out Joe's phone number. 

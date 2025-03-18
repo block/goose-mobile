@@ -112,7 +112,7 @@ class AppUsageStats(private val context: Context) {
                 }
                 
                 val appName = packageManager.getApplicationLabel(appInfo).toString()
-                result.add("$appName: ${stats.packageName}")
+                result.add(appName)
             } catch (e: PackageManager.NameNotFoundException) {
                 // Skip apps that are no longer installed
                 continue
@@ -193,7 +193,7 @@ class AppUsageStats(private val context: Context) {
                 }
                 
                 val appName = packageManager.getApplicationLabel(appInfo).toString()
-                result.add("$appName: $packageName")
+                result.add(appName)
             } catch (e: PackageManager.NameNotFoundException) {
                 // Skip apps that are no longer installed
                 continue

@@ -166,7 +166,8 @@ class Agent : Service() {
                 |
                 |Before getting started, explicitly state the steps you want to take and which app(s) you want 
                 |use to accomplish that task. For example, open the contacts app to find out Joe's phone number.
-                |This may require the use of multiple apps in sequence. For example, calendar and contacts. 
+                |This may require the use of multiple apps in sequence. 
+                |For example, check the calendar for free time and then check the maps that there is enough time to get between appointments. 
                 |
                 |After each step verify that the step was completed successfully by looking at the screen and 
                 |the ui hierarchy dump. If the step was not completed successfully, try to recover by:

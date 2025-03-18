@@ -87,14 +87,9 @@ object IntentScanner {
 
         return intentActions.map { (packageName, actions) ->
             // Determine the kind of app based on package name
-            val kind = when {
-                paymentAppPackageNames.contains(packageName) -> "payment"
-                airlineAppPackageNames.contains(packageName) -> "air travel"
-                ecommerceAppPackageNames.contains(packageName) -> "ecommerce and products"
-                foodOrderingBookingPackageNames.contains(packageName) -> "food ordering or reservations"
-                travelBookingPackageNames.contains(packageName) -> "travel booking"
-                else -> "other"
-            }
+            val category = IntentAppKinds.getCategoryForPackage(packageName)
+            System.out.println("App package " + packageName)
+            val kind = category?.name ?: "other"
             
             IntentDefinition(
                 packageName = packageName,
@@ -151,20 +146,3 @@ data class IntentActionDefinition(
     val requiredParameters: List<String>,
     val optionalParameters: List<String>
 )
-
-
-fun IntentDefinition.formatForLLM(): String {
-    // TODO: Use the full intent. For now just return the label, name, and kind (if classified)
-    return if (kind != "other") {
-        "$appLabel: $packageName ($kind)"
-    } else {
-        "$appLabel: $packageName"
-    }
-//    val actionsFormatted = actions.joinToString("\n    ") { action ->
-//        val required = action.requiredParameters.joinToString(", ")
-//        val optional = action.optionalParameters.joinToString(", ", "[", "]").takeIf { it.length > 2 } ?: ""
-//        "${action.action}($required$optional)"
-//    }
-//    return "$appLabel: $packageName\nActions:\n    $actionsFormatted"
-}
-

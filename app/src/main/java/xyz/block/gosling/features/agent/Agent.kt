@@ -132,9 +132,8 @@ class Agent : Service() {
                 context,
                 GoslingAccessibilityService.getInstance()
             )
-            val installedApps = availableIntents.joinToString("\n|") { it.formatForLLM() }
-            val commonApps = AppUsageStats.getCommonApps(context, 10).takeIf { it.isNotEmpty() }?.joinToString(",", prefix = "Commonly used apps to consider if relevant: ") ?: ""
-            System.out.println("COMMON APPS " + commonApps)
+            val installedApps = IntentAppKinds.groupIntentsByCategory(availableIntents)
+            val commonApps = AppUsageStats.getCommonApps(context, 10).takeIf { it.isNotEmpty() }?.joinToString(",", prefix = "These apps have been recently or frequently used: ") ?: ""
 
             val windowManager = context.getSystemService(Context.WINDOW_SERVICE) as WindowManager
             val displayMetrics = DisplayMetrics()
@@ -167,6 +166,7 @@ class Agent : Service() {
                 |$installedApps
                 |
                 |$commonApps
+                |
                 |Before getting started, explicitly state the steps you want to take and which app(s) you want 
                 |use to accomplish that task. For example, open the contacts app to find out Joe's phone number. 
                 |
@@ -188,6 +188,8 @@ class Agent : Service() {
                 |
                 |Remember: DO NOT ask the user for help or additional information - you must solve the problem autonomously.
                 """.trimMargin()
+
+            System.out.println("SYSTEM PROMPT\n" + systemMessage + "\n\n\n\n\n")
 
             val startTime = System.currentTimeMillis()
             val newConversation = Conversation(

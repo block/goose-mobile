@@ -133,9 +133,7 @@ class Agent : Service() {
                 GoslingAccessibilityService.getInstance()
             )
             val installedApps = availableIntents.joinToString("\n|") { it.formatForLLM() }
-            val recentApps = AppUsageStats.getRecentApps(context, 10).takeIf { it.isNotEmpty() }?.joinToString(",", prefix = "Recent apps: ") ?: ""
-            val commonApps = AppUsageStats.getFrequentApps(context, 10).takeIf { it.isNotEmpty() }?.joinToString(",", prefix = "Commonly used apps: ") ?: ""
-            System.out.println("RECENT APPS " + recentApps)
+            val commonApps = AppUsageStats.getCommonApps(context, 10).takeIf { it.isNotEmpty() }?.joinToString(",", prefix = "Commonly used apps to consider if relevant: ") ?: ""
             System.out.println("COMMON APPS " + commonApps)
 
             val windowManager = context.getSystemService(Context.WINDOW_SERVICE) as WindowManager
@@ -149,10 +147,6 @@ class Agent : Service() {
             val role =
                 if (isNotificationReply) "helping the user process android notifications" else "managing the users android phone"
 
-            var recentFrequentApps = ""
-            if (recentApps.isNotEmpty()) {
-                recentFrequentApps = """ Recently used apps: $recentApps """
-            }
             val systemMessage = """
                 |You are an assistant $role. The user does not have access to the phone. 
                 |You will autonomously complete complex tasks on the phone and report back to the 
@@ -172,7 +166,6 @@ class Agent : Service() {
                 |
                 |$installedApps
                 |
-                |$recentApps
                 |$commonApps
                 |Before getting started, explicitly state the steps you want to take and which app(s) you want 
                 |use to accomplish that task. For example, open the contacts app to find out Joe's phone number. 

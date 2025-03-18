@@ -214,6 +214,25 @@ class AppUsageStats(private val context: Context) {
         }
 
         /**
+         * Static method to get a combined list of recent and frequent apps
+         * @param context Application context
+         * @param maxApps Maximum number of apps to return (default 10)
+         * @param includeSystemApps Whether to include system apps in the results
+         * @return List of app names with no duplicates, excluding "Gosling"
+         */
+        @JvmStatic
+        fun getCommonApps(context: Context, maxApps: Int = 10, includeSystemApps: Boolean = false): List<String> {
+            val recentApps = getRecentApps(context, maxApps, includeSystemApps)
+            val frequentApps = getFrequentApps(context, maxApps, includeSystemApps)
+            
+            // Combine both lists, filter out "Gosling", remove duplicates, and limit to maxApps
+            return (recentApps + frequentApps)
+                .filter { it != "Gosling" }
+                .distinct()
+                .take(maxApps)
+        }
+
+        /**
          * Static method to check permission
          */
         @JvmStatic

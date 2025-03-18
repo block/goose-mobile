@@ -66,12 +66,9 @@ class AppUsageStats(private val context: Context) {
     fun getRecentApps(limit: Int = 10, includeSystemApps: Boolean = false): List<String> {
         // Check the setting first
         val settingsStore = SettingsStore(context)
-        if (!settingsStore.isUsageStatsEnabled) {
-            return listOf("Permission to access app usage statistics is required. Please enable it in Settings.")
-        }
-        
+
         if (!hasPermission()) {
-            return listOf("Permission to access app usage statistics is required.")
+            return emptyList()
         }
 
         val usageStatsManager = context.getSystemService(Context.USAGE_STATS_SERVICE) as UsageStatsManager
@@ -90,7 +87,7 @@ class AppUsageStats(private val context: Context) {
         )
 
         if (usageStatsList.isNullOrEmpty()) {
-            return listOf("No usage data available.")
+            return emptyList()
         }
 
         // Sort by last time used (most recent first), remove duplicates, and take the top 'limit' entries
@@ -130,13 +127,9 @@ class AppUsageStats(private val context: Context) {
      */
     fun getFrequentApps(limit: Int = 10, includeSystemApps: Boolean = false): List<String> {
         // Check the setting first
-        val settingsStore = SettingsStore(context)
-        if (!settingsStore.isUsageStatsEnabled) {
-            return listOf("Permission to access app usage statistics is required. Please enable it in Settings.")
-        }
-        
+
         if (!hasPermission()) {
-            return listOf("Permission to access app usage statistics is required.")
+            return emptyList()
         }
 
         val usageStatsManager = context.getSystemService(Context.USAGE_STATS_SERVICE) as UsageStatsManager

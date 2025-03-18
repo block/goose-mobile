@@ -33,7 +33,6 @@ class SettingsStore(context: Context) {
         private const val KEY_PROCESS_NOTIFICATIONS = "process_notifications"
         private const val KEY_MESSAGE_HANDLING_PREFERENCES = "message_handling_preferences"
         private const val KEY_ENABLE_APP_EXTENSIONS = "enable_app_extensions"
-        private const val KEY_USAGE_STATS_ENABLED = "usage_stats_enabled"
         private val DEFAULT_LLM_MODEL = AiModel.AVAILABLE_MODELS.first().identifier
     }
 
@@ -70,8 +69,4 @@ class SettingsStore(context: Context) {
     var enableAppExtensions: Boolean
         get() = prefs.getBoolean(KEY_ENABLE_APP_EXTENSIONS, true) // Enabled by default
         set(value) = prefs.edit { putBoolean(KEY_ENABLE_APP_EXTENSIONS, value) }
-        
-    var isUsageStatsEnabled: Boolean
-        get() = prefs.getBoolean(KEY_USAGE_STATS_ENABLED, false)
-        set(value) = prefs.edit { putBoolean(KEY_USAGE_STATS_ENABLED, value) }
 } 

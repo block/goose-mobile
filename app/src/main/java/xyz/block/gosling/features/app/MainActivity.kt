@@ -73,18 +73,14 @@ class MainActivity : ComponentActivity() {
         isAccessibilityEnabled = settingsStore.isAccessibilityEnabled
         agentServiceManager = AgentServiceManager(this)
 
-        // Check for overlay permission
         if (!Settings.canDrawOverlays(this)) {
-            // If not granted, request it
             val intent = Intent(
                 Settings.ACTION_MANAGE_OVERLAY_PERMISSION,
                 "package:$packageName".toUri()
             )
             startActivity(intent)
         } else {
-            // Start services only if we have overlay permission
             agentServiceManager.bindAndStartAgent { agent ->
-                // Agent is now started as a foreground service and has a status listener set up
                 Log.d("MainActivity", "Agent service started successfully")
             }
 
@@ -174,6 +170,7 @@ class MainActivity : ComponentActivity() {
         accessibilitySettingsLauncher.launch(intent)
     }
 }
+
 
 fun checkAccessibilityPermission(context: Context): Boolean {
     val enabledServices = Settings.Secure.getString(

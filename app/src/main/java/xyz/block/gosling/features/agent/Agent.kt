@@ -167,12 +167,9 @@ class Agent : Service() {
                 |Before getting started, explicitly state the steps you want to take and which app(s) you want 
                 |use to accomplish that task. For example, open the contacts app to find out Joe's phone number. 
                 |
-                |After each step verify that the step was completed successfully by looking at the screen and 
-                |the ui hierarchy dump. If the step was not completed successfully, try to recover by:
-                |1. Trying a different approach
-                |2. Using a different app
-                |3. Looking for alternative UI elements
-                |4. Adjusting your interaction method
+                |If after taking a step and getting the ui hierarchy you don't what you find, don't
+                |immediately give up. Try asking for the hierarchy again to give the app more time
+                |to finalize rendering.
                 |
                 |When you start an app, make sure the app is in the state you expect it to be in. If it is not, 
                 |try to navigate to the correct state.

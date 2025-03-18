@@ -73,7 +73,11 @@
             android:exported="true"
             android:theme="@android:style/Theme.Translucent.NoTitleBar">
             <intent-filter>
-                <action android:name="xyz.block.gosling.DEBUG_GOSLING" />
+                <action android:name="xyz.block.gosling.GET_UI_HIERARCHY" />
+                <category android:name="android.intent.category.DEFAULT" />
+            </intent-filter>
+            <intent-filter>
+                <action android:name="xyz.block.gosling.EXECUTE_COMMAND" />
                 <category android:name="android.intent.category.DEFAULT" />
             </intent-filter>
         </activity>

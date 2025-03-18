@@ -51,6 +51,7 @@ class VoiceRecognitionService(private val context: Context) {
                 RecognizerIntent.EXTRA_LANGUAGE_MODEL,
                 RecognizerIntent.LANGUAGE_MODEL_FREE_FORM
             )
+
             putExtra(RecognizerIntent.EXTRA_PARTIAL_RESULTS, true)
             putExtra(RecognizerIntent.EXTRA_MAX_RESULTS, 1)
         }
@@ -114,7 +115,7 @@ class VoiceRecognitionService(private val context: Context) {
 
             override fun onEvent(eventType: Int, params: Bundle) {}
         })
-        
+
         speechRecognizer?.startListening(intent)
     }
 

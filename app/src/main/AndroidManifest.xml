@@ -59,8 +59,9 @@
             android:excludeFromRecents="true"
             android:exported="true"
             android:label="Gosling Assistant"
-            android:launchMode="singleTask"
+            android:launchMode="singleInstance"
             android:showOnLockScreen="true"
+            android:showWhenLocked="true"
             android:theme="@style/Theme.Transparent"
             android:turnScreenOn="true">
             <intent-filter>

@@ -777,11 +777,6 @@ object ToolHandler {
             val toolAnnotation = toolMethod.getAnnotation(Tool::class.java)
                 ?: return "Tool annotation not found for: ${toolCall.name}"
 
-            if (!GoslingApplication.shouldHideOverlay()) {
-                //Delay to let the overlay hide...
-                Thread.sleep(100)
-            }
-
             return try {
                 if (Agent.getInstance()?.isCancelled() == true) {
                     return "Operation cancelled by user"
@@ -815,11 +810,6 @@ object ToolHandler {
 
         } else {
             val nameParts = toolCall.name.split("_", limit = 3)
-            if (!GoslingApplication.shouldHideOverlay()) {
-                //Delay to let the overlay hide...
-                Thread.sleep(100)
-            }
-
             val result = MobileMCP.invokeTool(
                 context,
                 nameParts[1],

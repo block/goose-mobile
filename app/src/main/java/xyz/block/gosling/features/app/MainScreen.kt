@@ -3,9 +3,12 @@ package xyz.block.gosling.features.app
 import android.app.Activity
 import android.content.Context
 import android.content.Intent
+import android.net.Uri
 import android.text.format.DateUtils
 import android.util.Log
 import android.widget.Toast
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.animation.core.RepeatMode
 import androidx.compose.animation.core.animateFloat
 import androidx.compose.animation.core.infiniteRepeatable
@@ -36,6 +39,7 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowForward
 import androidx.compose.material.icons.automirrored.filled.Send
 import androidx.compose.material.icons.filled.Mic
+import androidx.compose.material.icons.filled.PhotoCamera
 import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material3.Badge
 import androidx.compose.material3.BadgedBox
@@ -65,6 +69,7 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.unit.LayoutDirection
 import androidx.compose.ui.unit.dp
+import androidx.core.content.FileProvider
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
@@ -75,6 +80,10 @@ import xyz.block.gosling.features.agent.Conversation
 import xyz.block.gosling.features.agent.getConversationTitle
 import xyz.block.gosling.features.overlay.OverlayService
 import xyz.block.gosling.shared.services.VoiceRecognitionService
+import java.io.File
+import java.text.SimpleDateFormat
+import java.util.Date
+import java.util.Locale
 
 data class ChatMessage(
     val text: String,
@@ -113,6 +122,7 @@ fun MainScreen(
     val listState = rememberLazyListState()
     var showPresetQueries by remember { mutableStateOf(false) }
     var isRecording by remember { mutableStateOf(false) }
+    var photoUri by remember { mutableStateOf<Uri?>(null) }
 
     val pulseAnim = rememberInfiniteTransition()
     val scale by pulseAnim.animateFloat(
@@ -123,6 +133,62 @@ fun MainScreen(
             repeatMode = RepeatMode.Reverse
         )
     )
+
+    val imagePickerLauncher = rememberLauncherForActivityResult(
+        contract = ActivityResultContracts.GetContent()
+    ) { uri ->
+        uri?.let { selectedUri ->
+            // Process the selected image
+            textInput = "Here's the photo I selected"
+            // TODO: Handle the selected image URI
+        }
+    }
+
+    val cameraLauncher = rememberLauncherForActivityResult(
+        contract = ActivityResultContracts.TakePicture()
+    ) { success ->
+        if (success) {
+            photoUri?.let { uri ->
+                // Process the captured image
+                textInput = "I just took a photo"
+                // TODO: Handle the captured image URI
+            }
+        }
+    }
+
+    fun createImageUri(): Uri? {
+        val timeStamp = SimpleDateFormat("yyyyMMdd_HHmmss", Locale.getDefault()).format(Date())
+        val imageFileName = "JPEG_${timeStamp}_"
+        val storageDir = context.getExternalFilesDir("Photos")
+        val imageFile = File.createTempFile(imageFileName, ".jpg", storageDir)
+        return FileProvider.getUriForFile(
+            context,
+            "${context.packageName}.fileprovider",
+            imageFile
+        )
+    }
+
+    fun showImageOptions() {
+        val activity = context as? Activity
+        if (activity != null) {
+            val options = arrayOf("Take Photo", "Choose from Gallery")
+            android.app.AlertDialog.Builder(activity)
+                .setTitle("Select Photo")
+                .setItems(options) { dialog, which ->
+                    when (which) {
+                        0 -> {
+                            photoUri = createImageUri()
+                            photoUri?.let { uri ->
+                                cameraLauncher.launch(uri)
+                            }
+                        }
+
+                        1 -> imagePickerLauncher.launch("image/*")
+                    }
+                }
+                .show()
+        }
+    }
 
     Scaffold(
         topBar = {
@@ -164,41 +230,21 @@ fun MainScreen(
                 shape = RoundedCornerShape(topStart = 16.dp, topEnd = 16.dp),
                 color = MaterialTheme.colorScheme.surfaceContainer
             ) {
-                Row(
+                Column(
                     modifier = Modifier
                         .fillMaxWidth()
-                        .padding(16.dp)
+                        .padding(8.dp)
                         .navigationBarsPadding(),
-                    horizontalArrangement = Arrangement.spacedBy(8.dp),
-                    verticalAlignment = Alignment.CenterVertically
+                    verticalArrangement = Arrangement.spacedBy(4.dp)
                 ) {
-                    IconButton(
-                        onClick = {
-                            isRecording = true
-                            startVoiceRecognition(context) { isRecording = false }
-                        },
-                        modifier = Modifier
-                            .size(48.dp)
-                            .scale(if (isRecording) scale else 1f)
-                    ) {
-                        Icon(
-                            imageVector = Icons.Default.Mic,
-                            contentDescription = "Voice Input",
-                            tint = if (isRecording)
-                                MaterialTheme.colorScheme.primary
-                            else
-                                MaterialTheme.colorScheme.onSurfaceVariant
-                        )
-                    }
-
                     TextField(
                         value = textInput,
                         onValueChange = { textInput = it },
-                        modifier = Modifier.weight(1f),
+                        modifier = Modifier.fillMaxWidth(),
                         placeholder = { Text("What can gosling do for you?") },
                         colors = TextFieldDefaults.colors(
-                            unfocusedContainerColor = MaterialTheme.colorScheme.surfaceContainerHigh,
-                            focusedContainerColor = MaterialTheme.colorScheme.surfaceContainerHigh,
+                            unfocusedContainerColor = Color.Transparent,
+                            focusedContainerColor = Color.Transparent,
                             focusedIndicatorColor = Color.Transparent,
                             unfocusedIndicatorColor = Color.Transparent,
                             disabledIndicatorColor = Color.Transparent,
@@ -210,33 +256,73 @@ fun MainScreen(
                             ),
                         ),
                         shape = RoundedCornerShape(24.dp),
-                        singleLine = true
+                        maxLines = 3,
+                        minLines = 1
                     )
 
-                    Box(
-                        modifier = Modifier
-                            .size(48.dp)
-                            .combinedClickable(
-                                onClick = {
-                                    if (textInput.isNotEmpty()) {
-                                        processAgentCommand(context, textInput) { message, isUser ->
-                                            // Messages will be handled by the conversation manager now
-                                        }
-                                        textInput = ""
-                                    }
-                                },
-                                onLongClick = { showPresetQueries = !showPresetQueries }
-                            ),
-                        contentAlignment = Alignment.Center
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                        verticalAlignment = Alignment.CenterVertically
                     ) {
-                        Icon(
-                            imageVector = Icons.AutoMirrored.Filled.Send,
-                            contentDescription = "Send Message",
-                            tint = if (textInput.isNotEmpty())
-                                MaterialTheme.colorScheme.primary
-                            else
-                                MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.38f)
-                        )
+                        IconButton(
+                            onClick = { showImageOptions() },
+                            modifier = Modifier.size(48.dp)
+                        ) {
+                            Icon(
+                                imageVector = Icons.Default.PhotoCamera,
+                                contentDescription = "Take or select photo",
+                                tint = MaterialTheme.colorScheme.onSurfaceVariant
+                            )
+                        }
+
+                        IconButton(
+                            onClick = {
+                                isRecording = true
+                                startVoiceRecognition(context) { isRecording = false }
+                            },
+                            modifier = Modifier
+                                .size(48.dp)
+                                .scale(if (isRecording) scale else 1f)
+                        ) {
+                            Icon(
+                                imageVector = Icons.Default.Mic,
+                                contentDescription = "Voice Input",
+                                tint = if (isRecording)
+                                    MaterialTheme.colorScheme.primary
+                                else
+                                    MaterialTheme.colorScheme.onSurfaceVariant
+                            )
+                        }
+
+                        Box(
+                            modifier = Modifier
+                                .size(48.dp)
+                                .combinedClickable(
+                                    onClick = {
+                                        if (textInput.isNotEmpty()) {
+                                            processAgentCommand(
+                                                context,
+                                                textInput
+                                            ) { message, isUser ->
+                                                // Messages will be handled by the conversation manager now
+                                            }
+                                            textInput = ""
+                                        }
+                                    },
+                                    onLongClick = { showPresetQueries = !showPresetQueries }
+                                ),
+                            contentAlignment = Alignment.Center
+                        ) {
+                            Icon(
+                                imageVector = Icons.AutoMirrored.Filled.Send,
+                                contentDescription = "Send Message",
+                                tint = if (textInput.isNotEmpty())
+                                    MaterialTheme.colorScheme.primary
+                                else
+                                    MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.38f)
+                            )
+                        }
                     }
                 }
             }

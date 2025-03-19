@@ -46,6 +46,7 @@ import xyz.block.gosling.features.agent.Conversation
 import xyz.block.gosling.features.agent.Message
 import xyz.block.gosling.features.agent.firstText
 import xyz.block.gosling.features.agent.getConversationTitle
+import androidx.compose.foundation.text.selection.SelectionContainer
 
 @Composable
 private fun MessageCard(message: Message, modifier: Modifier = Modifier) {
@@ -65,14 +66,16 @@ private fun MessageCard(message: Message, modifier: Modifier = Modifier) {
         )
     ) {
         Column(modifier = Modifier.padding(12.dp)) {
-            Text(
-                text = firstText(message),
-                style = MaterialTheme.typography.bodyLarge,
-                color = if (message.role == "user")
-                    MaterialTheme.colorScheme.onSecondaryContainer
-                else
-                    MaterialTheme.colorScheme.onPrimaryContainer
-            )
+            SelectionContainer {
+                Text(
+                    text = firstText(message),
+                    style = MaterialTheme.typography.bodyLarge,
+                    color = if (message.role == "user")
+                        MaterialTheme.colorScheme.onSecondaryContainer
+                    else
+                        MaterialTheme.colorScheme.onPrimaryContainer
+                )
+            }
             //Text(text = message.role) Douwe: Do we need this?
             Text(
                 text = DateUtils.getRelativeTimeSpanString(

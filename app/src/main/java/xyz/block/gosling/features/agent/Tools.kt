@@ -18,6 +18,7 @@ import java.util.Locale
 import java.util.concurrent.CountDownLatch
 import java.util.concurrent.TimeUnit
 
+
 @Target(AnnotationTarget.FUNCTION)
 @Retention(AnnotationRetention.RUNTIME)
 annotation class Tool(
@@ -498,6 +499,15 @@ object ToolHandler {
     }
 
     @Tool(
+        name = "pressEnter",
+        description = "Press this after entering text into a search field if there is no button to take action.",
+    )
+    fun pressEnter(args: JSONObject): String {
+        Runtime.getRuntime().exec(arrayOf("input", "keyevent", "KEYCODE_ENTER"))
+        return "Pressed enter"
+    }
+
+    @Tool(
         name = "enterText",
         description = "Enter text into the a text field. Make sure the field you want the " +
                 "text to enter into is focused. Click it if needed, don't assume.",
@@ -506,24 +516,13 @@ object ToolHandler {
                 name = "text",
                 type = "string",
                 description = "Text to enter"
-            ),
-            ParameterDef(
-                name = "submit",
-                type = "boolean",
-                description = "Whether to submit the text after entering it. " +
-                        "This doesn't always work. If there is a button to click directly, use that",
-                required = false
             )
         ],
         requiresAccessibility = true
     )
     fun enterText(accessibilityService: AccessibilityService, args: JSONObject): String {
 
-        val text = if (args.optBoolean("submit", false)) {
-            args.getString("text")
-        } else {
-            args.getString("text") + "\n"
-        }
+        val text = args.getString("text")
 
         val targetNode = if (args.has("id")) {
             accessibilityService.rootInActiveWindow?.findAccessibilityNodeInfosByViewId(
@@ -544,7 +543,6 @@ object ToolHandler {
             AccessibilityNodeInfo.ACTION_ARGUMENT_SET_TEXT_CHARSEQUENCE,
             text
         )
-
 
         val setTextResult =
             targetNode.performAction(AccessibilityNodeInfo.ACTION_SET_TEXT, arguments)

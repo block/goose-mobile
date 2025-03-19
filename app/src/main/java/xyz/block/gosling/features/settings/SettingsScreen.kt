@@ -1,13 +1,26 @@
 package xyz.block.gosling.features.settings
 
+import android.Manifest
+import android.content.pm.PackageManager
+import android.os.Build
 import android.provider.Settings
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
+import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.expandVertically
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
+import androidx.compose.animation.shrinkVertically
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.text.KeyboardOptions
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material3.AlertDialog
@@ -41,6 +54,7 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.unit.dp
+import androidx.core.content.ContextCompat
 import kotlinx.coroutines.launch
 import xyz.block.gosling.features.agent.AgentServiceManager
 import xyz.block.gosling.features.agent.AiModel
@@ -65,8 +79,45 @@ fun SettingsScreen(
     var showResetDialog by remember { mutableStateOf(false) }
     var showClearConversationsDialog by remember { mutableStateOf(false) }
     var expanded by remember { mutableStateOf(false) }
+    var shouldHandleScreenshots by remember { mutableStateOf(settingsStore.handleScreenshots) }
+    var screenshotHandlingPreferences by remember { mutableStateOf(settingsStore.screenshotHandlingPreferences) }
     val scope = rememberCoroutineScope()
     val agentServiceManager = remember { AgentServiceManager(context) }
+
+    // Permission launcher for screenshots
+    val screenshotPermissionLauncher = rememberLauncherForActivityResult(
+        contract = ActivityResultContracts.RequestPermission()
+    ) { isGranted ->
+        if (isGranted) {
+            shouldHandleScreenshots = true
+            settingsStore.handleScreenshots = true
+        } else {
+            shouldHandleScreenshots = false
+            settingsStore.handleScreenshots = false
+        }
+    }
+
+    // Function to check and request screenshot permissions
+    fun checkAndRequestScreenshotPermission() {
+        val permission = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+            Manifest.permission.READ_MEDIA_IMAGES
+        } else {
+            Manifest.permission.READ_EXTERNAL_STORAGE
+        }
+
+        when {
+            ContextCompat.checkSelfPermission(
+                context,
+                permission
+            ) == PackageManager.PERMISSION_GRANTED -> {
+                shouldHandleScreenshots = true
+                settingsStore.handleScreenshots = true
+            }
+            else -> {
+                screenshotPermissionLauncher.launch(permission)
+            }
+        }
+    }
 
     fun checkAssistantStatus() {
         val settingSecure = Settings.Secure.getString(
@@ -141,13 +192,16 @@ fun SettingsScreen(
             )
         }
     ) { paddingValues ->
+        val scrollState = rememberScrollState()
+
         Column(
             modifier = Modifier
                 .fillMaxSize()
                 .padding(paddingValues)
+                .verticalScroll(scrollState)
                 .padding(horizontal = 16.dp),
             horizontalAlignment = Alignment.CenterHorizontally,
-            verticalArrangement = Arrangement.SpaceBetween
+            verticalArrangement = Arrangement.spacedBy(16.dp)
         ) {
             Column(
                 modifier = Modifier.fillMaxWidth(),
@@ -237,6 +291,7 @@ fun SettingsScreen(
                             }
                         )
                     }
+
                     if (isAccessibilityEnabled) {
                         Button(
                             onClick = showStatsSettings(),
@@ -272,8 +327,6 @@ fun SettingsScreen(
                                 }
                             )
                         }
-
-                        // Message handling preferences text area - only visible when notifications are processed
                         if (shouldProcessNotifications) {
                             Column(
                                 modifier = Modifier
@@ -296,6 +349,76 @@ fun SettingsScreen(
                                         .padding(vertical = 4.dp),
                                     minLines = 3,
                                     maxLines = 5
+                                )
+                            }
+                        }
+
+                        // Screenshot handling option
+                        Text(
+                            text = "Screenshot Processing",
+                            style = MaterialTheme.typography.titleLarge,
+                        )
+                        Text(
+                            text = "Allow Gosling to look at screenshots and take " +
+                                    "action based on your preferences and the contents " +
+                                    "of the screenshot.",
+                            style = MaterialTheme.typography.bodyMedium,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.SpaceBetween,
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            Text(
+                                text = "Handle screenshots",
+                                style = MaterialTheme.typography.bodyLarge
+                            )
+                            Switch(
+                                checked = shouldHandleScreenshots,
+                                onCheckedChange = { handleScreenshots ->
+                                    if (handleScreenshots) {
+                                        checkAndRequestScreenshotPermission()
+                                    } else {
+                                        shouldHandleScreenshots = false
+                                        settingsStore.handleScreenshots = false
+                                    }
+                                }
+                            )
+                        }
+
+                        // Screenshot handling preferences
+                        AnimatedVisibility(
+                            visible = shouldHandleScreenshots,
+                            enter = expandVertically() + fadeIn(),
+                            exit = shrinkVertically() + fadeOut()
+                        ) {
+                            Column(
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .padding(16.dp)
+                            ) {
+                                OutlinedTextField(
+                                    value = screenshotHandlingPreferences,
+                                    onValueChange = { preferences ->
+                                        screenshotHandlingPreferences = preferences
+                                        settingsStore.screenshotHandlingPreferences = preferences
+                                    },
+                                    label = { Text("Screenshot Handling Rules") },
+                                    modifier = Modifier
+                                        .fillMaxWidth()
+                                        .height(120.dp),
+                                    textStyle = MaterialTheme.typography.bodyMedium,
+                                    placeholder = { Text("Enter rules for handling screenshots...") }
+                                )
+
+                                Text(
+                                    text = "Specify how you want screenshots to be processed. For example:\n" +
+                                            "When a screenshot comes in and it is a receipt, extract " +
+                                            "the total amount and other details and send it to my accountant.",
+                                    style = MaterialTheme.typography.bodySmall,
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                    modifier = Modifier.padding(top = 8.dp)
                                 )
                             }
                         }
@@ -398,4 +521,4 @@ fun SettingsScreen(
             }
         )
     }
-} 
+}

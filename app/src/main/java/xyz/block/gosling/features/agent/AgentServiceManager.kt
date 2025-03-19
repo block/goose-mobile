@@ -13,6 +13,8 @@ import android.util.Log
 import androidx.core.app.NotificationCompat
 import xyz.block.gosling.R
 import xyz.block.gosling.features.app.MainActivity
+import xyz.block.gosling.features.screenshot.ScreenshotManager
+import xyz.block.gosling.features.settings.SettingsStore
 
 /**
  * Manages the Agent service lifecycle and notifications.
@@ -28,9 +30,23 @@ class AgentServiceManager(private val context: Context) {
 
     private var serviceConnection: ServiceConnection? = null
     private var isBound = false
+    private val screenshotManager = ScreenshotManager(context)
 
     init {
         createNotificationChannel()
+
+        screenshotManager.setOnScreenshotListener { uri ->
+            val agent = Agent.getInstance()
+            if (agent != null) {
+                Log.d(TAG, "Screenshot detected, processing with agent")
+                val settings = SettingsStore(context)
+                if (settings.handleScreenshots && settings.screenshotHandlingPreferences != "") {
+                    agent.processScreenshot(uri, settings.screenshotHandlingPreferences)
+                }
+            } else {
+                Log.d(TAG, "Screenshot detected but agent is not available")
+            }
+        }
     }
 
     /**
@@ -72,6 +88,8 @@ class AgentServiceManager(private val context: Context) {
                 // Start as foreground service
                 startAgentForeground(agent)
 
+                screenshotManager.startMonitoring()
+
                 // Set up status listener
                 agent.setStatusListener { status ->
                     updateNotification(status)
@@ -90,7 +108,8 @@ class AgentServiceManager(private val context: Context) {
 
         // Start and bind to the service
         context.startForegroundService(serviceIntent)
-        val bound = context.bindService(serviceIntent, serviceConnection!!, Context.BIND_AUTO_CREATE)
+        val bound =
+            context.bindService(serviceIntent, serviceConnection!!, Context.BIND_AUTO_CREATE)
         isBound = bound
         Log.d(TAG, "Service bind attempt result: $bound")
     }
@@ -102,6 +121,7 @@ class AgentServiceManager(private val context: Context) {
         if (isBound && serviceConnection != null) {
             try {
                 context.unbindService(serviceConnection!!)
+                screenshotManager.stopMonitoring()
                 Log.d(TAG, "Service unbound successfully")
             } catch (e: Exception) {
                 Log.e(TAG, "Error unbinding service: ${e.message}")

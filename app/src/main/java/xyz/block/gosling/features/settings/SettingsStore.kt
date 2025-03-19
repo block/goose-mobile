@@ -33,6 +33,8 @@ class SettingsStore(context: Context) {
         private const val KEY_PROCESS_NOTIFICATIONS = "process_notifications"
         private const val KEY_MESSAGE_HANDLING_PREFERENCES = "message_handling_preferences"
         private const val KEY_ENABLE_APP_EXTENSIONS = "enable_app_extensions"
+        private const val KEY_HANDLE_SCREENSHOTS = "handle_screenshots"
+        private const val KEY_SCREENSHOT_HANDLING_PREFERENCES = "screenshot_handling_preferences"
         private val DEFAULT_LLM_MODEL = AiModel.AVAILABLE_MODELS.first().identifier
     }
 
@@ -65,6 +67,14 @@ class SettingsStore(context: Context) {
     var messageHandlingPreferences: String
         get() = prefs.getString(KEY_MESSAGE_HANDLING_PREFERENCES, "") ?: ""
         set(value) = prefs.edit { putString(KEY_MESSAGE_HANDLING_PREFERENCES, value) }
+
+    var handleScreenshots: Boolean
+        get() = prefs.getBoolean(KEY_HANDLE_SCREENSHOTS, false)
+        set(value) = prefs.edit { putBoolean(KEY_HANDLE_SCREENSHOTS, value) }
+
+    var screenshotHandlingPreferences: String
+        get() = prefs.getString(KEY_SCREENSHOT_HANDLING_PREFERENCES, "") ?: ""
+        set(value) = prefs.edit { putString(KEY_SCREENSHOT_HANDLING_PREFERENCES, value) }
         
     var enableAppExtensions: Boolean
         get() = prefs.getBoolean(KEY_ENABLE_APP_EXTENSIONS, true) // Enabled by default

@@ -259,11 +259,11 @@ object ToolHandler {
         parameters = [],
         requiresContext = true
     )
-    fun recentApps(context: Context) : String {
+    fun recentApps(context: Context): String {
         if (!AppUsageStats.hasPermission(context)) {
             return "Don't have permission to collect app stats, consult app settings to correct this."
         }
-        return AppUsageStats.getRecentApps(context, limit=10).joinToString { ", " }
+        return AppUsageStats.getRecentApps(context, limit = 10).joinToString { ", " }
     }
 
     @Tool(
@@ -272,15 +272,12 @@ object ToolHandler {
         parameters = [],
         requiresContext = true
     )
-    fun frequentlyUsedApps(context: Context) : String {
+    fun frequentlyUsedApps(context: Context): String {
         if (!AppUsageStats.hasPermission(context)) {
             return "Don't have permission to collect app stats, consult app settings to correct this."
         }
-        return AppUsageStats.getFrequentApps(context, limit=20).joinToString { ", " }
+        return AppUsageStats.getFrequentApps(context, limit = 20).joinToString { ", " }
     }
-
-
-
 
 
     @Tool(
@@ -756,7 +753,6 @@ object ToolHandler {
         context: Context,
         accessibilityService: AccessibilityService?
     ): String {
-        // Check if the agent has been cancelled
         if (Agent.getInstance()?.isCancelled() == true) {
             return "Operation cancelled by user"
         }
@@ -778,7 +774,6 @@ object ToolHandler {
             }
 
             return try {
-                // Check again if cancelled after the delay
                 if (Agent.getInstance()?.isCancelled() == true) {
                     return "Operation cancelled by user"
                 }
@@ -809,7 +804,7 @@ object ToolHandler {
                 "Error executing ${toolCall.name}: ${e.message}"
             }
 
-        } else { // handle mcp calls
+        } else {
             val nameParts = toolCall.name.split("_", limit = 3)
             if (!GoslingApplication.shouldHideOverlay()) {
                 //Delay to let the overlay hide...

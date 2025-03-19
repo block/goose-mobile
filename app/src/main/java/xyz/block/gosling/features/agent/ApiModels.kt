@@ -1,15 +1,55 @@
 package xyz.block.gosling.features.agent
 
+import kotlinx.serialization.KSerializer
 import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
+import kotlinx.serialization.json.JsonContentPolymorphicSerializer
 import kotlinx.serialization.json.JsonElement
 import kotlinx.serialization.json.JsonObject
+import kotlinx.serialization.json.jsonObject
+import kotlinx.serialization.json.jsonPrimitive
+
+// Common models
+
+@Serializable
+data class Image(
+    val url: String
+)
+
+// Content types
+@Serializable(with = ContentSerializer::class)
+sealed class Content {
+    abstract val type: String
+
+    @Serializable
+    data class Text(
+        override val type: String = "text",
+        val text: String
+    ) : Content()
+
+    @Serializable
+    data class ImageUrl(
+        override val type: String = "image_url",
+        @SerialName("image_url")
+        val imageUrl: Image
+    ) : Content()
+}
+
+class ContentSerializer : JsonContentPolymorphicSerializer<Content>(Content::class) {
+    override fun selectDeserializer(element: JsonElement): KSerializer<out Content> {
+        return when (element.jsonObject["type"]?.jsonPrimitive?.content) {
+            "text" -> Content.Text.serializer()
+            "image" -> Content.ImageUrl.serializer()
+            else -> throw IllegalArgumentException("Unknown content type")
+        }
+    }
+}
 
 // Common models
 @Serializable
 data class Message(
     val role: String,
-    val content: String? = null,
+    val content: List<Content>? = null,
     @SerialName("tool_call_id")
     val toolCallId: String? = null,
     val name: String? = null,
@@ -21,6 +61,7 @@ data class Message(
     @SerialName("stats")
     val stats: Map<String, Double>? = null
 )
+
 
 @Serializable
 data class Conversation(

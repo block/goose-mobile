@@ -3,6 +3,7 @@ package xyz.block.gosling.features.agent
 import android.app.Service
 import android.content.Context
 import android.content.Intent
+import android.net.Uri
 import android.os.Binder
 import android.os.IBinder
 import android.util.DisplayMetrics
@@ -122,7 +123,8 @@ class Agent : Service() {
     suspend fun processCommand(
         userInput: String,
         context: Context,
-        isNotificationReply: Boolean
+        isNotificationReply: Boolean,
+        imageUri: Uri? = null
     ): String {
 
         try {
@@ -188,18 +190,41 @@ class Agent : Service() {
             System.out.println("SYSTEM PROMPT\n" + systemMessage + "\n\n\n\n\n")
 
             val startTime = System.currentTimeMillis()
+            val userMessage = if (imageUri != null) {
+                val contentResolver = applicationContext.contentResolver
+
+                val imageBytes = contentResolver.openInputStream(imageUri)?.use { it.readBytes() }
+                    ?: throw AgentException("Failed to read screenshot")
+
+                val base64Image =
+                    android.util.Base64.encodeToString(imageBytes, android.util.Base64.DEFAULT)
+                val mimeType = contentResolver.getType(imageUri) ?: "image/jpeg"
+
+                Message(
+                    role = "user",
+                    content = listOf(
+                        Content.Text(text = userInput),
+                        Content.ImageUrl(
+                            imageUrl = Image(url = "data:$mimeType;base64,$base64Image")
+                        )
+                    )
+                )
+            } else {
+                Message(
+                    role = "user",
+                    content = contentWithText(userInput)
+                )
+            }
+
             val newConversation = Conversation(
                 startTime = startTime,
                 fileName = conversationManager.fileNameFor(userInput),
                 messages = mutableListOf(
                     Message(
                         role = "system",
-                        content = systemMessage
+                        content = contentWithText(systemMessage)
                     ),
-                    Message(
-                        role = "user",
-                        content = userInput
-                    )
+                    userMessage
                 )
             )
             conversationManager.updateCurrentConversation(newConversation)
@@ -315,7 +340,7 @@ class Agent : Service() {
 
                         val assistantMessage = Message(
                             role = "assistant",
-                            content = assistantReply,
+                            content = contentWithText(assistantReply),
                             toolCalls = toolCallsWithIds.map { (toolCall, id) ->
                                 ToolCall(
                                     id = id,
@@ -351,7 +376,7 @@ class Agent : Service() {
                             val toolMessage = Message(
                                 role = "tool",
                                 toolCallId = result["tool_call_id"].toString(),
-                                content = result["output"].toString(),
+                                content = listOf(Content.Text(text = result["output"].toString())),
                                 name = result["name"].toString(),
                                 stats = toolAnnotation
                             )
@@ -474,6 +499,7 @@ class Agent : Service() {
         }
     }
 
+
     private fun filterUiHierarchyMessages(messages: List<Message>): List<Message> {
         val isUiHierarchyCall = { message: Message ->
             message.role == "tool" && message.name == "getUiHierarchy"
@@ -483,7 +509,7 @@ class Agent : Service() {
 
         return messages.mapIndexed { index, message ->
             if (isUiHierarchyCall(message) && index < lastUiHierarchyIndex) {
-                message.copy(content = "{UI hierarchy output truncated}")
+                message.copy(content = contentWithText("{UI hierarchy output truncated}"))
             } else {
                 message
             }
@@ -631,9 +657,12 @@ class Agent : Service() {
 
             Message(
                 role = "stats",
-                content = "Conversation Statistics - ${
-                    LocalDateTime.now().format(DateTimeFormatter.ISO_LOCAL_DATE_TIME)
-                }",
+                content =
+                    contentWithText(
+                        "Conversation Statistics - ${
+                            LocalDateTime.now().format(DateTimeFormatter.ISO_LOCAL_DATE_TIME)
+                        }"
+                    ),
                 annotations = Json.encodeToJsonElement(
                     mapOf(
                         "total_input_tokens" to sumStats("input_tokens"),
@@ -658,4 +687,36 @@ class Agent : Service() {
 
         throw AgentException(errorResponse)
     }
+
+    fun processScreenshot(uri: Uri, instructions: String) {
+        scope.launch {
+            try {
+                val prompt = "The user took a screenshot, see the attached image. " +
+                        "Use the following instructions take take action or " +
+                        "if nothing is applicable, leave it be: $instructions"
+
+                processCommand(
+                    prompt,
+                    this@Agent,
+                    isNotificationReply = true,
+                    imageUri = uri
+                )
+            } catch (e: Exception) {
+                // Handle any unexpected exceptions
+                Log.e("Agent", "Error handling notification", e)
+
+                // If it's a cancellation exception, handle it gracefully
+                if (e is kotlinx.coroutines.CancellationException) {
+                    // Reset the job and scope to ensure future commands work
+                    job = SupervisorJob()
+                    scope = CoroutineScope(Dispatchers.IO + job)
+                    updateStatus(AgentStatus.Success("Operation cancelled"))
+                } else {
+                    // For other exceptions, report the error
+                    updateStatus(AgentStatus.Error("Error: ${e.message}"))
+                }
+            }
+        }
+    }
+
 }

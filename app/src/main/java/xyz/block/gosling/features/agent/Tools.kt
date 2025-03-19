@@ -496,15 +496,6 @@ object ToolHandler {
     }
 
     @Tool(
-        name = "pressEnter",
-        description = "Press this after entering text into a search field if there is no button to take action.",
-    )
-    fun pressEnter(args: JSONObject): String {
-        Runtime.getRuntime().exec(arrayOf("input", "keyevent", "KEYCODE_ENTER"))
-        return "Pressed enter"
-    }
-
-    @Tool(
         name = "enterText",
         description = "Enter text into the a text field. Make sure the field you want the " +
                 "text to enter into is focused. Click it if needed, don't assume.",
@@ -513,13 +504,20 @@ object ToolHandler {
                 name = "text",
                 type = "string",
                 description = "Text to enter"
+            ),
+            ParameterDef(
+                name = "submit",
+                type = "boolean",
+                description = "Whether to submit the text after entering it. " +
+                        "This doesn't always work. If there is a button to click directly, use that",
+                required = true
             )
         ],
         requiresAccessibility = true
     )
     fun enterText(accessibilityService: AccessibilityService, args: JSONObject): String {
 
-        val text = args.getString("text")
+        var text = args.getString("text")
 
         val targetNode = if (args.has("id")) {
             accessibilityService.rootInActiveWindow?.findAccessibilityNodeInfosByViewId(
@@ -543,6 +541,17 @@ object ToolHandler {
 
         val setTextResult =
             targetNode.performAction(AccessibilityNodeInfo.ACTION_SET_TEXT, arguments)
+
+        if (args.optBoolean("submit") && setTextResult) {
+            // Use AccessibilityNodeInfo.AccessibilityAction.ACTION_IME_ENTER to click enter on the omnibox
+            if (targetNode.performAction(AccessibilityNodeInfo.AccessibilityAction.ACTION_IME_ENTER.id)) {
+                System.err.println("PRESSED ENTER USING ACTION_IME_ENTER")
+            } else {
+                // Fall back to the previous method if ACTION_IME_ENTER doesn't work
+                Runtime.getRuntime().exec(arrayOf("input", "keyevent", "66"))
+                System.err.println("PRESSED ENTER USING KEYEVENT")
+            }
+        }
 
         return if (setTextResult) {
             "Entered text: \"$text\""

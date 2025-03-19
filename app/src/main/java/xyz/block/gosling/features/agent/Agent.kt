@@ -187,8 +187,6 @@ class Agent : Service() {
                 |Remember: DO NOT ask the user for help or additional information - you must solve the problem autonomously.
                 """.trimMargin()
 
-            System.out.println("SYSTEM PROMPT\n" + systemMessage + "\n\n\n\n\n")
-
             val startTime = System.currentTimeMillis()
             val userMessage = if (imageUri != null) {
                 val contentResolver = applicationContext.contentResolver

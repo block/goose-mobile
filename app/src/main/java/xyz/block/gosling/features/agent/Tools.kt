@@ -414,7 +414,7 @@ object ToolHandler {
 
     @Tool(
         name = "click",
-        description = "Click at specific coordinates on the device screen",
+        description = "Click at specific coordinates on the device screen. Ensure element is visible after entering text due to keyboard. Use swipe as needed.",
         parameters = [
             ParameterDef(
                 name = "x",
@@ -565,7 +565,7 @@ object ToolHandler {
         }
 
         return if (setTextResult) {
-            "Entered text: \"$text\""
+            "Entered text: \"$text\". IMPORTANT: consider if keyboard is visible with screenshot, if you need to swipe to before clicking on next thing."
         } else {
             "Failed to enter text"
         }

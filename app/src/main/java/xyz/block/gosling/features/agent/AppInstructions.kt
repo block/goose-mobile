@@ -15,6 +15,7 @@ object AppInstructions {
             1. Find a specific location
             2. Get directions between locations
             3. Explore nearby places
+            4. Add stops on the way
         IMPORTANT: don't just search for A to B, but search for separate places, add stops if needed.
                    Map search is not general search. There may be locations user is asking for mixed in with general place (like a vegan restaurant)
         """.trimIndent(),

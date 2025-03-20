@@ -401,7 +401,8 @@ object ToolHandler {
 
         context.startActivity(launchIntent)
         val appInstruction = AppInstructions.getInstructions(packageName)
-        return "Started app: $packageName $appInstruction"
+        val result = "Starting app: $packageName $appInstruction"
+        return result
     }
 
     @Tool(

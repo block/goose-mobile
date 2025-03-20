@@ -41,6 +41,7 @@ class OverlayService : Service() {
     private var currentStatus: String = "Ready"
     private var isPerformingAction: Boolean = false
     private var activeAgentManager: AgentServiceManager? = null
+    private var isTouchDisabled: Boolean = false
 
     override fun onCreate() {
         super.onCreate()
@@ -271,5 +272,26 @@ class OverlayService : Service() {
 
     fun setActiveAgentManager(manager: AgentServiceManager) {
         activeAgentManager = manager
+    }
+
+    fun setTouchDisabled(disabled: Boolean) {
+        isTouchDisabled = disabled
+        overlayView?.post {
+            try {
+                windowManager.removeView(overlayView)
+                params.apply {
+                    if (disabled) {
+                        // When disabled, allow touches to pass through
+                        flags = flags or WindowManager.LayoutParams.FLAG_NOT_TOUCHABLE
+                    } else {
+                        // When enabled, restore normal touch behavior
+                        flags = flags and WindowManager.LayoutParams.FLAG_NOT_TOUCHABLE.inv()
+                    }
+                }
+                windowManager.addView(overlayView, params)
+            } catch (e: Exception) {
+                android.util.Log.e("Gosling", "Error updating overlay touch state", e)
+            }
+        }
     }
 }

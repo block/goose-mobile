@@ -17,6 +17,7 @@ import java.util.Locale
 import java.util.concurrent.CountDownLatch
 import java.util.concurrent.TimeUnit
 import java.util.concurrent.atomic.AtomicLong
+import xyz.block.gosling.features.overlay.OverlayService
 
 
 @Target(AnnotationTarget.FUNCTION)
@@ -535,59 +536,67 @@ object ToolHandler {
         requiresAccessibility = true
     )
     fun enterText(accessibilityService: AccessibilityService, args: JSONObject): String {
-        val text = args.getString("text")
-        val rootNode = accessibilityService.rootInActiveWindow
-            ?: return "Error: No active window found"
+        // Temporarily disable touch handling on the overlay
+        OverlayService.getInstance()?.setTouchDisabled(true)
 
-        val targetNode = when {
-            args.has("id") -> {
-                rootNode.findAccessibilityNodeInfosByViewId(args.getString("id"))?.firstOrNull()
+        try {
+            val text = args.getString("text")
+            val rootNode = accessibilityService.rootInActiveWindow
+                ?: return "Error: No active window found"
+
+            val targetNode = when {
+                args.has("id") -> {
+                    rootNode.findAccessibilityNodeInfosByViewId(args.getString("id"))?.firstOrNull()
+                }
+
+                args.has("description") -> {
+                    val description = args.getString("description")
+                    findNodeByDescription(rootNode, description)
+                }
+
+                else -> {
+                    rootNode.findFocus(AccessibilityNodeInfo.FOCUS_INPUT)
+                }
+            } ?: return "Error: Could not find the target text field"
+
+            if (!targetNode.isEditable) {
+                return "Error: The targeted element is not an editable text field"
             }
 
-            args.has("description") -> {
-                val description = args.getString("description")
-                findNodeByDescription(rootNode, description)
+            if (!targetNode.isFocused) {
+                targetNode.performAction(AccessibilityNodeInfo.ACTION_FOCUS)
+                Thread.sleep(100) // Small delay to ensure focus is set
             }
 
-            else -> {
-                rootNode.findFocus(AccessibilityNodeInfo.FOCUS_INPUT)
+            val arguments = Bundle()
+            arguments.putCharSequence(
+                AccessibilityNodeInfo.ACTION_ARGUMENT_SET_TEXT_CHARSEQUENCE,
+                text
+            )
+
+            val setTextResult =
+                targetNode.performAction(AccessibilityNodeInfo.ACTION_SET_TEXT, arguments)
+
+            if (!setTextResult) {
+                return "Failed to enter text"
             }
-        } ?: return "Error: Could not find the target text field"
 
-        if (!targetNode.isEditable) {
-            return "Error: The targeted element is not an editable text field"
-        }
-
-        if (!targetNode.isFocused) {
-            targetNode.performAction(AccessibilityNodeInfo.ACTION_FOCUS)
-            Thread.sleep(100) // Small delay to ensure focus is set
-        }
-
-        val arguments = Bundle()
-        arguments.putCharSequence(
-            AccessibilityNodeInfo.ACTION_ARGUMENT_SET_TEXT_CHARSEQUENCE,
-            text
-        )
-
-        val setTextResult =
-            targetNode.performAction(AccessibilityNodeInfo.ACTION_SET_TEXT, arguments)
-
-        if (!setTextResult) {
-            return "Failed to enter text"
-        }
-
-        if (args.optBoolean("submit")) {
-            if (targetNode.performAction(AccessibilityNodeInfo.AccessibilityAction.ACTION_IME_ENTER.id)) {
-                System.err.println("PRESSED ENTER USING ACTION_IME_ENTER")
+            if (args.optBoolean("submit")) {
+                if (targetNode.performAction(AccessibilityNodeInfo.AccessibilityAction.ACTION_IME_ENTER.id)) {
+                    System.err.println("PRESSED ENTER USING ACTION_IME_ENTER")
+                } else {
+                    Runtime.getRuntime().exec(arrayOf("input", "keyevent", "66"))
+                    System.err.println("PRESSED ENTER USING KEYEVENT")
+                }
             } else {
-                Runtime.getRuntime().exec(arrayOf("input", "keyevent", "66"))
-                System.err.println("PRESSED ENTER USING KEYEVENT")
+                targetNode.performAction(AccessibilityNodeInfo.ACTION_CLEAR_FOCUS)
             }
-        } else {
-            targetNode.performAction(AccessibilityNodeInfo.ACTION_CLEAR_FOCUS)
-        }
 
-        return "Entered text: \"$text\""
+            return "Entered text: \"$text\""
+        } finally {
+            // Re-enable touch handling on the overlay
+            OverlayService.getInstance()?.setTouchDisabled(false)
+        }
     }
 
     private fun findNodeByDescription(

@@ -175,13 +175,16 @@ class Agent : Service() {
                 |to finalize rendering.
                 |
                 |When you start an app, make sure the app is in the state you expect it to be in. If it is not, 
-                |try to navigate to the correct state.
+                |try to navigate to the correct state (for example, getting back to the home page or start screen).
                 |
                 |After each tool call and before the next step, write down what you see on the screen that helped 
                 |you resolve this step. Keep iterating until you complete the task or have exhausted all possible approaches.
                 |
                 |When you think you are finished, double check to make sure you are done (sometimes you need to click more to continue).
                 |Use a screenshot if necessary to check.
+                |
+                |Some tasks will be one shot, but CRITICALLY some will require multiple steps and iteration and checking if you are done.
+                | for example, adding to a shopping card will require multiple steps, as will planning a trip.
                 |
                 |Remember: DO NOT ask the user for help or additional information - you must solve the problem autonomously.
                 """.trimMargin()

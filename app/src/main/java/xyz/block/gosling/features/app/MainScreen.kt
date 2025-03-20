@@ -4,7 +4,6 @@ import android.app.Activity
 import android.content.Context
 import android.content.Intent
 import android.net.Uri
-import android.text.format.DateUtils
 import android.util.Log
 import android.widget.Toast
 import androidx.activity.compose.rememberLauncherForActivityResult
@@ -36,7 +35,6 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.filled.ArrowForward
 import androidx.compose.material.icons.automirrored.filled.Send
 import androidx.compose.material.icons.filled.Mic
 import androidx.compose.material.icons.filled.PhotoCamera
@@ -74,11 +72,10 @@ import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import xyz.block.gosling.R
-import xyz.block.gosling.features.agent.AgentServiceManager
 import xyz.block.gosling.features.agent.AgentStatus
 import xyz.block.gosling.features.agent.Conversation
-import xyz.block.gosling.features.agent.getConversationTitle
 import xyz.block.gosling.features.overlay.OverlayService
+import xyz.block.gosling.features.settings.SettingsStore
 import xyz.block.gosling.shared.services.VoiceRecognitionService
 import java.io.File
 import java.text.SimpleDateFormat
@@ -99,15 +96,6 @@ private val predefinedQueries = listOf(
     "Take a picture using the camera and attach that to a new email. Save the email in drafts"
 )
 
-private fun formatDuration(durationMs: Long): String {
-    val seconds = durationMs / 1000
-    return when {
-        seconds < 60 -> "${seconds}s"
-        seconds < 3600 -> "${seconds / 60}m ${seconds % 60}s"
-        else -> "${seconds / 3600}h ${(seconds % 3600) / 60}m"
-    }
-}
-
 @OptIn(ExperimentalMaterial3Api::class, ExperimentalFoundationApi::class)
 @Composable
 fun MainScreen(
@@ -117,6 +105,7 @@ fun MainScreen(
     modifier: Modifier = Modifier
 ) {
     val context = LocalContext.current
+    val activity = context as MainActivity
     var conversations by remember { mutableStateOf<List<Conversation>>(emptyList()) }
     var textInput by remember { mutableStateOf("") }
     val listState = rememberLazyListState()
@@ -138,9 +127,18 @@ fun MainScreen(
         contract = ActivityResultContracts.GetContent()
     ) { uri ->
         uri?.let { selectedUri ->
-            // Process the selected image
-            textInput = "Here's the photo I selected"
-            // TODO: Handle the selected image URI
+            val settings = SettingsStore(context)
+            val instructions = settings.screenshotHandlingPreferences
+
+            processAgentCommand(
+                context,
+                "The user selected a photo from their gallery, see the attached image. " +
+                        "Use the following instructions take take action or " +
+                        "if nothing is applicable, leave it be: $instructions",
+                selectedUri
+            ) { message, isUser ->
+                // Messages will be handled by the conversation manager now
+            }
         }
     }
 
@@ -149,9 +147,18 @@ fun MainScreen(
     ) { success ->
         if (success) {
             photoUri?.let { uri ->
-                // Process the captured image
-                textInput = "I just took a photo"
-                // TODO: Handle the captured image URI
+                val settings = SettingsStore(context)
+                val instructions = settings.screenshotHandlingPreferences
+
+                processAgentCommand(
+                    context,
+                    "The user took a photo with their camera, see the attached image. " +
+                            "Use the following instructions take take action or " +
+                            "if nothing is applicable, leave it be: $instructions",
+                    uri
+                ) { message, isUser ->
+                    // Messages will be handled by the conversation manager now
+                }
             }
         }
     }
@@ -365,56 +372,10 @@ fun MainScreen(
                     verticalArrangement = Arrangement.spacedBy(8.dp)
                 ) {
                     items(conversations) { conversation ->
-                        Card(
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .clickable {
-                                    onNavigateToConversation(conversation.id)
-                                },
-                            shape = RoundedCornerShape(12.dp),
-                            colors = CardDefaults.cardColors(
-                                containerColor = MaterialTheme.colorScheme.surfaceContainer
-                            )
-                        ) {
-                            Row(
-                                modifier = Modifier
-                                    .fillMaxWidth()
-                                    .padding(16.dp),
-                                horizontalArrangement = Arrangement.SpaceBetween,
-                                verticalAlignment = Alignment.CenterVertically
-                            ) {
-                                Column(
-                                    modifier = Modifier.weight(1f),
-                                    verticalArrangement = Arrangement.spacedBy(4.dp)
-                                ) {
-                                    Text(
-                                        text = getConversationTitle(conversation),
-                                        style = MaterialTheme.typography.titleMedium,
-                                        color = MaterialTheme.colorScheme.onSurface
-                                    )
-                                    Text(
-                                        text = (DateUtils.getRelativeTimeSpanString(
-                                            conversation.startTime,
-                                            System.currentTimeMillis(),
-                                            DateUtils.SECOND_IN_MILLIS,
-                                            DateUtils.FORMAT_ABBREV_RELATIVE
-                                        ).toString() + (conversation.endTime?.let { endTime ->
-                                            val duration = endTime - conversation.startTime
-                                            " (${formatDuration(duration)})"
-                                        } ?: " (active)")),
-                                        style = MaterialTheme.typography.labelSmall,
-                                        color = MaterialTheme.colorScheme.onSecondaryContainer.copy(
-                                            alpha = 0.7f
-                                        )
-                                    )
-                                }
-                                Icon(
-                                    imageVector = Icons.AutoMirrored.Filled.ArrowForward,
-                                    contentDescription = "View conversation",
-                                    tint = MaterialTheme.colorScheme.onSecondaryContainer.copy(alpha = 0.7f)
-                                )
-                            }
-                        }
+                        ConversationCard(
+                            conversation = conversation,
+                            onClick = { onNavigateToConversation(conversation.id) }
+                        )
                     }
                 }
             }
@@ -452,8 +413,20 @@ fun MainScreen(
 
     // Collect conversations from the agent
     LaunchedEffect(Unit) {
-        val agentServiceManager = AgentServiceManager(context)
-        agentServiceManager.bindAndStartAgent { agent ->
+        val agent = activity.currentAgent
+        if (agent != null) {
+            CoroutineScope(Dispatchers.Main).launch {
+                agent.conversationManager.conversations.collect { updatedConversations ->
+                    conversations = updatedConversations
+                }
+            }
+        }
+    }
+
+    // Watch for agent changes
+    LaunchedEffect(activity.currentAgent) {
+        val agent = activity.currentAgent
+        if (agent != null) {
             CoroutineScope(Dispatchers.Main).launch {
                 agent.conversationManager.conversations.collect { updatedConversations ->
                     conversations = updatedConversations
@@ -512,89 +485,91 @@ private fun startVoiceRecognition(
 private fun processAgentCommand(
     context: Context,
     command: String,
+    imageUri: Uri? = null,
     onMessageReceived: (String, Boolean) -> Unit
 ) {
-    val agentServiceManager = AgentServiceManager(context)
     val activity = context as MainActivity
-
-    // Create a single Toast instance that will be reused
     val statusToast = Toast.makeText(context, "", Toast.LENGTH_SHORT)
+    val agent = activity.currentAgent
+
+    if (agent == null) {
+        statusToast.setText("Agent service not available")
+        statusToast.show()
+        return
+    }
 
     OverlayService.getInstance()?.apply {
         setIsPerformingAction(true)
-        setActiveAgentManager(agentServiceManager)
+        setActiveAgentManager(activity.agentServiceManager)
     }
 
-    agentServiceManager.bindAndStartAgent { agent ->
-        agent.setStatusListener { status ->
-            when (status) {
-                is AgentStatus.Processing -> {
-                    if (status.message.isEmpty() || status.message == "null") {
-                        Log.d("MainScreen", "Ignoring empty/null processing message")
-                        return@setStatusListener
-                    }
-                    android.os.Handler(context.mainLooper).post {
-                        onMessageReceived(status.message, false)
-
-                        statusToast.setText(status.message)
-                        statusToast.show()
-
-                        OverlayService.getInstance()?.updateStatus(status)
-                    }
+    agent.setStatusListener { status ->
+        when (status) {
+            is AgentStatus.Processing -> {
+                if (status.message.isEmpty() || status.message == "null") {
+                    Log.d("MainScreen", "Ignoring empty/null processing message")
+                    return@setStatusListener
                 }
+                android.os.Handler(context.mainLooper).post {
+                    onMessageReceived(status.message, false)
 
-                is AgentStatus.Success -> {
-                    android.os.Handler(context.mainLooper).post {
-                        onMessageReceived(status.message, false)
+                    statusToast.setText(status.message)
+                    statusToast.show()
 
-                        statusToast.setText(status.message)
-                        statusToast.show()
-
-                        OverlayService.getInstance()?.updateStatus(status)
-                        OverlayService.getInstance()?.setIsPerformingAction(false)
-
-                        // Create an intent to bring MainActivity to the foreground
-                        val intent = Intent(context, MainActivity::class.java).apply {
-                            flags = Intent.FLAG_ACTIVITY_NEW_TASK or
-                                    Intent.FLAG_ACTIVITY_REORDER_TO_FRONT
-                        }
-                        context.startActivity(intent)
-                    }
+                    OverlayService.getInstance()?.updateStatus(status)
                 }
+            }
 
-                is AgentStatus.Error -> {
-                    android.os.Handler(context.mainLooper).post {
-                        val errorMessage = "Error: ${status.message}"
-                        onMessageReceived(errorMessage, false)
+            is AgentStatus.Success -> {
+                android.os.Handler(context.mainLooper).post {
+                    onMessageReceived(status.message, false)
 
-                        statusToast.setText(errorMessage)
-                        statusToast.show()
+                    statusToast.setText(status.message)
+                    statusToast.show()
 
-                        OverlayService.getInstance()?.updateStatus(status)
-                        OverlayService.getInstance()?.setIsPerformingAction(false)
+                    OverlayService.getInstance()?.updateStatus(status)
+                    OverlayService.getInstance()?.setIsPerformingAction(false)
+
+                    // Create an intent to bring MainActivity to the foreground
+                    val intent = Intent(context, MainActivity::class.java).apply {
+                        flags = Intent.FLAG_ACTIVITY_NEW_TASK or
+                                Intent.FLAG_ACTIVITY_REORDER_TO_FRONT
                     }
+                    context.startActivity(intent)
+                }
+            }
+
+            is AgentStatus.Error -> {
+                android.os.Handler(context.mainLooper).post {
+                    val errorMessage = "Error: ${status.message}"
+                    onMessageReceived(errorMessage, false)
+
+                    statusToast.setText(errorMessage)
+                    statusToast.show()
+
+                    OverlayService.getInstance()?.updateStatus(status)
+                    OverlayService.getInstance()?.setIsPerformingAction(false)
                 }
             }
         }
+    }
 
-        CoroutineScope(Dispatchers.IO).launch {
-            try {
-                agent.processCommand(
-                    userInput = command,
-                    context = context,
-                    isNotificationReply = false
-                )
-            } catch (e: Exception) {
-                // Handle exceptions
-                android.os.Handler(context.mainLooper).post {
-                    val errorMessage = "Error: ${e.message}"
-                    onMessageReceived(errorMessage, false)
-                    activity.saveMessages(activity.loadMessages())
-                    statusToast.setText(errorMessage)
-                    statusToast.show()
-                }
+    CoroutineScope(Dispatchers.IO).launch {
+        try {
+            agent.processCommand(
+                userInput = command,
+                context = context,
+                isNotificationReply = false,
+                imageUri = imageUri
+            )
+        } catch (e: Exception) {
+            // Handle exceptions
+            android.os.Handler(context.mainLooper).post {
+                val errorMessage = "Error: ${e.message}"
+                onMessageReceived(errorMessage, false)
+                statusToast.setText(errorMessage)
+                statusToast.show()
             }
         }
     }
 }
-

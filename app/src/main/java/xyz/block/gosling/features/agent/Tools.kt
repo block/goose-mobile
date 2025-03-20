@@ -529,9 +529,7 @@ object ToolHandler {
 
     @Tool(
         name = "enterText",
-        description = "Enter text into the a text field. Make sure the field you want the " +
-                "text to enter into is focused. You can use the click_x, click_y to click the " +
-                "field before entering text.",
+        description = "Enter text into a text field. You must specify either the field's ID or provide enough information to find it (like text content or description - ensure email goes in email, phone goes in phone, etc.). After entering text, focus will be cleared to allow entering text in another field.",
         parameters = [
             ParameterDef(
                 name = "text",
@@ -539,22 +537,23 @@ object ToolHandler {
                 description = "Text to enter"
             ),
             ParameterDef(
+                name = "id",
+                type = "string",
+                description = "The resource ID of the text field to target. If not provided, will try to find the field by other means.",
+                required = false
+            ),
+            ParameterDef(
+                name = "description",
+                type = "string",
+                description = "The content description or hint text of the field to target. Use this to find fields without IDs.",
+                required = false
+            ),
+            ParameterDef(
                 name = "submit",
                 type = "boolean",
-                description = "Whether to submit the text after entering it. " +
-                        "This doesn't always work. If there is a button to click directly, use that",
+                description = "Whether to submit the text after entering it. This doesn't always work. If there is a button to click directly, use that",
                 required = true
             ),
-//            ParameterDef(
-//                name = "click_x",
-//                type = "integer",
-//                description = "X coordinate to click before entering text"
-//            ),
-//            ParameterDef(
-//                name = "click_y",
-//                type = "integer",
-//                description = "Y coordinate to click before entering text"
-//            )
         ],
         requiresAccessibility = true,
         requiresContext = true
@@ -564,26 +563,32 @@ object ToolHandler {
         context: Context,
         args: JSONObject
     ): String {
-        val x = args.optInt("click_x")
-        val y = args.optInt("click_y")
-        if (x != 0 && y != 0) {
-            performClickGesture(x, y, accessibilityService)
-        }
-
         val text = args.getString("text")
+        val rootNode = accessibilityService.rootInActiveWindow
+            ?: return "Error: No active window found"
 
-        val targetNode = if (args.has("id")) {
-            accessibilityService.rootInActiveWindow?.findAccessibilityNodeInfosByViewId(
-                args.getString(
-                    "id"
-                )
-            )?.firstOrNull()
-        } else {
-            accessibilityService.rootInActiveWindow?.findFocus(AccessibilityNodeInfo.FOCUS_INPUT)
-        } ?: return "Error: No targetable input field found"
+        val targetNode = when {
+            args.has("id") -> {
+                rootNode.findAccessibilityNodeInfosByViewId(args.getString("id"))?.firstOrNull()
+            }
+
+            args.has("description") -> {
+                val description = args.getString("description")
+                findNodeByDescription(rootNode, description)
+            }
+
+            else -> {
+                rootNode.findFocus(AccessibilityNodeInfo.FOCUS_INPUT)
+            }
+        } ?: return "Error: Could not find the target text field"
 
         if (!targetNode.isEditable) {
             return "Error: The targeted element is not an editable text field"
+        }
+
+        if (!targetNode.isFocused) {
+            targetNode.performAction(AccessibilityNodeInfo.ACTION_FOCUS)
+            Thread.sleep(100) // Small delay to ensure focus is set
         }
 
         val arguments = Bundle()
@@ -595,23 +600,45 @@ object ToolHandler {
         val setTextResult =
             targetNode.performAction(AccessibilityNodeInfo.ACTION_SET_TEXT, arguments)
 
-        if (args.optBoolean("submit") && setTextResult) {
-            // Use AccessibilityNodeInfo.AccessibilityAction.ACTION_IME_ENTER to click enter on the omnibox
+        if (!setTextResult) {
+            return "Failed to enter text"
+        }
+
+        if (args.optBoolean("submit")) {
             if (targetNode.performAction(AccessibilityNodeInfo.AccessibilityAction.ACTION_IME_ENTER.id)) {
                 System.err.println("PRESSED ENTER USING ACTION_IME_ENTER")
             } else {
-                // Fall back to the previous method if ACTION_IME_ENTER doesn't work
                 Runtime.getRuntime().exec(arrayOf("input", "keyevent", "66"))
                 System.err.println("PRESSED ENTER USING KEYEVENT")
             }
+        } else {
+            targetNode.performAction(AccessibilityNodeInfo.ACTION_CLEAR_FOCUS)
         }
         hideKeyboard(context)
 
-        return if (setTextResult) {
-            "Entered text: \"$text\""
-        } else {
-            "Failed to enter text"
+        return "Entered text: \"$text\""
+    }
+
+    private fun findNodeByDescription(
+        root: AccessibilityNodeInfo,
+        description: String
+    ): AccessibilityNodeInfo? {
+        if (root.contentDescription?.toString()?.contains(description, ignoreCase = true) == true ||
+            root.text?.toString()?.contains(description, ignoreCase = true) == true
+        ) {
+            return root
         }
+
+        for (i in 0 until root.childCount) {
+            val child = root.getChild(i) ?: continue
+            val result = findNodeByDescription(child, description)
+            if (result != null) {
+                return result
+            }
+            child.recycle()
+        }
+
+        return null
     }
 
     @Tool(

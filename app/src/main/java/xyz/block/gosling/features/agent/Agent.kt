@@ -176,8 +176,8 @@ class Agent : Service() {
                 |
                 |When you start an app, make sure the app is in the state you expect it to be in. If it is not, 
                 |try to navigate to the correct state (for example, getting back to the home page or start screen).
-                |When entering text, a keyboard will likely be overlayed at times, to use screenshot + swipe to ensure 
-                |you can access fields you need to interact with.
+                |When entering text, a keyboard will likely be overlayed at if the Y co-ordinate is below ${height/3} pixels
+                |Use swipe to ensure that it will be clickable in that case (and take a screenshot if needed)
                 |
                 |After each tool call and before the next step, write down what you see on the screen that helped 
                 |you resolve this step. Keep iterating until you complete the task or have exhausted all possible approaches.

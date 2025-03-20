@@ -26,6 +26,12 @@ fun getConversationTitle(conversation: Conversation): String {
     return conversation.messages
         .find { it.role == "user" }
         ?.let { firstText(it) }
-        ?.let { if (it.length > 28) "${it.take(28)}..." else it }
+        ?.let { it }
         ?: "Conversation ${conversation.id}"
+}
+
+fun getCurrentAssistantMessage(conversation: Conversation): Message? {
+    return conversation.messages
+        .filter { it.role == "assistant" }
+        .lastOrNull()
 }

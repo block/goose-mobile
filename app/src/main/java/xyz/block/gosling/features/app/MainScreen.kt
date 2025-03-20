@@ -4,7 +4,6 @@ import android.app.Activity
 import android.content.Context
 import android.content.Intent
 import android.net.Uri
-import android.text.format.DateUtils
 import android.util.Log
 import android.widget.Toast
 import androidx.activity.compose.rememberLauncherForActivityResult
@@ -36,7 +35,6 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.filled.ArrowForward
 import androidx.compose.material.icons.automirrored.filled.Send
 import androidx.compose.material.icons.filled.Mic
 import androidx.compose.material.icons.filled.PhotoCamera
@@ -76,7 +74,6 @@ import kotlinx.coroutines.launch
 import xyz.block.gosling.R
 import xyz.block.gosling.features.agent.AgentStatus
 import xyz.block.gosling.features.agent.Conversation
-import xyz.block.gosling.features.agent.getConversationTitle
 import xyz.block.gosling.features.overlay.OverlayService
 import xyz.block.gosling.features.settings.SettingsStore
 import xyz.block.gosling.shared.services.VoiceRecognitionService
@@ -98,15 +95,6 @@ private val predefinedQueries = listOf(
     "Turn on flashlight",
     "Take a picture using the camera and attach that to a new email. Save the email in drafts"
 )
-
-private fun formatDuration(durationMs: Long): String {
-    val seconds = durationMs / 1000
-    return when {
-        seconds < 60 -> "${seconds}s"
-        seconds < 3600 -> "${seconds / 60}m ${seconds % 60}s"
-        else -> "${seconds / 3600}h ${(seconds % 3600) / 60}m"
-    }
-}
 
 @OptIn(ExperimentalMaterial3Api::class, ExperimentalFoundationApi::class)
 @Composable
@@ -384,56 +372,10 @@ fun MainScreen(
                     verticalArrangement = Arrangement.spacedBy(8.dp)
                 ) {
                     items(conversations) { conversation ->
-                        Card(
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .clickable {
-                                    onNavigateToConversation(conversation.id)
-                                },
-                            shape = RoundedCornerShape(12.dp),
-                            colors = CardDefaults.cardColors(
-                                containerColor = MaterialTheme.colorScheme.surfaceContainer
-                            )
-                        ) {
-                            Row(
-                                modifier = Modifier
-                                    .fillMaxWidth()
-                                    .padding(16.dp),
-                                horizontalArrangement = Arrangement.SpaceBetween,
-                                verticalAlignment = Alignment.CenterVertically
-                            ) {
-                                Column(
-                                    modifier = Modifier.weight(1f),
-                                    verticalArrangement = Arrangement.spacedBy(4.dp)
-                                ) {
-                                    Text(
-                                        text = getConversationTitle(conversation),
-                                        style = MaterialTheme.typography.titleMedium,
-                                        color = MaterialTheme.colorScheme.onSurface
-                                    )
-                                    Text(
-                                        text = (DateUtils.getRelativeTimeSpanString(
-                                            conversation.startTime,
-                                            System.currentTimeMillis(),
-                                            DateUtils.SECOND_IN_MILLIS,
-                                            DateUtils.FORMAT_ABBREV_RELATIVE
-                                        ).toString() + (conversation.endTime?.let { endTime ->
-                                            val duration = endTime - conversation.startTime
-                                            " (${formatDuration(duration)})"
-                                        } ?: " (active)")),
-                                        style = MaterialTheme.typography.labelSmall,
-                                        color = MaterialTheme.colorScheme.onSecondaryContainer.copy(
-                                            alpha = 0.7f
-                                        )
-                                    )
-                                }
-                                Icon(
-                                    imageVector = Icons.AutoMirrored.Filled.ArrowForward,
-                                    contentDescription = "View conversation",
-                                    tint = MaterialTheme.colorScheme.onSecondaryContainer.copy(alpha = 0.7f)
-                                )
-                            }
-                        }
+                        ConversationCard(
+                            conversation = conversation,
+                            onClick = { onNavigateToConversation(conversation.id) }
+                        )
                     }
                 }
             }
@@ -631,5 +573,3 @@ private fun processAgentCommand(
         }
     }
 }
-
-

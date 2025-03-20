@@ -30,14 +30,11 @@ import xyz.block.gosling.shared.theme.GoslingTheme
 class MainActivity : ComponentActivity() {
     companion object {
         private const val REQUEST_NOTIFICATION_PERMISSION = 1234
-        private const val PREFS_NAME = "GoslingPrefs"
-        private const val MESSAGES_KEY = "chat_messages"
     }
 
     private lateinit var settingsStore: SettingsStore
     private lateinit var accessibilitySettingsLauncher: ActivityResultLauncher<Intent>
     private var isAccessibilityEnabled by mutableStateOf(false)
-    private val sharedPreferences by lazy { getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE) }
     lateinit var agentServiceManager: AgentServiceManager
     var currentAgent by mutableStateOf<Agent?>(null)
         private set
@@ -59,13 +56,21 @@ class MainActivity : ComponentActivity() {
         } else {
             agentServiceManager.bindAndStartAgent { agent ->
                 currentAgent = agent
+                // Mark any stale active conversations as completed
+                val currentTime = System.currentTimeMillis()
+                agent.conversationManager.conversations.value
+                    .filter { it.endTime == null }
+                    .forEach { conversation ->
+                        agent.conversationManager.updateCurrentConversation(
+                            conversation.copy(endTime = currentTime)
+                        )
+                    }
                 Log.d("MainActivity", "Agent service started successfully")
             }
 
             startService(Intent(this, OverlayService::class.java))
         }
 
-        // Register the launcher for accessibility settings
         accessibilitySettingsLauncher = registerForActivityResult(
             ActivityResultContracts.StartActivityForResult()
         ) { _ ->
@@ -104,20 +109,16 @@ class MainActivity : ComponentActivity() {
         GoslingApplication.isMainActivityRunning = true
         OverlayService.getInstance()?.updateOverlayVisibility()
 
-        // Check and save accessibility permission state
         val isEnabled = checkAccessibilityPermission(this)
         settingsStore.isAccessibilityEnabled = isEnabled
         isAccessibilityEnabled = isEnabled
         Log.d("Gosling", "MainActivity: Updated accessibility state on resume: $isEnabled")
 
-        // Start services if overlay permission is granted
         if (Settings.canDrawOverlays(this)) {
-            // Start the overlay service if it's not running
             if (OverlayService.getInstance() == null) {
                 startService(Intent(this, OverlayService::class.java))
             }
 
-            // Bind to the agent service if we don't have an agent
             if (currentAgent == null) {
                 agentServiceManager.bindAndStartAgent { agent ->
                     currentAgent = agent
@@ -138,7 +139,18 @@ class MainActivity : ComponentActivity() {
         GoslingApplication.isMainActivityRunning = false
         OverlayService.getInstance()?.updateOverlayVisibility()
 
-        // Only unbind when the activity is being destroyed
+        // Mark any active conversations as completed
+        currentAgent?.let { agent ->
+            val currentTime = System.currentTimeMillis()
+            agent.conversationManager.currentConversation.value?.let { conversation ->
+                if (conversation.endTime == null) {
+                    agent.conversationManager.updateCurrentConversation(
+                        conversation.copy(endTime = currentTime)
+                    )
+                }
+            }
+        }
+        
         currentAgent = null
         agentServiceManager.unbindAgent()
     }

@@ -400,7 +400,8 @@ object ToolHandler {
         )
 
         context.startActivity(launchIntent)
-        return "Started app: $packageName"
+        val appInstruction = AppInstructions.getInstructions(packageName)
+        return "Started app: $packageName $appInstruction"
     }
 
     @Tool(
@@ -516,8 +517,10 @@ object ToolHandler {
         requiresAccessibility = true
     )
     fun enterText(accessibilityService: AccessibilityService, args: JSONObject): String {
+        val currentPackageName = accessibilityService.rootInActiveWindow?.packageName?.toString() ?: "Unknown package"
 
-        var text = args.getString("text")
+
+        val text = args.getString("text")
 
         val targetNode = if (args.has("id")) {
             accessibilityService.rootInActiveWindow?.findAccessibilityNodeInfosByViewId(

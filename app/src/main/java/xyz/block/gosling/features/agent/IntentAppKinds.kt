@@ -7,7 +7,8 @@ package xyz.block.gosling.features.agent
 data class AppCategory(
     val name: String,
     val description: String,
-    val packageNames: Array<String>
+    val packageNames: Array<String>,
+    val generalUsageInstructions: String
 )
 
 /**
@@ -16,7 +17,13 @@ data class AppCategory(
 object IntentAppKinds {
     val paymentApps = AppCategory(
         name = "payment",
-        description = "Consider these apps when needing to make payment or check funds available. Using screenshots is recommended to help navigate these.",
+        description = "Consider these apps when needing to make payment or check funds available.",
+        generalUsageInstructions = """ 
+            these apps typically will have a balance in user settings.
+            you will need to look at various screens visually to navigate.
+             Using screenshots is recommended to help navigate these.
+        """.trimIndent(),
+
         packageNames = arrayOf(
             "com.google.android.apps.nbu.paisa.user", // Google Pay
             "net.one97.paytm", // Paytm
@@ -73,6 +80,12 @@ object IntentAppKinds {
     val travelBookingApps = AppCategory(
         name = "travel booking",
         description = "consider when booking hotels and other travel accommodations or planning trips",
+        generalUsageInstructions = """
+             Use this as a way to explore and help plan along with other apps.
+             If making a booking, you will need to spend some time iterating to find the right screens and enter information.
+             Check with user before committing a booking.            
+        """.trimIndent(),
+
         packageNames = arrayOf(
             "com.booking", // Booking.com
             "com.expedia.bookings", // Expedia
@@ -89,6 +102,8 @@ object IntentAppKinds {
     val foodOrderingApps = AppCategory(
         name = "food ordering or reservations",
         description = "For ordering delivery of food or restaurant reservations",
+        generalUsageInstructions = "",
+
         packageNames = arrayOf(
             "com.doordash.driverapp", // DoorDash
             "com.ubercab.eats", // Uber Eats
@@ -103,6 +118,14 @@ object IntentAppKinds {
     val ecommerceApps = AppCategory(
         name = "ecommerce and products",
         description = "Consider when doing shopping for products or product research, pricing etc",
+        generalUsageInstructions = """
+            first consider if researching products or looking for specific ones. Usually user will be doing one then the other.
+            ensure you find the search and use it to find products.
+            Do scroll when there are lists screenshot them
+            Consider ratings and reviews if asked by clicking in to items. 
+            Click in to items to get details, don't assume. 
+            When ordering, find an add to checkout button and always add to checkout when asked.            
+        """.trimIndent(),
         packageNames = arrayOf(
             "com.amazon.mShop.android.shopping", // Amazon Shopping
             "com.ebay.mobile", // eBay
@@ -212,6 +235,11 @@ object IntentAppKinds {
     val airlineApps = AppCategory(
         name = "air travel",
         description = "for flights, booking or status",
+        generalUsageInstructions = """
+            Look for how to look up flight prices with routes and dates provided, and investigate.
+            The app will often have a place to book flights as well as separate places to check flight status if asked.
+            These apps are often quite complicated so will need to take multiple screenshots as actions are taken and keep iterating to solve.
+        """.trimIndent(),
         packageNames = arrayOf(
             "com.aa.android", // American Airlines
             "com.delta.mobile.android", // Delta Air Lines
@@ -285,17 +313,15 @@ object IntentAppKinds {
         )
     )
     
-    /**
-     * List of all app categories
-     */
-    val allCategories = listOf(
+
+    private  val allCategories = listOf(
         paymentApps,
         travelBookingApps,
         foodOrderingApps,
         ecommerceApps,
         airlineApps
     )
-    
+
     /**
      * Maps a package name to its category
      */

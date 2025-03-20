@@ -393,6 +393,30 @@ class Agent : Service() {
                     continue
                 }
 
+                val explanationPrompt = "" // change to something if you want an explanation
+                if (explanationPrompt != "") {
+                    val internetQuery = Message(
+                        role = "user",
+                        content = contentWithText(explanationPrompt)
+                    )
+                    val explainConversation = conversationManager.currentConversation.value?.copy(
+                        messages = conversationManager.currentConversation.value?.messages?.plus(
+                            internetQuery
+                        ) ?: listOf(internetQuery)
+                    )
+
+                    if (explainConversation != null) {
+                        val response = callLlm(
+                            explainConversation.messages,
+                            context
+                        )
+                        val assistantMessage =
+                            response.getJSONArray("choices").getJSONObject(0)
+                                .getJSONObject("message")
+                        val content = assistantMessage.optString("content", "Ok")
+                        Log.d("Agent", "Explanation response: $content")
+                    }
+                }
 
                 context.getExternalFilesDir(null)?.let { filesDir ->
                     val conversationsDir = File(filesDir, "session_dumps")

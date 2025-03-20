@@ -2,16 +2,18 @@ package xyz.block.gosling.features.agent
 
 import android.accessibilityservice.AccessibilityService
 import android.accessibilityservice.GestureDescription
+import android.app.SearchManager
 import android.content.BroadcastReceiver
 import android.content.ComponentName
 import android.content.Context
 import android.content.Intent
 import android.graphics.Path
 import android.graphics.Rect
-import android.net.Uri
 import android.os.Bundle
 import android.os.Looper
 import android.view.accessibility.AccessibilityNodeInfo
+import android.view.inputmethod.InputMethodManager
+import androidx.core.net.toUri
 import org.json.JSONObject
 import java.util.Locale
 import java.util.concurrent.CountDownLatch
@@ -217,16 +219,19 @@ object MobileMCP {
 
 }
 
+private const val appLoadTimeWait: Long = 2500
+private const val cordinateHint =
+    "(coordinates are of form: [x-coordinate of the left edge, y-coordinate of the top edge, " +
+            "x-coordinate of the right edge, y-coordinate of the bottom edge])"
+
 object ToolHandler {
     private val toolCallCounter = AtomicLong(0)
+
 
     private fun newToolCallId(): String {
         return "call_${toolCallCounter.incrementAndGet()}"
     }
 
-    /**
-     * Helper function to perform a gesture using the Accessibility API
-     */
     private fun performGesture(
         gesture: GestureDescription,
         accessibilityService: AccessibilityService
@@ -259,6 +264,29 @@ object ToolHandler {
         return gestureResult
     }
 
+    private fun performClickGesture(
+        x: Int,
+        y: Int,
+        accessibilityService: AccessibilityService
+    ): Boolean {
+        val clickPath = Path()
+        clickPath.moveTo(x.toFloat(), y.toFloat())
+
+        val gestureBuilder = GestureDescription.Builder()
+        gestureBuilder.addStroke(GestureDescription.StrokeDescription(clickPath, 0, 50))
+
+        val clickResult = performGesture(gestureBuilder.build(), accessibilityService)
+        return clickResult
+    }
+
+    private fun hideKeyboard(context: Context, accessibilityService: AccessibilityService? = null) {
+        val imm =
+            context.getSystemService(Context.INPUT_METHOD_SERVICE) as? InputMethodManager ?: return
+
+        val activity = context as? android.app.Activity ?: return
+        val view = activity.currentFocus ?: activity.window?.decorView?.rootView ?: return
+        imm.hideSoftInputFromWindow(view.windowToken, 0)
+    }
 
     @Tool(
         name = "recentApps",
@@ -286,10 +314,12 @@ object ToolHandler {
         return AppUsageStats.getFrequentApps(context, limit = 20).joinToString { ", " }
     }
 
-
     @Tool(
         name = "getUiHierarchy",
-        description = "call this to show UI elements with their properties and locations on screen in a hierarchical structure.",
+        description = "call this to show UI elements with their properties and locations on screen " +
+                "in a hierarchical structure. If the results from this or other tools don't seem" +
+                "complete, call getUiHierarchy again to give the system time to finish. But not " +
+                "more than twice",
         parameters = [],
         requiresAccessibility = true
     )
@@ -300,8 +330,7 @@ object ToolHandler {
 
             val appInfo = "App: ${activeWindow.packageName}"
             val hierarchy = buildCompactHierarchy(activeWindow)
-            System.out.println("HERE IT IS\n" + hierarchy)
-            "$appInfo (coordinates are of form: [x-coordinate of the left edge, y-coordinate of the top edge, x-coordinate of the right edge, y-coordinate of the bottom edge])\n$hierarchy"
+            "$appInfo $cordinateHint\n$hierarchy"
         } catch (e: Exception) {
             "ERROR: Failed to get UI hierarchy: ${e.message}"
         }
@@ -433,13 +462,7 @@ object ToolHandler {
         val x = args.getInt("x")
         val y = args.getInt("y")
 
-        val clickPath = Path()
-        clickPath.moveTo(x.toFloat(), y.toFloat())
-
-        val gestureBuilder = GestureDescription.Builder()
-        gestureBuilder.addStroke(GestureDescription.StrokeDescription(clickPath, 0, 50))
-
-        val clickResult = performGesture(gestureBuilder.build(), accessibilityService)
+        val clickResult = performClickGesture(x, y, accessibilityService)
         return if (clickResult) "Clicked at coordinates ($x, $y)" else "Failed to click at coordinates ($x, $y)"
     }
 
@@ -507,7 +530,8 @@ object ToolHandler {
     @Tool(
         name = "enterText",
         description = "Enter text into the a text field. Make sure the field you want the " +
-                "text to enter into is focused. Click it if needed, don't assume.",
+                "text to enter into is focused. You can use the click_x, click_y to click the " +
+                "field before entering text.",
         parameters = [
             ParameterDef(
                 name = "text",
@@ -520,13 +544,31 @@ object ToolHandler {
                 description = "Whether to submit the text after entering it. " +
                         "This doesn't always work. If there is a button to click directly, use that",
                 required = true
-            )
+            ),
+//            ParameterDef(
+//                name = "click_x",
+//                type = "integer",
+//                description = "X coordinate to click before entering text"
+//            ),
+//            ParameterDef(
+//                name = "click_y",
+//                type = "integer",
+//                description = "Y coordinate to click before entering text"
+//            )
         ],
-        requiresAccessibility = true
+        requiresAccessibility = true,
+        requiresContext = true
     )
-    fun enterText(accessibilityService: AccessibilityService, args: JSONObject): String {
-        val currentPackageName = accessibilityService.rootInActiveWindow?.packageName?.toString() ?: "Unknown package"
-
+    fun enterText(
+        accessibilityService: AccessibilityService,
+        context: Context,
+        args: JSONObject
+    ): String {
+        val x = args.optInt("click_x")
+        val y = args.optInt("click_y")
+        if (x != 0 && y != 0) {
+            performClickGesture(x, y, accessibilityService)
+        }
 
         val text = args.getString("text")
 
@@ -563,6 +605,7 @@ object ToolHandler {
                 System.err.println("PRESSED ENTER USING KEYEVENT")
             }
         }
+        hideKeyboard(context)
 
         return if (setTextResult) {
             "Entered text: \"$text\""
@@ -572,40 +615,88 @@ object ToolHandler {
     }
 
     @Tool(
-        name = "actionView",
-        description = "Open a URL using Android's ACTION_VIEW intent. Requires the app " +
-                "installed and that you know that app can open the url",
+        name = "webSearch",
+        description = "Perform a web search using the default search engine.",
         parameters = [
             ParameterDef(
-                name = "package_name",
+                name = "query",
                 type = "string",
-                description = "Package name of the app to open the URL in"
-            ),
+                description = "What to search for"
+            )
+        ],
+        requiresContext = true,
+        requiresAccessibility = true
+    )
+    fun webSearch(
+        accessibilityService: AccessibilityService,
+        context: Context,
+        args: JSONObject
+    ): String {
+        val query = args.getString("query")
+
+        try {
+            val intent = Intent(Intent.ACTION_WEB_SEARCH)
+            intent.putExtra(SearchManager.QUERY, query)
+            intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+            context.startActivity(intent)
+
+            Thread.sleep(appLoadTimeWait)
+
+            val activeWindow = accessibilityService.rootInActiveWindow
+                ?: return "The search is done, but no active window. " +
+                        "Check the UI hierarchy to see what happened."
+
+            val hierarchy = buildCompactHierarchy(activeWindow)
+
+            return "The search is done. What follows are the results " +
+                    "(${cordinateHint}):\n\n${hierarchy}"
+
+        } catch (e: Exception) {
+            return "Failed to perform web search: ${e.message}"
+        }
+    }
+
+    @Tool(
+        name = "openUrl",
+        description = "Open a URL. Can be an app specific url or a general url that you know or " +
+                "got from another app or tool (like websearch)",
+        parameters = [
             ParameterDef(
                 name = "url",
                 type = "string",
                 description = "The URL to open"
             )
         ],
-        requiresContext = true
+        requiresContext = true,
+        requiresAccessibility = true
     )
-    fun actionView(context: Context, args: JSONObject): String {
-        val packageName = args.getString("package_name")
+    fun openUrl(
+        accessibilityService: AccessibilityService,
+        context: Context,
+        args: JSONObject
+    ): String {
         val url = args.getString("url")
 
         return try {
-            val intent = Intent(Intent.ACTION_VIEW, Uri.parse(url)).apply {
-                addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
-                setPackage(packageName)
-            }
-
+            val intent = Intent(Intent.ACTION_VIEW, url.toUri())
+            intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
             context.startActivity(intent)
-            "Opened URL '$url' in app: $packageName"
+
+            Thread.sleep(appLoadTimeWait)
+
+            val activeWindow = accessibilityService.rootInActiveWindow
+                ?: return "URL opened, but no active window. " +
+                        "Check the UI hierarchy to see what happened."
+
+            val appInfo = "App: ${activeWindow.packageName}"
+            val hierarchy = buildCompactHierarchy(activeWindow)
+
+            return "The URL has been opened. ${appInfo}. What follows is the contents. " +
+                    "(${cordinateHint}):\n\n${hierarchy}"
         } catch (e: Exception) {
             "Failed to open URL: ${e.message}"
         }
     }
-
 
     fun getSerializableToolDefinitions(
         context: Context,
@@ -646,8 +737,6 @@ object ToolHandler {
             ModelProvider.GEMINI -> {
                 methods.mapNotNull { method ->
                     val tool = method.getAnnotation(Tool::class.java) ?: return@mapNotNull null
-
-                    // Always create a ToolParametersObject, even for tools with no parameters
                     val toolParameters = ToolParametersObject(
                         properties = tool.parameters.associate { param ->
                             param.name to ToolParameter(
@@ -677,11 +766,9 @@ object ToolHandler {
             }
         }
 
-        // Check if app extensions are enabled
         val settings = xyz.block.gosling.features.settings.SettingsStore(context)
         val enableAppExtensions = settings.enableAppExtensions
 
-        // Only add MCP tools if app extensions are enabled
         val mcpTools = mutableListOf<ToolDefinition>()
         if (enableAppExtensions) {
             try {
@@ -693,7 +780,6 @@ object ToolHandler {
                     @Suppress("UNCHECKED_CAST")
                     val tools = mcp["tools"] as Map<String, Map<String, String>>
 
-                    // For each tool in this MCP, create a ToolDefinition
                     for ((toolName, toolInfo) in tools) {
                         val toolDescription = toolInfo["description"] ?: ""
 

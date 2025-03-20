@@ -469,7 +469,7 @@ object ToolHandler {
 
     @Tool(
         name = "swipe",
-        description = "Swipe from one point to another on the screen for example to scroll",
+        description = "Swipe from one point to another on the screen for example to scroll.",
         parameters = [
             ParameterDef(
                 name = "start_x",
@@ -530,7 +530,75 @@ object ToolHandler {
 
     @Tool(
         name = "enterText",
-        description = "Enter text into a text field. You must specify either the field's ID or provide enough information to find it (like text content or description - ensure email goes in email, phone goes in phone, etc.). After entering text, focus will be cleared to allow entering text in another field.",
+        description = "Enter text into the a text field. Make sure the field you want the " +
+                "text to enter into is focused. Click it if needed, don't assume.",
+        parameters = [
+            ParameterDef(
+                name = "text",
+                type = "string",
+                description = "Text to enter"
+            ),
+            ParameterDef(
+                name = "submit",
+                type = "boolean",
+                description = "Whether to submit the text after entering it. " +
+                        "This doesn't always work. If there is a button to click directly, use that",
+                required = true
+            )
+        ],
+        requiresAccessibility = true
+    )
+    fun enterText(accessibilityService: AccessibilityService, args: JSONObject): String {
+        val currentPackageName = accessibilityService.rootInActiveWindow?.packageName?.toString() ?: "Unknown package"
+
+
+        val text = args.getString("text")
+
+        val targetNode = if (args.has("id")) {
+            accessibilityService.rootInActiveWindow?.findAccessibilityNodeInfosByViewId(
+                args.getString(
+                    "id"
+                )
+            )?.firstOrNull()
+        } else {
+            accessibilityService.rootInActiveWindow?.findFocus(AccessibilityNodeInfo.FOCUS_INPUT)
+        } ?: return "Error: No targetable input field found"
+
+        if (!targetNode.isEditable) {
+            return "Error: The targeted element is not an editable text field"
+        }
+
+        val arguments = Bundle()
+        arguments.putCharSequence(
+            AccessibilityNodeInfo.ACTION_ARGUMENT_SET_TEXT_CHARSEQUENCE,
+            text
+        )
+
+        val setTextResult =
+            targetNode.performAction(AccessibilityNodeInfo.ACTION_SET_TEXT, arguments)
+
+        if (args.optBoolean("submit") && setTextResult) {
+            // Use AccessibilityNodeInfo.AccessibilityAction.ACTION_IME_ENTER to click enter on the omnibox
+            if (targetNode.performAction(AccessibilityNodeInfo.AccessibilityAction.ACTION_IME_ENTER.id)) {
+                System.err.println("PRESSED ENTER USING ACTION_IME_ENTER")
+            } else {
+                // Fall back to the previous method if ACTION_IME_ENTER doesn't work
+                Runtime.getRuntime().exec(arrayOf("input", "keyevent", "66"))
+                System.err.println("PRESSED ENTER USING KEYEVENT")
+            }
+        }
+
+        return if (setTextResult) {
+            "Entered text: \"$text\". IMPORTANT: consider if keyboard is visible, will need to swipe up clicking on next thing."
+        } else {
+            "Failed to enter text"
+        }
+    }
+
+
+    @Tool(
+        name = "enterTextByDescription",
+        description = "Try this when you have a description of a field to enter text into. You must specify either the field's ID or provide enough information to find it (like text content or description - ensure email goes in email, phone goes in phone, etc.). After entering text, focus will be cleared to allow entering text in another field.",
         parameters = [
             ParameterDef(
                 name = "text",
@@ -547,7 +615,7 @@ object ToolHandler {
                 name = "description",
                 type = "string",
                 description = "The content description or hint text of the field to target. Use this to find fields without IDs.",
-                required = false
+                required = true
             ),
             ParameterDef(
                 name = "submit",
@@ -559,7 +627,7 @@ object ToolHandler {
         requiresAccessibility = true,
         requiresContext = true
     )
-    fun enterText(
+    fun enterTextByDescription(
         accessibilityService: AccessibilityService,
         context: Context,
         args: JSONObject
@@ -587,9 +655,6 @@ object ToolHandler {
                 }
             } ?: return "Error: Could not find the target text field"
 
-            if (!targetNode.isEditable) {
-                return "Error: The targeted element is not an editable text field"
-            }
 
             if (!targetNode.isFocused) {
                 targetNode.performAction(AccessibilityNodeInfo.ACTION_FOCUS)

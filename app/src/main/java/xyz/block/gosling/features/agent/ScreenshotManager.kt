@@ -8,10 +8,14 @@ import android.os.Handler
 import android.os.Looper
 import android.provider.MediaStore
 import android.util.Log
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.Job
+import kotlinx.coroutines.SupervisorJob
+import kotlinx.coroutines.launch
+import kotlinx.coroutines.sync.Mutex
+import kotlinx.coroutines.sync.withLock
 
-/**
- * Manages screenshot detection functionality.
- */
 class ScreenshotManager(private val context: Context) {
     companion object {
         private const val TAG = "ScreenshotManager"
@@ -19,24 +23,21 @@ class ScreenshotManager(private val context: Context) {
 
     private var lastScreenshotDate: Long = System.currentTimeMillis()
     private var onScreenshotListener: ((Uri) -> Unit)? = null
+    private val scope = CoroutineScope(Dispatchers.IO + SupervisorJob())
+    private val processingJobs = mutableListOf<Job>()
+    private val processingLock = Mutex()
 
     private val contentObserver = object : ContentObserver(Handler(Looper.getMainLooper())) {
         override fun onChange(selfChange: Boolean) {
             super.onChange(selfChange)
-            queryLatestScreenshot()
+            maybeHandleScreenshot()
         }
     }
 
-    /**
-     * Sets a listener to be called when a screenshot is detected
-     */
     fun setOnScreenshotListener(listener: (Uri) -> Unit) {
         onScreenshotListener = listener
     }
 
-    /**
-     * Starts monitoring for screenshots
-     */
     fun startMonitoring() {
         Log.d(TAG, "Starting screenshot monitoring")
         lastScreenshotDate = System.currentTimeMillis()
@@ -47,15 +48,24 @@ class ScreenshotManager(private val context: Context) {
         )
     }
 
-    /**
-     * Stops monitoring for screenshots
-     */
     fun stopMonitoring() {
         Log.d(TAG, "Stopping screenshot monitoring")
         context.contentResolver.unregisterContentObserver(contentObserver)
     }
 
-    private fun queryLatestScreenshot() {
+    fun cleanup() {
+        stopMonitoring()
+        scope.launch {
+            processingLock.withLock {
+                Log.d(TAG, "Cancelling ${processingJobs.size} screenshot processing jobs")
+                processingJobs.forEach { it.cancel() }
+                processingJobs.clear()
+            }
+        }
+        onScreenshotListener = null
+    }
+
+    private fun maybeHandleScreenshot() {
         val projection = arrayOf(
             MediaStore.Images.Media._ID,
             MediaStore.Images.Media.DATE_ADDED,
@@ -95,7 +105,22 @@ class ScreenshotManager(private val context: Context) {
                         MediaStore.Images.Media.EXTERNAL_CONTENT_URI, id
                     )
                     Log.d(TAG, "Screenshot detected: $contentUri")
-                    onScreenshotListener?.invoke(contentUri)
+                    scope.launch {
+                        try {
+                            processingLock.withLock {
+                                processingJobs.add(this.coroutineContext[Job]!!)
+                            }
+
+                            onScreenshotListener?.invoke(contentUri)
+
+                        } catch (e: Exception) {
+                            Log.e(TAG, "Error processing screenshot: ${e.message}", e)
+                        } finally {
+                            processingLock.withLock {
+                                processingJobs.remove(this.coroutineContext[Job])
+                            }
+                        }
+                    }
                 }
             }
         }

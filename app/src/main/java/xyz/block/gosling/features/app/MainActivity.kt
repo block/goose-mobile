@@ -17,10 +17,10 @@ import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
-import androidx.core.content.edit
 import androidx.core.net.toUri
 import androidx.navigation.compose.rememberNavController
 import xyz.block.gosling.GoslingApplication
+import xyz.block.gosling.features.agent.Agent
 import xyz.block.gosling.features.agent.AgentServiceManager
 import xyz.block.gosling.features.overlay.OverlayService
 import xyz.block.gosling.features.settings.SettingsStore
@@ -38,33 +38,10 @@ class MainActivity : ComponentActivity() {
     private lateinit var accessibilitySettingsLauncher: ActivityResultLauncher<Intent>
     private var isAccessibilityEnabled by mutableStateOf(false)
     private val sharedPreferences by lazy { getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE) }
-    private lateinit var agentServiceManager: AgentServiceManager
+    lateinit var agentServiceManager: AgentServiceManager
+    var currentAgent by mutableStateOf<Agent?>(null)
+        private set
 
-    internal fun saveMessages(messages: List<ChatMessage>) {
-        val json = messages.joinToString(",", "[", "]") { message ->
-            """{"text":"${message.text}","isUser":${message.isUser},"timestamp":${message.timestamp}}"""
-        }
-        sharedPreferences.edit { putString(MESSAGES_KEY, json) }
-    }
-
-    internal fun loadMessages(): List<ChatMessage> {
-        val json = sharedPreferences.getString(MESSAGES_KEY, "[]") ?: "[]"
-        return try {
-            json.removeSurrounding("[", "]")
-                .split("},{")
-                .filter { it.isNotEmpty() }
-                .map { messageStr ->
-                    val cleanStr = messageStr.removeSurrounding("{", "}")
-                    val parts = cleanStr.split(",")
-                    val text = parts[0].split(":")[1].trim('"')
-                    val isUser = parts[1].split(":")[1].toBoolean()
-                    val timestamp = parts[2].split(":")[1].toLong()
-                    ChatMessage(text, isUser, timestamp)
-                }
-        } catch (e: Exception) {
-            emptyList()
-        }
-    }
 
     @SuppressLint("UseKtx")
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -81,6 +58,7 @@ class MainActivity : ComponentActivity() {
             startActivity(intent)
         } else {
             agentServiceManager.bindAndStartAgent { agent ->
+                currentAgent = agent
                 Log.d("MainActivity", "Agent service started successfully")
             }
 
@@ -139,10 +117,12 @@ class MainActivity : ComponentActivity() {
                 startService(Intent(this, OverlayService::class.java))
             }
 
-            // Bind to the agent service
-            agentServiceManager.bindAndStartAgent { agent ->
-                // Agent is now started as a foreground service and has a status listener set up
-                Log.d("MainActivity", "Agent service started successfully")
+            // Bind to the agent service if we don't have an agent
+            if (currentAgent == null) {
+                agentServiceManager.bindAndStartAgent { agent ->
+                    currentAgent = agent
+                    Log.d("MainActivity", "Agent service started successfully")
+                }
             }
         }
     }
@@ -151,9 +131,6 @@ class MainActivity : ComponentActivity() {
         super.onPause()
         GoslingApplication.isMainActivityRunning = false
         OverlayService.getInstance()?.updateOverlayVisibility()
-
-        // Unbind the agent service to prevent leaks
-        agentServiceManager.unbindAgent()
     }
 
     override fun onDestroy() {
@@ -161,7 +138,8 @@ class MainActivity : ComponentActivity() {
         GoslingApplication.isMainActivityRunning = false
         OverlayService.getInstance()?.updateOverlayVisibility()
 
-        // Ensure the agent service is unbound
+        // Only unbind when the activity is being destroyed
+        currentAgent = null
         agentServiceManager.unbindAgent()
     }
 

@@ -11,6 +11,7 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.text.selection.SelectionContainer
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.Delete
@@ -37,6 +38,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
@@ -46,7 +48,6 @@ import xyz.block.gosling.features.agent.Conversation
 import xyz.block.gosling.features.agent.Message
 import xyz.block.gosling.features.agent.firstText
 import xyz.block.gosling.features.agent.getConversationTitle
-import androidx.compose.foundation.text.selection.SelectionContainer
 
 @Composable
 private fun MessageCard(message: Message, modifier: Modifier = Modifier) {
@@ -163,7 +164,9 @@ fun ConversationScreen(
                     Text(
                         text = conversation?.let { conv ->
                             getConversationTitle(conv)
-                        } ?: "Loading..."
+                        } ?: "Loading...",
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis
                     )
                 },
                 navigationIcon = {

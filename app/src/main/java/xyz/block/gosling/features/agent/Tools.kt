@@ -15,11 +15,11 @@ import android.view.accessibility.AccessibilityNodeInfo
 import android.view.inputmethod.InputMethodManager
 import androidx.core.net.toUri
 import org.json.JSONObject
+import xyz.block.gosling.features.overlay.OverlayService
 import java.util.Locale
 import java.util.concurrent.CountDownLatch
 import java.util.concurrent.TimeUnit
 import java.util.concurrent.atomic.AtomicLong
-import xyz.block.gosling.features.overlay.OverlayService
 
 
 @Target(AnnotationTarget.FUNCTION)
@@ -643,7 +643,6 @@ object ToolHandler {
             if (result != null) {
                 return result
             }
-            child.recycle()
         }
 
         return null

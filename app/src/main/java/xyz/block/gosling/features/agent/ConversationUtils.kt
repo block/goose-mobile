@@ -14,6 +14,13 @@ fun firstText(message: Message): String {
     }
 }
 
+fun firstImage(message: Message): Content.ImageUrl? {
+    if (message.content.isNullOrEmpty()) {
+        return null
+    }
+    return message.content.filterIsInstance<Content.ImageUrl>().firstOrNull()
+}
+
 fun contentWithText(text: String): List<Content.Text> {
     return listOf(
         Content.Text(

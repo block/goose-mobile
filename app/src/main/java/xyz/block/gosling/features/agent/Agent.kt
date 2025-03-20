@@ -63,7 +63,6 @@ class Agent : Service() {
             ignoreUnknownKeys = true
         }
 
-        // Shared OkHttpClient instance with connection pooling
         private val okHttpClient by lazy {
             OkHttpClient.Builder()
                 .connectionPool(ConnectionPool(5, 5, TimeUnit.MINUTES))
@@ -330,18 +329,12 @@ class Agent : Service() {
 
                         val (toolResults, toolAnnotations) = executeTools(toolCalls, context)
 
-                        val toolCallsWithIds = toolCalls?.mapIndexed { index, toolCall ->
-                            val toolCallId = toolResults[index]["tool_call_id"]
-                                ?: "call_${System.currentTimeMillis()}_$index"
-                            toolCall to toolCallId
-                        } ?: emptyList()
-
                         val assistantMessage = Message(
                             role = "assistant",
                             content = contentWithText(assistantReply),
-                            toolCalls = toolCallsWithIds.map { (toolCall, id) ->
+                            toolCalls = toolCalls?.map { toolCall ->
                                 ToolCall(
-                                    id = id,
+                                    id = toolCall.toolId,
                                     function = ToolFunction(
                                         name = toolCall.name,
                                         arguments = toolCall.arguments.toString()
@@ -497,8 +490,7 @@ class Agent : Service() {
         }
     }
 
-
-    private fun filterUiHierarchyMessages(messages: List<Message>): List<Message> {
+    private fun removeOutdatedPayloads(messages: List<Message>): List<Message> {
         val isUiHierarchyCall = { message: Message ->
             message.role == "tool" && message.name == "getUiHierarchy"
         }
@@ -506,10 +498,15 @@ class Agent : Service() {
         val lastUiHierarchyIndex = messages.indexOfLast(isUiHierarchyCall)
 
         return messages.mapIndexed { index, message ->
-            if (isUiHierarchyCall(message) && index < lastUiHierarchyIndex) {
-                message.copy(content = contentWithText("{UI hierarchy output truncated}"))
-            } else {
-                message
+            when {
+                index >= lastUiHierarchyIndex -> message
+                isUiHierarchyCall(message) ->
+                    message.copy(content = contentWithText("{UI hierarchy output truncated}"))
+
+                message.role == "user" && message.content?.any { it is Content.ImageUrl } == true ->
+                    message.copy(content = message.content.filterNot { it is Content.ImageUrl })
+
+                else -> message
             }
         }
     }
@@ -557,7 +554,7 @@ class Agent : Service() {
         val model = AiModel.fromIdentifier(settings.llmModel)
         val apiKey = settings.getApiKey(model.provider)
 
-        val processedMessages = filterUiHierarchyMessages(messages)
+        val processedMessages = removeOutdatedPayloads(messages)
 
         val urlString = when (model.provider) {
             ModelProvider.OPENAI -> "https://api.openai.com/v1/chat/completions"
@@ -629,12 +626,11 @@ class Agent : Service() {
                 )
             }
 
-            val toolCallId = "call_${System.currentTimeMillis()}_$index"
             val startTime = System.currentTimeMillis()
             val result = callTool(toolCall, context, GoslingAccessibilityService.getInstance())
             annotations.add(mapOf("duration" to (System.currentTimeMillis() - startTime) / 1000.0))
             mapOf(
-                "tool_call_id" to toolCallId,
+                "tool_call_id" to toolCall.toolId,
                 "output" to result,
                 "name" to toolCall.name
             )

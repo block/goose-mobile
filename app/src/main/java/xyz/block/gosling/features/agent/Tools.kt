@@ -13,10 +13,10 @@ import android.os.Bundle
 import android.os.Looper
 import android.view.accessibility.AccessibilityNodeInfo
 import org.json.JSONObject
-import xyz.block.gosling.GoslingApplication
 import java.util.Locale
 import java.util.concurrent.CountDownLatch
 import java.util.concurrent.TimeUnit
+import java.util.concurrent.atomic.AtomicLong
 
 
 @Target(AnnotationTarget.FUNCTION)
@@ -39,6 +39,7 @@ annotation class ParameterDef(
 )
 
 data class InternalToolCall(
+    val toolId: String,
     val name: String,
     val arguments: JSONObject
 )
@@ -217,6 +218,12 @@ object MobileMCP {
 }
 
 object ToolHandler {
+    private val toolCallCounter = AtomicLong(0)
+
+    private fun newToolCallId(): String {
+        return "call_${toolCallCounter.incrementAndGet()}"
+    }
+
     /**
      * Helper function to perform a gesture using the Accessibility API
      */
@@ -829,7 +836,8 @@ object ToolHandler {
                 val functionObject = json.getJSONObject("function")
                 InternalToolCall(
                     name = functionObject.getString("name"),
-                    arguments = JSONObject(functionObject.optString("arguments", "{}"))
+                    arguments = JSONObject(functionObject.optString("arguments", "{}")),
+                    toolId = json.optString("id", newToolCallId())
                 )
             }
 
@@ -837,7 +845,8 @@ object ToolHandler {
                 val functionCall = json.getJSONObject("functionCall")
                 InternalToolCall(
                     name = functionCall.getString("name"),
-                    arguments = functionCall.optJSONObject("args") ?: JSONObject()
+                    arguments = functionCall.optJSONObject("args") ?: JSONObject(),
+                    toolId = json.optString("id", newToolCallId())
                 )
             }
 

@@ -121,7 +121,7 @@ class AgentServiceManager(private val context: Context) {
         if (isBound && serviceConnection != null) {
             try {
                 context.unbindService(serviceConnection!!)
-                screenshotManager.stopMonitoring()
+                screenshotManager.cleanup()
                 Log.d(TAG, "Service unbound successfully")
             } catch (e: Exception) {
                 Log.e(TAG, "Error unbinding service: ${e.message}")

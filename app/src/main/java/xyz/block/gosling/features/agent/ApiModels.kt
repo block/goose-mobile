@@ -39,7 +39,7 @@ class ContentSerializer : JsonContentPolymorphicSerializer<Content>(Content::cla
     override fun selectDeserializer(element: JsonElement): KSerializer<out Content> {
         return when (element.jsonObject["type"]?.jsonPrimitive?.content) {
             "text" -> Content.Text.serializer()
-            "image" -> Content.ImageUrl.serializer()
+            "image_url" -> Content.ImageUrl.serializer()
             else -> throw IllegalArgumentException("Unknown content type")
         }
     }

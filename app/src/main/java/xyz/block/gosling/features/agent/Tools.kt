@@ -53,6 +53,7 @@ sealed class SerializableToolDefinitions {
 object MobileMCP {
     // Map to store localId -> (packageName, appName) mappings to keep names short in function calls
     private val mcpRegistry = mutableMapOf<String, Pair<String, String>>()
+    private var discoveredMCPs : List<Map<String, Any>> = emptyList()
 
     // Generate a unique 3-character localId (2 letters + 1 digit)
     private fun generateLocalId(): String {
@@ -71,7 +72,9 @@ object MobileMCP {
 
     // discover MCPs that are on this device.
     fun discoverMCPs(context: Context): List<Map<String, Any>> {
-
+        if (discoveredMCPs.isNotEmpty()) {
+            return discoveredMCPs
+        }
         if (Looper.myLooper() == Looper.getMainLooper()) {
             throw IllegalStateException("Don't call this from the main thread!")
         }
@@ -155,7 +158,8 @@ object MobileMCP {
 
         System.out.println("Returning results: $results")
 
-        return results
+        discoveredMCPs = results
+        return discoveredMCPs
     }
 
 

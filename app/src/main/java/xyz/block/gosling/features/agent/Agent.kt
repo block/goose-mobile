@@ -72,6 +72,20 @@ class Agent : Service() {
                 .retryOnConnectionFailure(true)
                 .build()
         }
+
+        private var installedApps: String? = null
+
+        fun getInstalledApps(context: Context): String {
+            if (installedApps.isNullOrEmpty()) {
+                val availableIntents = IntentScanner.getAvailableIntents(
+                    context,
+                    GoslingAccessibilityService.getInstance()
+                )
+                installedApps = IntentAppKinds.groupIntentsByCategory(availableIntents)
+            }
+            return installedApps!!
+        }
+
     }
 
     inner class AgentBinder : Binder() {
@@ -129,12 +143,7 @@ class Agent : Service() {
         try {
             isCancelled = false
 
-            val availableIntents = IntentScanner.getAvailableIntents(
-                context,
-                GoslingAccessibilityService.getInstance()
-            )
-            val installedApps = IntentAppKinds.groupIntentsByCategory(availableIntents)
-
+            val installedApps = getInstalledApps(context)
             val windowManager = context.getSystemService(Context.WINDOW_SERVICE) as WindowManager
             val displayMetrics = DisplayMetrics()
             @Suppress("DEPRECATION")

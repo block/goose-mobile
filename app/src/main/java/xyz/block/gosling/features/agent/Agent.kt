@@ -184,7 +184,7 @@ class Agent : Service() {
                 |Use a screenshot if necessary to check.
                 |
                 |Some tasks will be one shot, but CRITICALLY some will require multiple steps and iteration and checking if you are done.
-                | for example, adding to a shopping card will require multiple steps, as will planning a trip.
+                | for example, adding to a shopping cart will require multiple steps, as will planning a trip.
                 |
                 |Remember: DO NOT ask the user for help or additional information - you must solve the problem autonomously.
                 """.trimMargin()

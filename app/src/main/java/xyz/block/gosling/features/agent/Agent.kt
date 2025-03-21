@@ -171,7 +171,8 @@ class Agent : Service() {
                 |the screen. In some cases you can call actionView to get something done in one shot -
                 |do so only if you are sure about the url to use.
                 |
-                |The phone has a screen resolution of ${width}x${height} pixels
+                |The phone has a screen resolution of ${width}x${height} pixels 
+                |When clicking or entering text on items with y co-ordinate of < ${height/3} swipe up first.               
                 |The phone has the following apps installed:
                 |
                 |$installedApps

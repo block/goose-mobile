@@ -38,15 +38,17 @@ object AppInstructions {
         """.trimIndent(),
         
         // Amazon app
-        "com.amazon.mShop.android.shopping" to """
-            Amazon Shopping is an e-commerce app for browsing and purchasing products and resaerching.
-                        
-            When using Amazon:
-            1. Use the search bar to find specific products
-            2. Browse categories by tapping the menu icon
-            3. Check product details thoroughly before adding to cart
-            4. Review the cart before proceeding to checkout
-            5. Select shipping options and payment methods during checkout
+        "com.amazon.mShop.android.shopping" to """                        
+            important instructions on how to use amazon app:
+            
+            Use the search bar to find specific products, but try variations on the search.
+            Don't just search for exact description user provides necessarily, you will need to search for general product sometimes, and then scroll and click in to see if it meets other requirements.
+            For example: if looking for stinky fruit, look up fruit first, and then look if any are titled stinky, or description or reviews say are stinky.
+            ALWAYS scroll/swipe to look at products, don't just pick the first one
+            Click on the product to read information about it, including ratings, may need to click in a few levels.
+            If asked, look for specific detailed in descriptions or reviews after clicking in and scrolling
+            Add items to cart if asked
+            
         """.trimIndent(),
         
 

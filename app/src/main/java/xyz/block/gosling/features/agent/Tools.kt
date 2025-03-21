@@ -564,9 +564,6 @@ object ToolHandler {
             accessibilityService.rootInActiveWindow?.findFocus(AccessibilityNodeInfo.FOCUS_INPUT)
         } ?: return "Error: No targetable input field found"
 
-        if (!targetNode.isEditable) {
-            return "Error: The targeted element is not an editable text field"
-        }
 
         val arguments = Bundle()
         arguments.putCharSequence(

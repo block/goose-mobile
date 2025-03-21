@@ -37,7 +37,7 @@ class DebugActivity : AppCompatActivity() {
                                 agent.processCommand(
                                     userInput = command,
                                     context = this@DebugActivity,
-                                    isNotificationReply = false
+                                    triggerType = Agent.TriggerType.MAIN
                                 )
                                 Log.d("DebugActivity", "Command executed successfully")
                             } catch (e: Exception) {

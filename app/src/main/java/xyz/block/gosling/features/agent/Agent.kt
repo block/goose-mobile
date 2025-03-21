@@ -53,6 +53,13 @@ class Agent : Service() {
     private var statusListener: ((AgentStatus) -> Unit)? = null
     lateinit var conversationManager: ConversationManager
 
+    enum class TriggerType {
+        MAIN,
+        NOTIFICATION,
+        IMAGE,
+        ASSISTANT
+    }
+
     companion object {
         private var instance: Agent? = null
         fun getInstance(): Agent? = instance
@@ -122,7 +129,7 @@ class Agent : Service() {
     suspend fun processCommand(
         userInput: String,
         context: Context,
-        isNotificationReply: Boolean,
+        triggerType: TriggerType,
         imageUri: Uri? = null
     ): String {
 
@@ -143,8 +150,12 @@ class Agent : Service() {
             val width = displayMetrics.widthPixels
             val height = displayMetrics.heightPixels
 
-            val role =
-                if (isNotificationReply) "helping the user process android notifications" else "managing the users android phone"
+            val role = when (triggerType) {
+                TriggerType.NOTIFICATION -> "helping the user process android notifications"
+                TriggerType.MAIN -> "managing the users android phone"
+                TriggerType.IMAGE -> "analyzing images on the users android phone"
+                TriggerType.ASSISTANT -> "providing assistant services on the users android phone"
+            }
 
             val systemMessage = """
                 |You are an assistant $role. The user does not have access to the phone. 
@@ -497,7 +508,7 @@ class Agent : Service() {
                 processCommand(
                     prompt,
                     this@Agent,
-                    isNotificationReply = true
+                    triggerType = TriggerType.NOTIFICATION,
                 )
             } catch (e: Exception) {
                 // Handle any unexpected exceptions
@@ -719,7 +730,7 @@ class Agent : Service() {
                 processCommand(
                     prompt,
                     this@Agent,
-                    isNotificationReply = true,
+                    triggerType = TriggerType.IMAGE,
                     imageUri = uri
                 )
             } catch (e: Exception) {

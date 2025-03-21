@@ -11,8 +11,6 @@ import android.util.Log
 import android.widget.Toast
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
-import androidx.core.app.ActivityCompat
-import androidx.core.content.ContextCompat
 import androidx.compose.animation.core.RepeatMode
 import androidx.compose.animation.core.animateFloat
 import androidx.compose.animation.core.infiniteRepeatable
@@ -72,11 +70,13 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.unit.LayoutDirection
 import androidx.compose.ui.unit.dp
+import androidx.core.content.ContextCompat
 import androidx.core.content.FileProvider
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import xyz.block.gosling.R
+import xyz.block.gosling.features.agent.Agent
 import xyz.block.gosling.features.agent.AgentStatus
 import xyz.block.gosling.features.agent.Conversation
 import xyz.block.gosling.features.overlay.OverlayService
@@ -257,15 +257,17 @@ fun MainScreen(
                                 cameraPermissionLauncher.launch(Manifest.permission.CAMERA)
                             }
                         }
+
                         1 -> {
                             if (hasGalleryPermission) {
                                 imagePickerLauncher.launch("image/*")
                             } else {
-                                val permission = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
-                                    Manifest.permission.READ_MEDIA_IMAGES
-                                } else {
-                                    Manifest.permission.READ_EXTERNAL_STORAGE
-                                }
+                                val permission =
+                                    if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+                                        Manifest.permission.READ_MEDIA_IMAGES
+                                    } else {
+                                        Manifest.permission.READ_EXTERNAL_STORAGE
+                                    }
                                 galleryPermissionLauncher.launch(permission)
                             }
                         }
@@ -637,7 +639,7 @@ private fun processAgentCommand(
             agent.processCommand(
                 userInput = command,
                 context = context,
-                isNotificationReply = false,
+                triggerType = Agent.TriggerType.MAIN,
                 imageUri = imageUri
             )
         } catch (e: Exception) {

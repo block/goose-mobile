@@ -2,6 +2,7 @@ package xyz.block.gosling.features.assistant
 
 import android.content.Intent
 import android.graphics.Color
+import android.graphics.PixelFormat
 import android.os.Bundle
 import android.view.Gravity
 import android.view.WindowManager
@@ -15,9 +16,11 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
-import xyz.block.gosling.GoslingApplication
+import xyz.block.gosling.features.accessibility.GoslingAccessibilityService
+import xyz.block.gosling.features.agent.Agent
 import xyz.block.gosling.features.agent.AgentServiceManager
 import xyz.block.gosling.features.agent.AgentStatus
+import xyz.block.gosling.features.agent.ToolHandler.buildCompactHierarchy
 import xyz.block.gosling.features.overlay.OverlayService
 import xyz.block.gosling.shared.services.VoiceRecognitionService
 import xyz.block.gosling.shared.theme.GoslingTheme
@@ -28,15 +31,26 @@ class AssistantActivity : ComponentActivity() {
     private var currentAgentManager: AgentServiceManager? = null
     private var currentJob: Job? = null
     private val currentTranscription = mutableStateOf("Listening...")
+    private var foregroundAppPackage: String? = null
+    private var screenHierarchy: String? = null
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+        if (intent?.action == Intent.ACTION_ASSIST) {
+            foregroundAppPackage = intent.getStringExtra(Intent.EXTRA_ASSIST_PACKAGE)
+
+            val accessibilityService = GoslingAccessibilityService.getInstance()
+            val activeWindow = accessibilityService?.rootInActiveWindow
+            if (activeWindow != null) {
+                screenHierarchy = buildCompactHierarchy(activeWindow)
+            }
+        }
 
         window.setBackgroundDrawable(Color.TRANSPARENT.toDrawable())
 
         window.attributes.apply {
             dimAmount = 0f
-            format = android.graphics.PixelFormat.TRANSLUCENT
+            format = PixelFormat.TRANSLUCENT
         }
 
         window.setLayout(
@@ -58,7 +72,6 @@ class AssistantActivity : ComponentActivity() {
             }
         }
 
-        // Start voice recognition if this is a voice interaction
         if (isVoiceInteraction) {
             startVoiceRecognition()
         }
@@ -75,7 +88,7 @@ class AssistantActivity : ComponentActivity() {
                 override fun onVoiceCommandReceived(command: String) {
                     currentTranscription.value = command
                     CoroutineScope(Dispatchers.Main).launch {
-                        delay(1000) // Delay to ensure the user has time to see the command
+                        delay(500) // Delay to ensure the user has time to see the command
                         finish()
                         processAgentCommand(command)
                     }
@@ -101,6 +114,7 @@ class AssistantActivity : ComponentActivity() {
             }
         )
     }
+
 
     private fun processAgentCommand(command: String) {
         currentJob?.cancel()
@@ -147,10 +161,21 @@ class AssistantActivity : ComponentActivity() {
             // Launch in a coroutine scope and store the job
             currentJob = CoroutineScope(Dispatchers.IO).launch {
                 try {
+                    val commandWithContext =
+                        if (foregroundAppPackage != null && screenHierarchy != null) {
+                            "The app the user had open when the assistant was called is " +
+                                    "$foregroundAppPackage. Here is the screen hierarchy:\n" +
+                                    "$screenHierarchy\n\n" +
+                                    "Operate on the current app if that seems relevant. " +
+                                    "If not you can start a different app. " +
+                                    "Here are the instructions:\n${command}"
+                        } else {
+                            command
+                        }
                     agent.processCommand(
-                        userInput = command,
+                        userInput = commandWithContext,
                         context = this@AssistantActivity,
-                        isNotificationReply = false
+                        triggerType = Agent.TriggerType.ASSISTANT
                     )
                 } catch (e: Exception) {
                     runOnUiThread {

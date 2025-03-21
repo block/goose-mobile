@@ -42,6 +42,7 @@ import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
+import xyz.block.gosling.features.agent.Agent
 import xyz.block.gosling.features.agent.AgentServiceManager
 import xyz.block.gosling.features.agent.AgentStatus
 import xyz.block.gosling.features.overlay.OverlayService
@@ -294,10 +295,9 @@ private fun processAgentCommand(context: Context, command: String) {
                 agent.processCommand(
                     userInput = command,
                     context = context,
-                    isNotificationReply = false
+                    triggerType = Agent.TriggerType.MAIN
                 )
             } catch (e: Exception) {
-                // Handle exceptions
                 android.os.Handler(context.mainLooper).post {
                     statusToast.setText("Error: ${e.message}")
                     statusToast.show()

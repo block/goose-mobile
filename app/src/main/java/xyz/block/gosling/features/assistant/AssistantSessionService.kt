@@ -9,6 +9,7 @@ import android.util.Log
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
+import xyz.block.gosling.features.agent.Agent
 import xyz.block.gosling.features.agent.AgentServiceManager
 import xyz.block.gosling.features.agent.AgentStatus
 import xyz.block.gosling.shared.services.VoiceRecognitionService
@@ -97,7 +98,7 @@ class AssistantSessionService : VoiceInteractionSessionService() {
                         agent.processCommand(
                             userInput = command,
                             context = context,
-                            isNotificationReply = false
+                            triggerType = Agent.TriggerType.ASSISTANT
                         )
                     } catch (e: Exception) {
                         Log.e("GOS", "Error processing command: ${e.message}")

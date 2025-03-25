@@ -20,6 +20,7 @@ import java.util.Locale
 import java.util.concurrent.CountDownLatch
 import java.util.concurrent.TimeUnit
 import java.util.concurrent.atomic.AtomicLong
+import android.util.Log
 
 
 @Target(AnnotationTarget.FUNCTION)
@@ -528,6 +529,26 @@ object ToolHandler {
         }
     }
 
+    private fun findEditableNode(root: AccessibilityNodeInfo?, maxDepth: Int = 5): AccessibilityNodeInfo? {
+        if (root == null || maxDepth <= 0) return null
+        
+        // Check if current node is editable
+        if (root.isEditable) {
+            return root
+        }
+        
+        // Recursively check children
+        for (i in 0 until root.childCount) {
+            val child = root.getChild(i) ?: continue
+            val editableNode = findEditableNode(child, maxDepth - 1)
+            if (editableNode != null) {
+                return editableNode
+            }
+        }
+        
+        return null
+    }
+
     @Tool(
         name = "enterText",
         description = "Enter text into the a text field. Make sure the field you want the " +
@@ -549,21 +570,49 @@ object ToolHandler {
         requiresAccessibility = true
     )
     fun enterText(accessibilityService: AccessibilityService, args: JSONObject): String {
-        val currentPackageName = accessibilityService.rootInActiveWindow?.packageName?.toString() ?: "Unknown package"
-
-
         val text = args.getString("text")
 
         val targetNode = if (args.has("id")) {
-            accessibilityService.rootInActiveWindow?.findAccessibilityNodeInfosByViewId(
-                args.getString(
-                    "id"
-                )
-            )?.firstOrNull()
+            val id = args.getString("id")
+            accessibilityService.rootInActiveWindow?.findAccessibilityNodeInfosByViewId(id)?.firstOrNull()
         } else {
             accessibilityService.rootInActiveWindow?.findFocus(AccessibilityNodeInfo.FOCUS_INPUT)
-        } ?: return "Error: No targetable input field found"
+        }
 
+        if (targetNode == null) {
+            Log.d("Tools", "enterText: No targetable input field found")
+            return "Error: No targetable input field found"
+        }
+
+        // If it's not already focused and it's clickable, try clicking it first
+        if (!targetNode.isFocused && targetNode.isClickable) {
+            targetNode.performAction(AccessibilityNodeInfo.ACTION_CLICK)
+            Thread.sleep(100) // Small delay to allow focus to set
+        }
+
+        // If it's not focused after click (or wasn't clickable), try explicit focus
+        if (!targetNode.isFocused) {
+            targetNode.performAction(AccessibilityNodeInfo.ACTION_FOCUS)
+            Thread.sleep(100) // Small delay to ensure focus is set
+        }
+
+        // If the node isn't directly editable, try to find an editable node in its hierarchy
+        val editableNode = if (!targetNode.isEditable) {
+            findEditableNode(targetNode)
+        } else {
+            targetNode
+        }
+
+        if (editableNode == null) {
+            Log.d("Tools", "enterText: No editable nodes found in hierarchy")
+            return "Error: No editable field found"
+        }
+
+        // If we found a different editable node, make sure it's focused
+        if (editableNode != targetNode && !editableNode.isFocused) {
+            editableNode.performAction(AccessibilityNodeInfo.ACTION_FOCUS)
+            Thread.sleep(100)
+        }
 
         val arguments = Bundle()
         arguments.putCharSequence(
@@ -571,23 +620,18 @@ object ToolHandler {
             text
         )
 
-        val setTextResult =
-            targetNode.performAction(AccessibilityNodeInfo.ACTION_SET_TEXT, arguments)
+        val setTextResult = editableNode.performAction(AccessibilityNodeInfo.ACTION_SET_TEXT, arguments)
 
         if (args.optBoolean("submit") && setTextResult) {
-            // Use AccessibilityNodeInfo.AccessibilityAction.ACTION_IME_ENTER to click enter on the omnibox
-            if (targetNode.performAction(AccessibilityNodeInfo.AccessibilityAction.ACTION_IME_ENTER.id)) {
-                System.err.println("PRESSED ENTER USING ACTION_IME_ENTER")
-            } else {
-                // Fall back to the previous method if ACTION_IME_ENTER doesn't work
+            if (!editableNode.performAction(AccessibilityNodeInfo.AccessibilityAction.ACTION_IME_ENTER.id)) {
                 Runtime.getRuntime().exec(arrayOf("input", "keyevent", "66"))
-                System.err.println("PRESSED ENTER USING KEYEVENT")
             }
         }
 
         return if (setTextResult) {
             "Entered text: \"$text\". IMPORTANT: consider if keyboard is visible, will need to swipe up clicking on next thing."
         } else {
+            Log.d("Tools", "enterText: Failed to enter text")
             "Failed to enter text"
         }
     }
@@ -637,24 +681,31 @@ object ToolHandler {
 
         try {
             val text = args.getString("text")
+            
             val rootNode = accessibilityService.rootInActiveWindow
-                ?: return "Error: No active window found"
+            if (rootNode == null) {
+                Log.d("Tools", "enterTextByDescription: No active window found")
+                return "Error: No active window found"
+            }
 
             val targetNode = when {
                 args.has("id") -> {
-                    rootNode.findAccessibilityNodeInfosByViewId(args.getString("id"))?.firstOrNull()
+                    val id = args.getString("id")
+                    rootNode.findAccessibilityNodeInfosByViewId(id)?.firstOrNull()
                 }
-
                 args.has("description") -> {
                     val description = args.getString("description")
                     findNodeByDescription(rootNode, description)
                 }
-
                 else -> {
                     rootNode.findFocus(AccessibilityNodeInfo.FOCUS_INPUT)
                 }
-            } ?: return "Error: Could not find the target text field"
+            }
 
+            if (targetNode == null) {
+                Log.d("Tools", "enterTextByDescription: Could not find the target text field")
+                return "Error: Could not find the target text field"
+            }
 
             if (!targetNode.isFocused) {
                 targetNode.performAction(AccessibilityNodeInfo.ACTION_FOCUS)
@@ -667,23 +718,21 @@ object ToolHandler {
                 text
             )
 
-            val setTextResult =
-                targetNode.performAction(AccessibilityNodeInfo.ACTION_SET_TEXT, arguments)
+            val setTextResult = targetNode.performAction(AccessibilityNodeInfo.ACTION_SET_TEXT, arguments)
 
             if (!setTextResult) {
+                Log.d("Tools", "enterTextByDescription: Failed to enter text")
                 return "Failed to enter text"
             }
 
             if (args.optBoolean("submit")) {
-                if (targetNode.performAction(AccessibilityNodeInfo.AccessibilityAction.ACTION_IME_ENTER.id)) {
-                    System.err.println("PRESSED ENTER USING ACTION_IME_ENTER")
-                } else {
+                if (!targetNode.performAction(AccessibilityNodeInfo.AccessibilityAction.ACTION_IME_ENTER.id)) {
                     Runtime.getRuntime().exec(arrayOf("input", "keyevent", "66"))
-                    System.err.println("PRESSED ENTER USING KEYEVENT")
                 }
             } else {
                 targetNode.performAction(AccessibilityNodeInfo.ACTION_CLEAR_FOCUS)
             }
+            
             hideKeyboard(context)
             return "Entered text: \"$text\""
         } finally {
@@ -696,16 +745,53 @@ object ToolHandler {
         root: AccessibilityNodeInfo,
         description: String
     ): AccessibilityNodeInfo? {
-        if (root.contentDescription?.toString()?.contains(description, ignoreCase = true) == true ||
-            root.text?.toString()?.contains(description, ignoreCase = true) == true
-        ) {
-            return root
+        // Function to check if a node matches our criteria
+        fun checkNode(node: AccessibilityNodeInfo?): Boolean {
+            if (node == null) return false
+            return node.contentDescription?.toString()?.contains(description, ignoreCase = true) == true ||
+                   node.text?.toString()?.contains(description, ignoreCase = true) == true
         }
 
+        // Function to find the best editable ancestor of a node
+        fun findBestEditableAncestor(node: AccessibilityNodeInfo?): AccessibilityNodeInfo? {
+            var current = node
+            var bestMatch: AccessibilityNodeInfo? = null
+            
+            while (current != null) {
+                // If this node is editable, it's our best match so far
+                if (current.isEditable) {
+                    bestMatch = current
+                    break // Stop at the first editable ancestor
+                }
+                
+                try {
+                    current = current.parent
+                } catch (e: Exception) {
+                    break
+                }
+            }
+            
+            return bestMatch ?: node // Return the original node if no editable ancestor found
+        }
+
+        // First check if the current node matches
+        if (checkNode(root)) {
+            val bestNode = findBestEditableAncestor(root)
+            if (bestNode?.isEditable == true) {
+                return bestNode
+            }
+        }
+
+        // If no match at current node, search children
         for (i in 0 until root.childCount) {
             val child = root.getChild(i) ?: continue
             val result = findNodeByDescription(child, description)
             if (result != null) {
+                // If we found a match in a child, check if it or its ancestors are better
+                val bestNode = findBestEditableAncestor(result)
+                if (bestNode?.isEditable == true) {
+                    return bestNode
+                }
                 return result
             }
         }

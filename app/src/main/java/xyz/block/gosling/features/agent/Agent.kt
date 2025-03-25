@@ -171,8 +171,17 @@ class Agent : Service() {
                 |the screen. In some cases you can call actionView to get something done in one shot -
                 |do so only if you are sure about the url to use.
                 |
+                |When filling out forms:
+                |1. Always use enterTextByDescription and provide the exact field label as shown in the UI hierarchy
+                |   For example, use "First name" not "first" or "firstname"
+                |2. Some fields may not be immediately visible and require clicking buttons like "Add address" first
+                |3. After clicking such buttons, always get the UI hierarchy again to see the new fields
+                |4. Handle each form section in sequence (e.g., basic info first, then address)
+                |5. Verify the form state after each major section is complete
+                |6. If a field is near the bottom of the screen (y-coordinate > ${height * 0.8}), swipe up slightly before interacting
+                |
                 |The phone has a screen resolution of ${width}x${height} pixels 
-                |When clicking or entering text on items with y co-ordinate of < ${height/3} swipe up first.               
+                |When a field is near the bottom (y > ${height * 0.7}), swipe up slightly before interacting.
                 |The phone has the following apps installed:
                 |
                 |$installedApps

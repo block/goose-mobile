@@ -11,6 +11,7 @@ import android.graphics.Path
 import android.graphics.Rect
 import android.os.Bundle
 import android.os.Looper
+import android.util.Log
 import android.view.accessibility.AccessibilityNodeInfo
 import android.view.inputmethod.InputMethodManager
 import androidx.core.net.toUri
@@ -20,7 +21,6 @@ import java.util.Locale
 import java.util.concurrent.CountDownLatch
 import java.util.concurrent.TimeUnit
 import java.util.concurrent.atomic.AtomicLong
-import android.util.Log
 
 
 @Target(AnnotationTarget.FUNCTION)
@@ -529,14 +529,17 @@ object ToolHandler {
         }
     }
 
-    private fun findEditableNode(root: AccessibilityNodeInfo?, maxDepth: Int = 5): AccessibilityNodeInfo? {
+    private fun findEditableNode(
+        root: AccessibilityNodeInfo?,
+        maxDepth: Int = 5
+    ): AccessibilityNodeInfo? {
         if (root == null || maxDepth <= 0) return null
-        
+
         // Check if current node is editable
         if (root.isEditable) {
             return root
         }
-        
+
         // Recursively check children
         for (i in 0 until root.childCount) {
             val child = root.getChild(i) ?: continue
@@ -545,7 +548,7 @@ object ToolHandler {
                 return editableNode
             }
         }
-        
+
         return null
     }
 
@@ -574,7 +577,8 @@ object ToolHandler {
 
         val targetNode = if (args.has("id")) {
             val id = args.getString("id")
-            accessibilityService.rootInActiveWindow?.findAccessibilityNodeInfosByViewId(id)?.firstOrNull()
+            accessibilityService.rootInActiveWindow?.findAccessibilityNodeInfosByViewId(id)
+                ?.firstOrNull()
         } else {
             accessibilityService.rootInActiveWindow?.findFocus(AccessibilityNodeInfo.FOCUS_INPUT)
         }
@@ -620,7 +624,8 @@ object ToolHandler {
             text
         )
 
-        val setTextResult = editableNode.performAction(AccessibilityNodeInfo.ACTION_SET_TEXT, arguments)
+        val setTextResult =
+            editableNode.performAction(AccessibilityNodeInfo.ACTION_SET_TEXT, arguments)
 
         if (args.optBoolean("submit") && setTextResult) {
             if (!editableNode.performAction(AccessibilityNodeInfo.AccessibilityAction.ACTION_IME_ENTER.id)) {
@@ -681,7 +686,7 @@ object ToolHandler {
 
         try {
             val text = args.getString("text")
-            
+
             val rootNode = accessibilityService.rootInActiveWindow
             if (rootNode == null) {
                 Log.d("Tools", "enterTextByDescription: No active window found")
@@ -693,10 +698,12 @@ object ToolHandler {
                     val id = args.getString("id")
                     rootNode.findAccessibilityNodeInfosByViewId(id)?.firstOrNull()
                 }
+
                 args.has("description") -> {
                     val description = args.getString("description")
                     findNodeByDescription(rootNode, description)
                 }
+
                 else -> {
                     rootNode.findFocus(AccessibilityNodeInfo.FOCUS_INPUT)
                 }
@@ -718,7 +725,8 @@ object ToolHandler {
                 text
             )
 
-            val setTextResult = targetNode.performAction(AccessibilityNodeInfo.ACTION_SET_TEXT, arguments)
+            val setTextResult =
+                targetNode.performAction(AccessibilityNodeInfo.ACTION_SET_TEXT, arguments)
 
             if (!setTextResult) {
                 Log.d("Tools", "enterTextByDescription: Failed to enter text")
@@ -732,7 +740,7 @@ object ToolHandler {
             } else {
                 targetNode.performAction(AccessibilityNodeInfo.ACTION_CLEAR_FOCUS)
             }
-            
+
             hideKeyboard(context)
             return "Entered text: \"$text\""
         } finally {
@@ -748,29 +756,30 @@ object ToolHandler {
         // Function to check if a node matches our criteria
         fun checkNode(node: AccessibilityNodeInfo?): Boolean {
             if (node == null) return false
-            return node.contentDescription?.toString()?.contains(description, ignoreCase = true) == true ||
-                   node.text?.toString()?.contains(description, ignoreCase = true) == true
+            return node.contentDescription?.toString()
+                ?.contains(description, ignoreCase = true) == true ||
+                    node.text?.toString()?.contains(description, ignoreCase = true) == true
         }
 
         // Function to find the best editable ancestor of a node
         fun findBestEditableAncestor(node: AccessibilityNodeInfo?): AccessibilityNodeInfo? {
             var current = node
             var bestMatch: AccessibilityNodeInfo? = null
-            
+
             while (current != null) {
                 // If this node is editable, it's our best match so far
                 if (current.isEditable) {
                     bestMatch = current
                     break // Stop at the first editable ancestor
                 }
-                
+
                 try {
                     current = current.parent
                 } catch (e: Exception) {
                     break
                 }
             }
-            
+
             return bestMatch ?: node // Return the original node if no editable ancestor found
         }
 
@@ -843,13 +852,25 @@ object ToolHandler {
 
     @Tool(
         name = "openUrl",
-        description = "Open a URL. Can be an app specific url or a general url that you know or " +
-                "got from another app or tool (like websearch)",
+        description = "Open a URL. IMPORTANT: When opening URLs in specific apps, you MUST use the app's URL scheme format, not a regular web URL. " +
+                "For example, for Google Maps, use 'geo:0,0?q=LOCATION' instead of 'https://www.google.com/maps/search/...'. " +
+                "If you don't know the correct URL scheme, first try without a package_name to open in the default browser. " +
+                "Common URL schemes:\n" +
+                "- Maps: 'geo:0,0?q=LOCATION' for searching locations\n" +
+                "- Navigation: 'google.navigation:q=DESTINATION' for directions\n" +
+                "- Street View: 'google.streetview:cbll=LAT,LONG' for street view\n" +
+                "When in doubt, check the error message which will list valid URL schemes for the specified app.",
         parameters = [
             ParameterDef(
                 name = "url",
                 type = "string",
-                description = "The URL to open"
+                description = "The URL to open. Must use the correct URL scheme if package_name is specified."
+            ),
+            ParameterDef(
+                name = "package_name",
+                type = "string",
+                description = "The package name of the app to open the URL in. If provided, the URL scheme will be validated against known schemes for that app.",
+                required = false
             )
         ],
         requiresContext = true,
@@ -861,6 +882,28 @@ object ToolHandler {
         args: JSONObject
     ): String {
         val url = args.getString("url")
+        val packageName = args.optString("package_name", "")
+
+        Log.d("Tools", "openUrl called with url: $url, packageName: $packageName")
+        // If a package name is provided, validate the URL scheme
+        if (packageName.isNotEmpty()) {
+            val validSchemes = AppInstructions.getUrlSchemes(packageName)
+            if (validSchemes.isNotEmpty()) {
+                val urlScheme = url.substringBefore(":")
+
+                val isValid =
+                    validSchemes.any { scheme -> urlScheme == scheme.substringBefore(":") }
+
+                if (!isValid) {
+                    val error =
+                        "Error: Invalid URL scheme for app $packageName. Valid schemes are: ${
+                            validSchemes.joinToString(", ")
+                        }"
+                    Log.e("Tools", error)
+                    return error
+                }
+            }
+        }
 
         return try {
             val intent = Intent(Intent.ACTION_VIEW, url.toUri())
@@ -879,6 +922,7 @@ object ToolHandler {
             return "The URL has been opened. ${appInfo}. What follows is the contents. " +
                     "(${cordinateHint}):\n\n${hierarchy}"
         } catch (e: Exception) {
+            Log.e("Tools", "Failed to open URL", e)
             "Failed to open URL: ${e.message}"
         }
     }

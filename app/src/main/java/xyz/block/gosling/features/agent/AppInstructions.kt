@@ -126,6 +126,228 @@ object AppInstructions {
                 "uber://riders", // For rider-specific features
                 "uber://history" // For ride history
             )
+        ),
+
+        "com.instagram.android" to AppInstructionInfo(
+            instructions = """
+                Instagram is a photo and video sharing platform.
+                
+                Key features:
+                - Browse photos and videos in feed
+                - Share photos and stories
+                - Direct messaging
+                - Explore page for discovery
+                - Reels for short-form video
+                - Shopping features
+                
+                When using Instagram:
+                1. Use the search bar to find specific accounts, hashtags, or locations
+                2. Browse different tabs (Feed, Explore, Reels, Profile)
+                3. For shopping: Browse product catalogs and shop posts
+                4. For stories: View and interact with temporary content
+                5. For direct messages: Access private conversations
+                6. For explore: Discover new content based on interests
+
+                URL Schemes:
+                - Use 'instagram://' to open the main app
+                - Use 'instagram://user?username=USERNAME' to view a profile
+                - Use 'instagram://media?id=MEDIA_ID' to view a post
+                - Use 'instagram://story?story_id=STORY_ID' to view a story
+                - Use 'instagram://direct' to open direct messages
+            """.trimIndent(),
+            urlSchemes = listOf(
+                "instagram://", // Main Instagram URL scheme
+                "instagram://user", // For user profiles
+                "instagram://media", // For media posts
+                "instagram://story", // For stories
+                "instagram://direct" // For direct messages
+            )
+        ),
+
+        // Messaging Apps
+        "com.whatsapp" to AppInstructionInfo(
+            instructions = """
+                WhatsApp is a messaging and calling platform.
+                
+                Key features:
+                - Send text messages, photos, and videos
+                - Make voice and video calls
+                - Share documents and files
+                - Group chats
+                - Status updates
+                - Business messaging
+                
+                When using WhatsApp:
+                1. Use the search bar to find specific chats or contacts
+                2. Navigate between different tabs (Chats, Status, Calls)
+                3. For group chats: Manage members and settings
+                4. For media sharing: Access gallery or camera
+                5. For business chats: Look for verified business accounts
+                6. For status: View and share temporary updates
+
+                URL Schemes:
+                - Use 'whatsapp://' to open the main app
+                - Use 'whatsapp://send?phone=PHONE_NUMBER' to start a chat
+                - Use 'whatsapp://group' to create a group
+                - Use 'whatsapp://status' to view status updates
+            """.trimIndent(),
+            urlSchemes = listOf(
+                "whatsapp://", // Main WhatsApp URL scheme
+                "whatsapp://send", // For sending messages
+                "whatsapp://group", // For group chats
+                "whatsapp://status" // For status updates
+            )
+        ),
+
+        // Food Delivery Apps
+        "com.doorDash" to AppInstructionInfo(
+            instructions = """
+                DoorDash is a food delivery platform.
+                
+                Key features:
+                - Order food from local restaurants
+                - Track delivery in real-time
+                - Browse restaurant menus
+                - Save favorite orders
+                - Schedule future orders
+                - View delivery history
+                
+                When using DoorDash:
+                1. Enter delivery address or use current location
+                2. Browse restaurants or search for specific cuisines
+                3. View restaurant menus and ratings
+                4. Customize orders and add special instructions
+                5. Review order before checkout
+                6. Track delivery status after ordering
+                7. Rate and review orders after delivery
+
+                URL Schemes:
+                - Use 'doordash://' to open the main app
+                - Use 'doordash://restaurant/RESTAURANT_ID' to view a restaurant
+                - Use 'doordash://order' to view current order
+                - Use 'doordash://search' to search for restaurants
+            """.trimIndent(),
+            urlSchemes = listOf(
+                "doordash://", // Main DoorDash URL scheme
+                "doordash://restaurant", // For restaurant pages
+                "doordash://order", // For order tracking
+                "doordash://search" // For restaurant search
+            )
+        ),
+
+        // Music Streaming Apps
+        "com.aspiro.wamp" to AppInstructionInfo(
+            instructions = """
+                Tidal is a high-fidelity music streaming platform.
+                
+                Key features:
+                - Stream high-quality music (HiFi and Master quality)
+                - Access exclusive content and live performances
+                - Create and share playlists
+                - Download for offline listening
+                - Browse music videos and live concerts
+                - Connect with artists and other music lovers
+                
+                When using Tidal:
+                1. Use the search bar to find specific songs, artists, or albums
+                2. Browse different sections (Home, Search, My Collection, Explore)
+                3. For playlists: Create, edit, and share collections
+                4. For discovery: Use radio and recommended playlists
+                5. For videos: Access music videos and live performances
+                6. For social: Share music and follow artists
+                7. For quality: Switch between Normal, HiFi, and Master quality settings
+
+                URL Schemes:
+                - Use 'tidal://' to open the main app
+                - Use 'tidal://track/TRACK_ID' to play a track
+                - Use 'tidal://artist/ARTIST_ID' to view an artist
+                - Use 'tidal://album/ALBUM_ID' to view an album
+                - Use 'tidal://playlist/PLAYLIST_ID' to view a playlist
+                - Use 'tidal://video/VIDEO_ID' to watch a music video
+            """.trimIndent(),
+            urlSchemes = listOf(
+                "tidal://", // Main Tidal URL scheme
+                "tidal://track", // For tracks
+                "tidal://artist", // For artists
+                "tidal://album", // For albums
+                "tidal://playlist", // For playlists
+                "tidal://video" // For music videos
+            )
+        ),
+
+        // Payment Apps
+        "com.squareup.cash" to AppInstructionInfo(
+            instructions = """
+                Cash App is a peer-to-peer payment platform.
+                
+                Key features:
+                - Send and receive money instantly
+                - Cash Card (debit card)
+                - Invest in stocks and Bitcoin
+                - Direct deposit
+                - Cash Boost rewards
+                - Business payments
+                
+                When using Cash App:
+                1. Use the search bar to find specific users or businesses
+                2. Navigate between different tabs (Home, Activity, Investing, Cash Card)
+                3. For payments: Enter amount and select recipient
+                4. For investing: Browse stocks and Bitcoin options
+                5. For Cash Card: Manage card settings and boosts
+                6. For business: Access business-specific features
+                7. For security: Enable security features like Face ID/Touch ID
+
+                URL Schemes:
+                - Use 'cashapp://' to open the main app
+                - Use 'cashapp://pay' to initiate a payment
+                - Use 'cashapp://card' to manage Cash Card
+                - Use 'cashapp://investing' to access investing features
+                - Use 'cashapp://business' for business features
+            """.trimIndent(),
+            urlSchemes = listOf(
+                "cashapp://", // Main Cash App URL scheme
+                "cashapp://pay", // For payments
+                "cashapp://card", // For Cash Card
+                "cashapp://investing", // For investing
+                "cashapp://business" // For business features
+            )
+        ),
+
+        "com.squareup.squarepointofsale" to AppInstructionInfo(
+            instructions = """
+                Square Point of Sale is a payment processing app for businesses.
+                
+                Key features:
+                - Process card payments
+                - Accept contactless payments
+                - Manage inventory
+                - Track sales and analytics
+                - Send digital receipts
+                - Manage employees and permissions
+                
+                When using Square POS:
+                1. Use the main screen to process payments
+                2. Navigate between different sections (Payments, Items, Reports, Settings)
+                3. For payments: Process card, cash, or digital payments
+                4. For inventory: Manage items and stock levels
+                5. For reports: View sales data and analytics
+                6. For employees: Manage staff access and permissions
+                7. For settings: Configure payment methods and business details
+
+                URL Schemes:
+                - Use 'square://' to open the main app
+                - Use 'square://payment' to process a payment
+                - Use 'square://inventory' to manage inventory
+                - Use 'square://reports' to view reports
+                - Use 'square://settings' to access settings
+            """.trimIndent(),
+            urlSchemes = listOf(
+                "square://", // Main Square URL scheme
+                "square://payment", // For payments
+                "square://inventory", // For inventory
+                "square://reports", // For reports
+                "square://settings" // For settings
+            )
         )
     )
 

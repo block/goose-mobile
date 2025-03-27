@@ -47,6 +47,7 @@ object AppInstructions {
             ALWAYS scroll/swipe to look at products, don't just pick the first one
             Click on the product to read information about it, including ratings, may need to click in a few levels.
             If asked, look for specific detailed in descriptions or reviews after clicking in and scrolling
+            Consider if the query mentions a specific brand, in which case, ensure items you are reviewing match that specific brand 
             Add items to cart if asked
             
         """.trimIndent(),
@@ -85,6 +86,8 @@ object AppInstructions {
      * @return The instructions as a string, or null if no instructions exist for the package
      */
     fun getInstructions(packageName: String): String? {
+
+        System.out.println("GETTING INSTRUCTIONS FOR: " + packageName)
         // First try exact match
         appInstructionsMap[packageName]?.let { return it }
         

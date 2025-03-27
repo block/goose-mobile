@@ -114,6 +114,47 @@ class Agent : Service() {
         statusListener?.invoke(status)
     }
 
+    /**
+     * Determines the device type and returns the appropriate system message first paragraph.
+     * 
+     * @param context The application context
+     * @param role The role of the assistant (from TriggerType)
+     * @return The system message first paragraph based on device type
+     */
+    private fun getDeviceSpecificSystemMessage(context: Context, role: String): String {
+        return when {
+            isChromebook(context) -> {
+                System.out.println("THIS IS A CHROMEBOOK!!")
+                "You are an assistant $role. The user may not have access to the ChromeOS device. " +
+                "You will autonomously complete complex tasks on the ChromeOS device and report back to the " +
+                "user when done. NEVER ask the user for additional information or choices - you must " +
+                "decide and act on your own. IMPORTANT: you must be aware of what application you are opening, browser, contacts and so on, take note and don't accidentally open the wrong app"
+            }
+            else -> {
+                "You are an assistant $role. The user does not have access to the phone. " +
+                "You will autonomously complete complex tasks on the phone and report back to the " +
+                "user when done. NEVER ask the user for additional information or choices - you must " +
+                "decide and act on your own."
+            }
+        }
+    }
+
+    /**
+     * Detects if the device is running ChromeOS.
+     * 
+     * According to Android documentation, ChromeOS devices can be detected using the 
+     * "ro.boot.hardware.context" system property which is set to "u-boot" on ChromeOS.
+     * Additionally, the "android.hardware.type.pc" feature is present on ChromeOS devices.
+     *
+     * @param context The application context
+     * @return true if the device is running ChromeOS, false otherwise
+     */
+    private fun isChromebook(context: Context): Boolean {
+        val pm = context.packageManager
+        return pm.hasSystemFeature("android.hardware.type.pc") || 
+               System.getProperty("ro.boot.hardware.context") == "u-boot"
+    }
+
     fun cancel() {
         isCancelled = true
         job.cancel()
@@ -158,10 +199,7 @@ class Agent : Service() {
             }
 
             val systemMessage = """
-                |You are an assistant $role. The user does not have access to the phone. 
-                |You will autonomously complete complex tasks on the phone and report back to the 
-                |user when done. NEVER ask the user for additional information or choices - you must 
-                |decide and act on your own.
+                |${getDeviceSpecificSystemMessage(context, role)}
                 |
                 |Your goal is to complete the requested task through any means necessary. If one 
                 |approach doesn't work, try alternative methods until you succeed. Be persistent

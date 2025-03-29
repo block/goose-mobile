@@ -357,7 +357,7 @@ object ToolHandler {
             }
 
             // Add interactive properties only when true
-            if (node.isClickable) attributes.add("clickable")
+            if (node.isClickable || node.isEnabled) attributes.add("clickable")
             if (node.isFocusable) attributes.add("focusable")
             if (node.isScrollable) attributes.add("scrollable")
             if (node.isEditable) attributes.add("editable")

@@ -28,4 +28,4 @@ data class AiModel(
                 ?: AVAILABLE_MODELS.first()
         }
     }
-} 
+}

@@ -3,7 +3,6 @@ package xyz.block.gosling.features.agent
 /**
  * Constants and mappings for categorizing apps by their functionality
  */
-
 data class AppCategory(
     val name: String,
     val description: String,
@@ -15,7 +14,7 @@ data class AppCategory(
  * Defines categories of apps with their descriptions and package names
  */
 object IntentAppKinds {
-    val paymentApps = AppCategory(
+    private val paymentApps = AppCategory(
         name = "payment",
         description = "Consider these apps when needing to make payment or check funds available.",
         generalUsageInstructions = """ 
@@ -76,8 +75,8 @@ object IntentAppKinds {
             "com.bandhan.bank.mobilebanking" // Bandhan Bank mBandhan
         )
     )
-    
-    val travelBookingApps = AppCategory(
+
+    private val travelBookingApps = AppCategory(
         name = "travel booking",
         description = "consider when booking hotels and other travel accommodations or planning trips",
         generalUsageInstructions = """
@@ -98,8 +97,8 @@ object IntentAppKinds {
             "com.travelocity", // Travelocity
         )
     )
-    
-    val foodOrderingApps = AppCategory(
+
+    private val foodOrderingApps = AppCategory(
         name = "food ordering or reservations",
         description = "For ordering delivery of food or restaurant reservations",
         generalUsageInstructions = "",
@@ -114,8 +113,8 @@ object IntentAppKinds {
             "com.opentable", // OpenTable
         )
     )
-    
-    val ecommerceApps = AppCategory(
+
+    private val ecommerceApps = AppCategory(
         name = "ecommerce and products",
         description = "Consider when doing shopping for products or product research, pricing etc",
         generalUsageInstructions = """
@@ -231,8 +230,8 @@ object IntentAppKinds {
             "com.noon.buyerapp" // noon
         )
     )
-    
-    val airlineApps = AppCategory(
+
+    private val airlineApps = AppCategory(
         name = "air travel",
         description = "for flights, booking or status",
         generalUsageInstructions = """
@@ -312,9 +311,8 @@ object IntentAppKinds {
             "com.vistara.android" // Vistara
         )
     )
-    
 
-    private  val allCategories = listOf(
+    private val allCategories = listOf(
         paymentApps,
         travelBookingApps,
         foodOrderingApps,
@@ -330,7 +328,7 @@ object IntentAppKinds {
             category.packageNames.contains(packageName)
         }
     }
-    
+
     /**
      * Groups a list of intent definitions by their categories
      * and formats them for LLM consumption
@@ -338,7 +336,7 @@ object IntentAppKinds {
     fun groupIntentsByCategory(intents: List<IntentDefinition>): String {
         val categorizedIntents = mutableMapOf<String, MutableList<IntentDefinition>>()
         val uncategorizedIntents = mutableListOf<IntentDefinition>()
-        
+
         // Group intents by category
         for (intent in intents) {
             val category = getCategoryForPackage(intent.packageName)
@@ -348,33 +346,33 @@ object IntentAppKinds {
                 uncategorizedIntents.add(intent)
             }
         }
-        
+
         val result = StringBuilder()
-        
+
         // Format categorized intents
         allCategories.forEach { category ->
             val intentsInCategory = categorizedIntents[category.name]
             if (!intentsInCategory.isNullOrEmpty()) {
                 result.appendLine("## ${category.name.capitalize()} ${category.description}")
                 result.appendLine()
-                
+
                 intentsInCategory.forEach { intent ->
                     result.appendLine("- ${intent.appLabel}: ${intent.packageName}")
                 }
                 result.appendLine()
             }
         }
-        
+
         // Format uncategorized intents
         if (uncategorizedIntents.isNotEmpty()) {
             result.appendLine("## Other Apps")
             result.appendLine()
-            
+
             uncategorizedIntents.forEach { intent ->
                 result.appendLine("- ${intent.appLabel}: ${intent.packageName}")
             }
         }
-        
+
         return result.toString()
     }
 }

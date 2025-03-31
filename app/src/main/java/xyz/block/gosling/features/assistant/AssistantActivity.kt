@@ -115,7 +115,6 @@ class AssistantActivity : ComponentActivity() {
         )
     }
 
-
     private fun processAgentCommand(command: String) {
         currentJob?.cancel()
         currentAgentManager?.unbindAgent()
@@ -195,5 +194,3 @@ class AssistantActivity : ComponentActivity() {
         voiceRecognitionManager.stopVoiceRecognition()
     }
 }
-
-

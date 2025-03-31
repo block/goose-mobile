@@ -9,14 +9,11 @@ import kotlinx.serialization.json.JsonObject
 import kotlinx.serialization.json.jsonObject
 import kotlinx.serialization.json.jsonPrimitive
 
-// Common models
-
 @Serializable
 data class Image(
     val url: String
 )
 
-// Content types
 @Serializable(with = ContentSerializer::class)
 sealed class Content {
     abstract val type: String
@@ -45,7 +42,6 @@ class ContentSerializer : JsonContentPolymorphicSerializer<Content>(Content::cla
     }
 }
 
-// Common models
 @Serializable
 data class Message(
     val role: String,
@@ -61,7 +57,6 @@ data class Message(
     @SerialName("stats")
     val stats: Map<String, Double>? = null
 )
-
 
 @Serializable
 data class Conversation(
@@ -207,11 +202,3 @@ data class NodeInfo(
     val children: List<NodeInfo>? = null,
     val error: String? = null
 )
-
-@Serializable
-data class UiHierarchy(
-    val packageName: String? = null,
-    val className: String? = null,
-    val nodes: NodeInfo? = null,
-    val error: String? = null
-) 

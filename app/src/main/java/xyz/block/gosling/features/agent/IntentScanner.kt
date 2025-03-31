@@ -1,13 +1,18 @@
 package xyz.block.gosling.features.agent
 
+import android.annotation.SuppressLint
 import android.content.Context
 import android.content.Intent
 import android.content.pm.ApplicationInfo
 import android.content.pm.PackageManager
 import android.content.pm.ResolveInfo
+import android.util.Log
 import xyz.block.gosling.features.accessibility.GoslingAccessibilityService
 
 object IntentScanner {
+    private const val TAG = "IntentScanner"
+
+    @SuppressLint("QueryPermissionsNeeded")
     fun getAvailableIntents(
         context: Context,
         accessibilityService: GoslingAccessibilityService?
@@ -54,8 +59,6 @@ object IntentScanner {
             Intent(Intent.ACTION_DIAL),
             Intent(Intent.ACTION_SENDTO),
             Intent(Intent.ACTION_WEB_SEARCH),
-//            Intent(ACTION_SET_ALARM),
-//            Intent(ACTION_IMAGE_CAPTURE)
         )
 
         for (intent in commonIntents) {
@@ -88,9 +91,9 @@ object IntentScanner {
         return intentActions.map { (packageName, actions) ->
             // Determine the kind of app based on package name
             val category = IntentAppKinds.getCategoryForPackage(packageName)
-            System.out.println("App package " + packageName)
+            Log.d(TAG, "App package $packageName")
             val kind = category?.name ?: "other"
-            
+
             IntentDefinition(
                 packageName = packageName,
                 appLabel = appLabels[packageName] ?: "Unknown App",

@@ -63,7 +63,7 @@ class SettingsStore(context: Context) {
     var shouldProcessNotifications: Boolean
         get() = prefs.getBoolean(KEY_PROCESS_NOTIFICATIONS, false)
         set(value) = prefs.edit { putBoolean(KEY_PROCESS_NOTIFICATIONS, value) }
-        
+
     var messageHandlingPreferences: String
         get() = prefs.getString(KEY_MESSAGE_HANDLING_PREFERENCES, "") ?: ""
         set(value) = prefs.edit { putString(KEY_MESSAGE_HANDLING_PREFERENCES, value) }
@@ -75,8 +75,8 @@ class SettingsStore(context: Context) {
     var screenshotHandlingPreferences: String
         get() = prefs.getString(KEY_SCREENSHOT_HANDLING_PREFERENCES, "") ?: ""
         set(value) = prefs.edit { putString(KEY_SCREENSHOT_HANDLING_PREFERENCES, value) }
-        
+
     var enableAppExtensions: Boolean
         get() = prefs.getBoolean(KEY_ENABLE_APP_EXTENSIONS, true) // Enabled by default
         set(value) = prefs.edit { putBoolean(KEY_ENABLE_APP_EXTENSIONS, value) }
-} 
+}

@@ -101,7 +101,6 @@ private fun MessageCard(message: Message, modifier: Modifier = Modifier) {
 fun ConversationScreen(
     conversationId: String,
     onNavigateBack: () -> Unit,
-    modifier: Modifier = Modifier
 ) {
     val context = LocalContext.current
     var conversation by remember { mutableStateOf<Conversation?>(null) }

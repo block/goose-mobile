@@ -87,11 +87,7 @@ import java.text.SimpleDateFormat
 import java.util.Date
 import java.util.Locale
 
-data class ChatMessage(
-    val text: String,
-    val isUser: Boolean,
-    val timestamp: Long = System.currentTimeMillis()
-)
+private const val TAG = "MainScreen"
 
 private val predefinedQueries = listOf(
     "What's the weather like?",
@@ -153,9 +149,7 @@ fun MainScreen(
                         "Use the following instructions take take action or " +
                         "if nothing is applicable, leave it be: $instructions",
                 selectedUri
-            ) { message, isUser ->
-                // Messages will be handled by the conversation manager now
-            }
+            )
         }
     }
 
@@ -173,9 +167,7 @@ fun MainScreen(
                             "Use the following instructions take take action or " +
                             "if nothing is applicable, leave it be: $instructions",
                     uri
-                ) { message, isUser ->
-                    // Messages will be handled by the conversation manager now
-                }
+                )
             }
         }
     }
@@ -240,12 +232,12 @@ fun MainScreen(
     }
 
     fun showImageOptions() {
-        val activity = context as? Activity
-        if (activity != null) {
+        val contextActivity = context as? Activity
+        if (contextActivity != null) {
             val options = arrayOf("Take Photo", "Choose from Gallery")
-            android.app.AlertDialog.Builder(activity)
+            android.app.AlertDialog.Builder(contextActivity)
                 .setTitle("Select Photo")
-                .setItems(options) { dialog, which ->
+                .setItems(options) { _, which ->
                     when (which) {
                         0 -> {
                             if (hasCameraPermission) {
@@ -391,9 +383,7 @@ fun MainScreen(
                                             processAgentCommand(
                                                 context,
                                                 textInput
-                                            ) { message, isUser ->
-                                                // Messages will be handled by the conversation manager now
-                                            }
+                                            )
                                             textInput = ""
                                         }
                                     },
@@ -478,9 +468,7 @@ fun MainScreen(
                                     .fillMaxWidth()
                                     .clickable {
                                         showPresetQueries = false
-                                        processAgentCommand(context, query) { message, isUser ->
-                                            // Messages will be handled by the conversation manager now
-                                        }
+                                        processAgentCommand(context, query)
                                     }
                                     .padding(16.dp)
                             )
@@ -542,9 +530,7 @@ private fun startVoiceRecognition(
     voiceRecognitionManager.startVoiceRecognition(
         object : VoiceRecognitionService.VoiceRecognitionCallback {
             override fun onVoiceCommandReceived(command: String) {
-                processAgentCommand(context, command) { _, _ ->
-                    // Messages will be handled by the conversation manager now
-                }
+                processAgentCommand(context, command)
                 onRecordingComplete()
             }
 
@@ -566,7 +552,7 @@ private fun processAgentCommand(
     context: Context,
     command: String,
     imageUri: Uri? = null,
-    onMessageReceived: (String, Boolean) -> Unit
+    onMessageReceived: ((String, Boolean) -> Unit)? = null
 ) {
     val activity = context as MainActivity
     val statusToast = Toast.makeText(context, "", Toast.LENGTH_SHORT)
@@ -587,11 +573,11 @@ private fun processAgentCommand(
         when (status) {
             is AgentStatus.Processing -> {
                 if (status.message.isEmpty() || status.message == "null") {
-                    Log.d("MainScreen", "Ignoring empty/null processing message")
+                    Log.d(TAG, "Ignoring empty/null processing message")
                     return@setStatusListener
                 }
                 android.os.Handler(context.mainLooper).post {
-                    onMessageReceived(status.message, false)
+                    onMessageReceived?.invoke(status.message, false)
 
                     statusToast.setText(status.message)
                     statusToast.show()
@@ -602,7 +588,7 @@ private fun processAgentCommand(
 
             is AgentStatus.Success -> {
                 android.os.Handler(context.mainLooper).post {
-                    onMessageReceived(status.message, false)
+                    onMessageReceived?.invoke(status.message, false)
 
                     statusToast.setText(status.message)
                     statusToast.show()
@@ -622,7 +608,7 @@ private fun processAgentCommand(
             is AgentStatus.Error -> {
                 android.os.Handler(context.mainLooper).post {
                     val errorMessage = "Error: ${status.message}"
-                    onMessageReceived(errorMessage, false)
+                    onMessageReceived?.invoke(errorMessage, false)
 
                     statusToast.setText(errorMessage)
                     statusToast.show()
@@ -643,10 +629,9 @@ private fun processAgentCommand(
                 imageUri = imageUri
             )
         } catch (e: Exception) {
-            // Handle exceptions
             android.os.Handler(context.mainLooper).post {
                 val errorMessage = "Error: ${e.message}"
-                onMessageReceived(errorMessage, false)
+                onMessageReceived?.invoke(errorMessage, false)
                 statusToast.setText(errorMessage)
                 statusToast.show()
             }

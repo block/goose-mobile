@@ -1,4 +1,4 @@
-package xyz.block.gosling.features.screenshot
+package xyz.block.gosling.features.agent
 
 import android.content.ContentUris
 import android.content.Context
@@ -48,7 +48,7 @@ class ScreenshotManager(private val context: Context) {
         )
     }
 
-    fun stopMonitoring() {
+    private fun stopMonitoring() {
         Log.d(TAG, "Stopping screenshot monitoring")
         context.contentResolver.unregisterContentObserver(contentObserver)
     }

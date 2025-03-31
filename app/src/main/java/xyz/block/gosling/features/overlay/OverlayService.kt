@@ -25,6 +25,7 @@ import java.lang.ref.WeakReference
 
 class OverlayService : Service() {
     companion object {
+        private const val TAG = "OverlayService"
         private var instance: WeakReference<OverlayService>? = null
         fun getInstance(): OverlayService? = instance?.get()
     }
@@ -48,7 +49,6 @@ class OverlayService : Service() {
         instance = WeakReference(this)
         windowManager = getSystemService(Context.WINDOW_SERVICE) as WindowManager
 
-        // Enable overlay by default when service starts
         GoslingApplication.enableOverlay()
 
         // Inflate the overlay view
@@ -193,11 +193,11 @@ class OverlayService : Service() {
             is AgentStatus.Error -> Pair(status.message, true)
         }
 
-        android.util.Log.d("Gosling", "updateStatus called with status: $status, isDone: $isDone")
+        android.util.Log.d(TAG, "updateStatus called with status: $status, isDone: $isDone")
 
         // Ignore null, empty, or "null" string messages
         if (displayText.isBlank() || displayText.contains("null") || displayText.trim().isEmpty()) {
-            android.util.Log.d("Gosling", "Ignoring empty or null message")
+            android.util.Log.d(TAG, "Ignoring empty or null message")
             return
         }
 
@@ -255,13 +255,13 @@ class OverlayService : Service() {
                     }, 100)
 
                 } catch (e: Exception) {
-                    android.util.Log.e("Gosling", "Error updating overlay view", e)
+                    android.util.Log.e(TAG, "Error updating overlay view", e)
                 }
             } else {
                 overlayView?.visibility = View.GONE
             }
 
-            android.util.Log.d("Gosling", "Overlay visibility set to: $newVisibility")
+            android.util.Log.d(TAG, "Overlay visibility set to: $newVisibility")
         }
     }
 
@@ -280,17 +280,17 @@ class OverlayService : Service() {
             try {
                 windowManager.removeView(overlayView)
                 params.apply {
-                    if (disabled) {
+                    flags = if (disabled) {
                         // When disabled, allow touches to pass through
-                        flags = flags or WindowManager.LayoutParams.FLAG_NOT_TOUCHABLE
+                        flags or WindowManager.LayoutParams.FLAG_NOT_TOUCHABLE
                     } else {
                         // When enabled, restore normal touch behavior
-                        flags = flags and WindowManager.LayoutParams.FLAG_NOT_TOUCHABLE.inv()
+                        flags and WindowManager.LayoutParams.FLAG_NOT_TOUCHABLE.inv()
                     }
                 }
                 windowManager.addView(overlayView, params)
             } catch (e: Exception) {
-                android.util.Log.e("Gosling", "Error updating overlay touch state", e)
+                android.util.Log.e(TAG, "Error updating overlay touch state", e)
             }
         }
     }

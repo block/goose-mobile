@@ -19,12 +19,6 @@ class GoslingApplication : Application() {
             return (isMainActivityRunning || isLauncherActivityRunning)
         }
 
-        fun disableOverlay() {
-            isOverlayEnabled = false
-            // Notify the overlay service to update visibility if it exists
-            OverlayService.getInstance()?.updateOverlayVisibility()
-        }
-
         fun enableOverlay() {
             isOverlayEnabled = true
             // Notify the overlay service to update visibility if it exists

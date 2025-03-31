@@ -14,6 +14,8 @@ import xyz.block.gosling.features.agent.AgentServiceManager
 import xyz.block.gosling.features.agent.AgentStatus
 import xyz.block.gosling.shared.services.VoiceRecognitionService
 
+private const val TAG = "AssistantSessionService"
+
 class AssistantSessionService : VoiceInteractionSessionService() {
     override fun onNewSession(bundle: Bundle?): VoiceInteractionSession {
         return Session(this)
@@ -35,12 +37,11 @@ class AssistantSessionService : VoiceInteractionSessionService() {
         private fun startSpeechRecognition() {
             voiceRecognitionManager = VoiceRecognitionService(context)
 
-            // Start voice recognition with a callback
             voiceRecognitionManager?.startVoiceRecognition(
                 object : VoiceRecognitionService.VoiceRecognitionCallback {
                     override fun onVoiceCommandReceived(command: String) {
                         if (command.isNotEmpty()) {
-                            Log.d("GOS", "Command: $command")
+                            Log.d(TAG, "Command: $command")
                             // Process the command with the Agent
                             processAgentCommand(command)
                         }
@@ -48,47 +49,45 @@ class AssistantSessionService : VoiceInteractionSessionService() {
                     }
 
                     override fun onPartialResult(partialCommand: String) {
-                        Log.d("GOS", "Partial command: $partialCommand")
+                        Log.d(TAG, "Partial command: $partialCommand")
                     }
 
                     override fun onError(errorMessage: String) {
-                        Log.d("GOS", "Error occurred: $errorMessage")
+                        Log.d(TAG, "Error occurred: $errorMessage")
                         hide()
                     }
 
                     override fun onListening() {
-                        Log.d("GOS", "Ready for speech.")
+                        Log.d(TAG, "Ready for speech.")
                     }
 
                     override fun onSpeechEnd() {
-                        Log.d("GOS", "End of speech.")
+                        Log.d(TAG, "End of speech.")
                         hide()
                     }
                 },
             )
 
-            Log.d("GOS", "Started listening for speech.")
+            Log.d(TAG, "Started listening for speech.")
         }
 
         private fun processAgentCommand(command: String) {
             val agentServiceManager = AgentServiceManager(context)
 
             agentServiceManager.bindAndStartAgent { agent ->
-                // Set up status listener for UI updates
                 agent.setStatusListener { status ->
-                    // Update UI based on status
                     when (status) {
                         is AgentStatus.Processing -> {
                             if (status.message.isEmpty() || status.message == "null") return@setStatusListener
-                            Log.d("GOS", "Processing: ${status.message}")
+                            Log.d(TAG, "Processing: ${status.message}")
                         }
 
                         is AgentStatus.Success -> {
-                            Log.d("GOS", "Success: ${status.message}")
+                            Log.d(TAG, "Success: ${status.message}")
                         }
 
                         is AgentStatus.Error -> {
-                            Log.d("GOS", "Error: ${status.message}")
+                            Log.d(TAG, "Error: ${status.message}")
                         }
                     }
                 }
@@ -101,7 +100,7 @@ class AssistantSessionService : VoiceInteractionSessionService() {
                             triggerType = Agent.TriggerType.ASSISTANT
                         )
                     } catch (e: Exception) {
-                        Log.e("GOS", "Error processing command: ${e.message}")
+                        Log.e(TAG, "Error processing command: ${e.message}")
                     }
                 }
             }
@@ -109,7 +108,6 @@ class AssistantSessionService : VoiceInteractionSessionService() {
 
         override fun onHide() {
             super.onHide()
-            // Clean up voice recognition when the session is hidden
             voiceRecognitionManager?.stopVoiceRecognition()
             voiceRecognitionManager = null
         }

@@ -1,17 +1,12 @@
 package xyz.block.gosling.features.agent
 
-
 fun firstText(message: Message): String {
     if (message.content.isNullOrEmpty()) {
         return "<empty>"
     }
 
     val textContent = message.content.filterIsInstance<Content.Text>().firstOrNull()
-    return if (textContent != null) {
-        textContent.text
-    } else {
-        "<image>"
-    }
+    return textContent?.text ?: "<image>"
 }
 
 fun firstImage(message: Message): Content.ImageUrl? {
@@ -33,12 +28,9 @@ fun getConversationTitle(conversation: Conversation): String {
     return conversation.messages
         .find { it.role == "user" }
         ?.let { firstText(it) }
-        ?.let { it }
         ?: "Conversation ${conversation.id}"
 }
 
 fun getCurrentAssistantMessage(conversation: Conversation): Message? {
-    return conversation.messages
-        .filter { it.role == "assistant" }
-        .lastOrNull()
+    return conversation.messages.lastOrNull { it.role == "assistant" }
 }

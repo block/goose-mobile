@@ -13,7 +13,6 @@ import android.util.Log
 import androidx.core.app.NotificationCompat
 import xyz.block.gosling.R
 import xyz.block.gosling.features.app.MainActivity
-import xyz.block.gosling.features.screenshot.ScreenshotManager
 import xyz.block.gosling.features.settings.SettingsStore
 
 /**
@@ -49,9 +48,6 @@ class AgentServiceManager(private val context: Context) {
         }
     }
 
-    /**
-     * Creates the notification channel for the Agent service
-     */
     private fun createNotificationChannel() {
         val name = "Gosling Agent"
         val descriptionText = "Handles network operations and command processing"
@@ -63,17 +59,11 @@ class AgentServiceManager(private val context: Context) {
         notificationManager.createNotificationChannel(channel)
     }
 
-    /**
-     * Starts the Agent as a foreground service
-     */
     fun startAgentForeground(agent: Agent) {
         val notification = createNotification("Processing commands")
         agent.startForeground(NOTIFICATION_ID, notification)
     }
 
-    /**
-     * Binds to the Agent service and starts it as a foreground service
-     */
     fun bindAndStartAgent(callback: (Agent) -> Unit) {
         if (isBound) {
             Log.d(TAG, "Service is already bound, skipping bind")
@@ -85,28 +75,22 @@ class AgentServiceManager(private val context: Context) {
             override fun onServiceConnected(name: ComponentName?, service: IBinder?) {
                 val agent = (service as Agent.AgentBinder).getService()
 
-                // Start as foreground service
                 startAgentForeground(agent)
-
                 screenshotManager.startMonitoring()
 
-                // Set up status listener
                 agent.setStatusListener { status ->
                     updateNotification(status)
                 }
 
-                // Call the callback with the agent
                 callback(agent)
             }
 
             override fun onServiceDisconnected(name: ComponentName?) {
-                // Service disconnected
                 isBound = false
                 serviceConnection = null
             }
         }
 
-        // Start and bind to the service
         context.startForegroundService(serviceIntent)
         val bound =
             context.bindService(serviceIntent, serviceConnection!!, Context.BIND_AUTO_CREATE)
@@ -114,9 +98,6 @@ class AgentServiceManager(private val context: Context) {
         Log.d(TAG, "Service bind attempt result: $bound")
     }
 
-    /**
-     * Unbinds from the Agent service
-     */
     fun unbindAgent() {
         if (isBound && serviceConnection != null) {
             try {
@@ -131,9 +112,6 @@ class AgentServiceManager(private val context: Context) {
         }
     }
 
-    /**
-     * Updates the notification based on Agent status
-     */
     fun updateNotification(status: AgentStatus) {
         val message = when (status) {
             is AgentStatus.Processing -> status.message
@@ -147,9 +125,6 @@ class AgentServiceManager(private val context: Context) {
         notificationManager.notify(NOTIFICATION_ID, notification)
     }
 
-    /**
-     * Creates a notification with the given message
-     */
     private fun createNotification(message: String): Notification {
         val notificationIntent = Intent(context, MainActivity::class.java)
         val pendingIntent = PendingIntent.getActivity(

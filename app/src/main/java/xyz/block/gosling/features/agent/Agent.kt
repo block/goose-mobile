@@ -46,6 +46,8 @@ sealed class AgentStatus {
 }
 
 class Agent : Service() {
+    private val tag = "Agent"
+
     private var job = SupervisorJob()
     private var scope = CoroutineScope(Dispatchers.IO + job)
     private val binder = AgentBinder()
@@ -83,7 +85,6 @@ class Agent : Service() {
 
     inner class AgentBinder : Binder() {
         fun getService(): Agent = this@Agent
-        fun getConversationManager(): ConversationManager = conversationManager
     }
 
     override fun onCreate() {
@@ -116,7 +117,7 @@ class Agent : Service() {
 
     /**
      * Determines the device type and returns the appropriate system message first paragraph.
-     * 
+     *
      * @param context The application context
      * @param role The role of the assistant (from TriggerType)
      * @return The system message first paragraph based on device type
@@ -124,25 +125,26 @@ class Agent : Service() {
     private fun getDeviceSpecificSystemMessage(context: Context, role: String): String {
         return when {
             isChromebook(context) -> {
-                System.out.println("THIS IS A CHROMEBOOK!!")
+                Log.d(tag, "THIS IS A CHROMEBOOK!!")
                 "You are an assistant $role. The user may not have access to the ChromeOS device. " +
-                "You will autonomously complete complex tasks on the ChromeOS device and report back to the " +
-                "user when done. NEVER ask the user for additional information or choices - you must " +
-                "decide and act on your own. IMPORTANT: you must be aware of what application you are opening, browser, contacts and so on, take note and don't accidentally open the wrong app"
+                        "You will autonomously complete complex tasks on the ChromeOS device and report back to the " +
+                        "user when done. NEVER ask the user for additional information or choices - you must " +
+                        "decide and act on your own. IMPORTANT: you must be aware of what application you are opening, browser, contacts and so on, take note and don't accidentally open the wrong app"
             }
+
             else -> {
                 "You are an assistant $role. The user does not have access to the phone. " +
-                "You will autonomously complete complex tasks on the phone and report back to the " +
-                "user when done. NEVER ask the user for additional information or choices - you must " +
-                "decide and act on your own."
+                        "You will autonomously complete complex tasks on the phone and report back to the " +
+                        "user when done. NEVER ask the user for additional information or choices - you must " +
+                        "decide and act on your own."
             }
         }
     }
 
     /**
      * Detects if the device is running ChromeOS.
-     * 
-     * According to Android documentation, ChromeOS devices can be detected using the 
+     *
+     * According to Android documentation, ChromeOS devices can be detected using the
      * "ro.boot.hardware.context" system property which is set to "u-boot" on ChromeOS.
      * Additionally, the "android.hardware.type.pc" feature is present on ChromeOS devices.
      *
@@ -151,8 +153,8 @@ class Agent : Service() {
      */
     private fun isChromebook(context: Context): Boolean {
         val pm = context.packageManager
-        return pm.hasSystemFeature("android.hardware.type.pc") || 
-               System.getProperty("ro.boot.hardware.context") == "u-boot"
+        return pm.hasSystemFeature("android.hardware.type.pc") ||
+                System.getProperty("ro.boot.hardware.context") == "u-boot"
     }
 
     fun cancel() {
@@ -324,7 +326,7 @@ class Agent : Service() {
                         if (e is ApiKeyException) {
                             val errorMsg = "API key error: ${e.message}"
                             updateStatus(AgentStatus.Error(errorMsg))
-                            Log.e("Agent", "API key error", e)
+                            Log.e(tag, "API key error", e)
                             return@withContext errorMsg
                         }
 
@@ -333,7 +335,7 @@ class Agent : Service() {
                         if (retryCount >= maxRetries) {
                             val errorMsg = "Failed after $maxRetries attempts: ${e.message}"
                             updateStatus(AgentStatus.Error(errorMsg))
-                            Log.e("Agent", "Error processing response", e)
+                            Log.e(tag, "Error processing response", e)
                             return@withContext errorMsg
                         }
                         continue
@@ -444,7 +446,7 @@ class Agent : Service() {
                             )
                         }
                     } catch (e: Exception) {
-                        Log.e("Agent", "Error processing response", e)
+                        Log.e(tag, "Error processing response", e)
                         val errorMsg = "Error processing response: ${e.message}"
                         updateStatus(AgentStatus.Error(errorMsg))
                         return@withContext errorMsg
@@ -473,7 +475,7 @@ class Agent : Service() {
                             response.getJSONArray("choices").getJSONObject(0)
                                 .getJSONObject("message")
                         val content = assistantMessage.optString("content", "Ok")
-                        Log.d("Agent", "Explanation response: $content")
+                        Log.d(tag, "Explanation response: $content")
                     }
                 }
 
@@ -508,7 +510,7 @@ class Agent : Service() {
                 return@withContext completionMessage
             }
         } catch (e: Exception) {
-            Log.e("Agent", "Error executing command", e)
+            Log.e(tag, "Error executing command", e)
             if (e is kotlinx.coroutines.CancellationException) {
                 // Reset the job and scope to ensure future commands work
                 job = SupervisorJob()
@@ -559,8 +561,7 @@ class Agent : Service() {
                     triggerType = TriggerType.NOTIFICATION,
                 )
             } catch (e: Exception) {
-                // Handle any unexpected exceptions
-                Log.e("Agent", "Error handling notification", e)
+                Log.e(tag, "Error handling notification", e)
 
                 // If it's a cancellation exception, handle it gracefully
                 if (e is kotlinx.coroutines.CancellationException) {
@@ -569,7 +570,6 @@ class Agent : Service() {
                     scope = CoroutineScope(Dispatchers.IO + job)
                     updateStatus(AgentStatus.Success("Operation cancelled"))
                 } else {
-                    // For other exceptions, report the error
                     updateStatus(AgentStatus.Error("Error: ${e.message}"))
                 }
             }
@@ -756,12 +756,12 @@ class Agent : Service() {
         }
     }
 
-    private fun isApiKeyError(responseCode: Int, errorResponse: String): Boolean {
+    private fun isApiKeyError(responseCode: Int): Boolean {
         return responseCode == HttpURLConnection.HTTP_UNAUTHORIZED
     }
 
     private fun handleHttpError(responseCode: Int, errorResponse: String): Nothing {
-        if (isApiKeyError(responseCode, errorResponse)) {
+        if (isApiKeyError(responseCode)) {
             throw ApiKeyException(errorResponse)
         }
 
@@ -782,8 +782,7 @@ class Agent : Service() {
                     imageUri = uri
                 )
             } catch (e: Exception) {
-                // Handle any unexpected exceptions
-                Log.e("Agent", "Error handling notification", e)
+                Log.e(tag, "Error handling notification", e)
 
                 // If it's a cancellation exception, handle it gracefully
                 if (e is kotlinx.coroutines.CancellationException) {
@@ -792,11 +791,9 @@ class Agent : Service() {
                     scope = CoroutineScope(Dispatchers.IO + job)
                     updateStatus(AgentStatus.Success("Operation cancelled"))
                 } else {
-                    // For other exceptions, report the error
                     updateStatus(AgentStatus.Error("Error: ${e.message}"))
                 }
             }
         }
     }
-
 }

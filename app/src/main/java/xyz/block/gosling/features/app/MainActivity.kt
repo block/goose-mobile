@@ -30,6 +30,7 @@ import xyz.block.gosling.shared.theme.GoslingTheme
 class MainActivity : ComponentActivity() {
     companion object {
         private const val REQUEST_NOTIFICATION_PERMISSION = 1234
+        private const val TAG = "MainActivity"
     }
 
     private lateinit var settingsStore: SettingsStore
@@ -38,7 +39,6 @@ class MainActivity : ComponentActivity() {
     lateinit var agentServiceManager: AgentServiceManager
     var currentAgent by mutableStateOf<Agent?>(null)
         private set
-
 
     @SuppressLint("UseKtx")
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -65,7 +65,7 @@ class MainActivity : ComponentActivity() {
                             conversation.copy(endTime = currentTime)
                         )
                     }
-                Log.d("MainActivity", "Agent service started successfully")
+                Log.d(TAG, "Agent service started successfully")
             }
 
             startService(Intent(this, OverlayService::class.java))
@@ -78,7 +78,7 @@ class MainActivity : ComponentActivity() {
             val isEnabled = checkAccessibilityPermission(this)
             settingsStore.isAccessibilityEnabled = isEnabled
             isAccessibilityEnabled = isEnabled
-            Log.d("Gosling", "MainActivity: Updated accessibility state after settings: $isEnabled")
+            Log.d(TAG, "MainActivity: Updated accessibility state after settings: $isEnabled")
         }
 
         enableEdgeToEdge()
@@ -112,7 +112,7 @@ class MainActivity : ComponentActivity() {
         val isEnabled = checkAccessibilityPermission(this)
         settingsStore.isAccessibilityEnabled = isEnabled
         isAccessibilityEnabled = isEnabled
-        Log.d("Gosling", "MainActivity: Updated accessibility state on resume: $isEnabled")
+        Log.d(TAG, "MainActivity: Updated accessibility state on resume: $isEnabled")
 
         if (Settings.canDrawOverlays(this)) {
             if (OverlayService.getInstance() == null) {
@@ -122,7 +122,7 @@ class MainActivity : ComponentActivity() {
             if (currentAgent == null) {
                 agentServiceManager.bindAndStartAgent { agent ->
                     currentAgent = agent
-                    Log.d("MainActivity", "Agent service started successfully")
+                    Log.d(TAG, "Agent service started successfully")
                 }
             }
         }
@@ -150,7 +150,7 @@ class MainActivity : ComponentActivity() {
                 }
             }
         }
-        
+
         currentAgent = null
         agentServiceManager.unbindAgent()
     }
@@ -159,15 +159,16 @@ class MainActivity : ComponentActivity() {
         val intent = Intent(Settings.ACTION_ACCESSIBILITY_SETTINGS)
         accessibilitySettingsLauncher.launch(intent)
     }
+
+    private fun checkAccessibilityPermission(context: Context): Boolean {
+        val enabledServices = Settings.Secure.getString(
+            context.contentResolver,
+            Settings.Secure.ENABLED_ACCESSIBILITY_SERVICES
+        )
+        val isEnabled = enabledServices?.contains(context.packageName) == true
+        Log.d(TAG, "Accessibility check: $enabledServices, enabled: $isEnabled")
+        return isEnabled
+    }
 }
 
 
-fun checkAccessibilityPermission(context: Context): Boolean {
-    val enabledServices = Settings.Secure.getString(
-        context.contentResolver,
-        Settings.Secure.ENABLED_ACCESSIBILITY_SERVICES
-    )
-    val isEnabled = enabledServices?.contains(context.packageName) == true
-    Log.d("Gosling", "Accessibility check: $enabledServices, enabled: $isEnabled")
-    return isEnabled
-}

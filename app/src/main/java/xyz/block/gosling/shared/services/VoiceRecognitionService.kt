@@ -12,7 +12,6 @@ import android.speech.SpeechRecognizer
 import androidx.core.app.ActivityCompat
 import androidx.core.content.ContextCompat
 
-
 class VoiceRecognitionService(private val context: Context) {
     private var speechRecognizer: SpeechRecognizer? = null
 
@@ -56,7 +55,6 @@ class VoiceRecognitionService(private val context: Context) {
             putExtra(RecognizerIntent.EXTRA_MAX_RESULTS, 1)
         }
 
-        // Set up recognition listener
         speechRecognizer?.setRecognitionListener(object : RecognitionListener {
             override fun onResults(results: Bundle) {
                 val voiceCommand = results.getStringArrayList(SpeechRecognizer.RESULTS_RECOGNITION)

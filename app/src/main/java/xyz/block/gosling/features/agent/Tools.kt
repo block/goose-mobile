@@ -3,17 +3,16 @@ package xyz.block.gosling.features.agent
 import android.accessibilityservice.AccessibilityService
 import android.accessibilityservice.GestureDescription
 import android.app.SearchManager
-import android.content.BroadcastReceiver
-import android.content.ComponentName
 import android.content.Context
 import android.content.Intent
 import android.graphics.Path
 import android.graphics.Rect
+import android.os.Build
 import android.os.Bundle
-import android.os.Looper
 import android.util.Log
 import android.view.accessibility.AccessibilityNodeInfo
 import android.view.inputmethod.InputMethodManager
+import androidx.annotation.RequiresApi
 import androidx.core.net.toUri
 import org.json.JSONObject
 import xyz.block.gosling.features.overlay.OverlayService
@@ -21,7 +20,6 @@ import java.util.Locale
 import java.util.concurrent.CountDownLatch
 import java.util.concurrent.TimeUnit
 import java.util.concurrent.atomic.AtomicLong
-
 
 @Target(AnnotationTarget.FUNCTION)
 @Retention(AnnotationRetention.RUNTIME)
@@ -53,182 +51,14 @@ sealed class SerializableToolDefinitions {
     data class GeminiTools(val tools: List<GeminiTool>) : SerializableToolDefinitions()
 }
 
-// a lightweight MCP client that will discover apps that can add tools
-object MobileMCP {
-    // Map to store localId -> (packageName, appName) mappings to keep names short in function calls
-    private val mcpRegistry = mutableMapOf<String, Pair<String, String>>()
-
-    // Generate a unique 3-character localId (2 letters + 1 digit)
-    private fun generateLocalId(): String {
-        val charPool = ('a'..'z') + ('A'..'Z') + ('0'..'9')
-        val letters = (1..2).map { charPool.filter { it.isLetter() }.random() }.joinToString("")
-        val digit = charPool.filter { it.isDigit() }.random()
-        val localId = "$letters$digit"
-
-        // Ensure the ID is unique
-        return if (mcpRegistry.containsKey(localId)) {
-            generateLocalId() // Try again if this ID is already used
-        } else {
-            localId
-        }
-    }
-
-    // discover MCPs that are on this device.
-    fun discoverMCPs(context: Context): List<Map<String, Any>> {
-
-        if (Looper.myLooper() == Looper.getMainLooper()) {
-            throw IllegalStateException("Don't call this from the main thread!")
-        }
-        val action = "com.example.ACTION_MMCP_DISCOVERY" // TODO we need a permanent name for this.
-        val intent = Intent(action)
-        val packageManager = context.packageManager
-        val resolveInfos = packageManager.queryBroadcastReceivers(intent, 0)
-
-        val results = mutableListOf<Map<String, Any>>()
-        val latch = CountDownLatch(resolveInfos.size) // Wait for all broadcasts to finish
-
-        for (resolveInfo in resolveInfos) {
-            val componentName = ComponentName(
-                resolveInfo.activityInfo.packageName,
-                resolveInfo.activityInfo.name
-            )
-
-            val broadcastIntent = Intent(action).apply {
-                component = componentName
-            }
-
-            val receiver = object : BroadcastReceiver() {
-                override fun onReceive(context: Context?, intent: Intent?) {
-                    System.out.println("MCP receive from $componentName")
-                    val extras = getResultExtras(true)
-                    System.out.println("Extras: $extras")
-                    if (extras != null) {
-                        val packageName = resolveInfo.activityInfo.packageName
-                        val appName = resolveInfo.activityInfo.name
-
-                        // Generate or retrieve a localId for this MCP
-                        val localId =
-                            mcpRegistry.entries.find { it.value == Pair(packageName, appName) }?.key
-                                ?: generateLocalId().also {
-                                    mcpRegistry[it] = Pair(packageName, appName)
-                                }
-
-                        val result = mapOf(
-                            "packageName" to packageName,
-                            "name" to appName,
-                            "localId" to localId,
-                            "tools" to (extras.getStringArray("tools")?.toList() ?: emptyList())
-                                .associateWith { tool ->
-                                    mapOf(
-                                        "description" to (extras.getString("$tool.description")
-                                            ?: ""),
-                                        "parameters" to (extras.getString("$tool.parameters")
-                                            ?: "{}")
-                                    )
-                                }
-                        )
-                        System.out.println("Results adding: $result")
-                        results.add(result)
-                    }
-                    latch.countDown() // ✅ Signal that this receiver has finished processing
-                }
-            }
-
-            System.out.println("Sending broadcast to $componentName...")
-
-            context.sendOrderedBroadcast(
-                broadcastIntent,
-                null, // permission
-                receiver, // Attach the receiver here
-                null, // scheduler
-                0, // initial code
-                null, // initial data
-                null // No initial extras
-            )
-
-            System.out.println("Broadcast finished for $componentName")
-        }
-
-        try {
-            // Wait for all broadcasts to finish (5-second timeout to avoid hanging forever), these should be fast
-            // and this is a one time wait
-            latch.await(5, TimeUnit.SECONDS)
-        } catch (e: InterruptedException) {
-            System.err.println("Latch interrupted: ${e.message}")
-        }
-
-        System.out.println("Returning results: $results")
-
-        return results
-    }
-
-
-    // invoke a specific tool in an external app
-    fun invokeTool(
-        context: Context,
-        localId: String,
-        tool: String,
-        params: String
-    ): String? {
-        // Look up the packageName and appName from the registry
-        val (packageName, appName) = mcpRegistry[localId] ?: run {
-            System.err.println("Error: Unknown MCP ID: $localId")
-            return "Error: Unknown MCP ID: $localId"
-        }
-
-        val intent = Intent("com.example.ACTION_MMCP_INVOKE").apply {
-            component = ComponentName(
-                packageName,
-                appName
-            )
-            putExtra("tool", tool)
-            putExtra("params", params)
-        }
-
-        var result: String? = null
-
-        val latch = CountDownLatch(1)
-
-        val receiver = object : BroadcastReceiver() {
-            override fun onReceive(context: Context?, intent: Intent?) {
-                result = resultData
-                System.out.println("RESULT FROM MCP ----> " + result)
-                latch.countDown()
-            }
-        }
-
-        context.sendOrderedBroadcast(
-            intent,
-            null,
-            receiver,
-            null,
-            0,
-            null,
-            null
-        )
-
-        try {
-            // Wait for for the app to respond, 10 seconds as why not?
-            latch.await(10, TimeUnit.SECONDS)
-        } catch (e: InterruptedException) {
-            System.err.println("Latch interrupted: ${e.message}")
-        }
-
-
-        return result
-    }
-
-
-}
-
 private const val appLoadTimeWait: Long = 2500
-private const val cordinateHint =
+private const val coordinateHint =
     "(coordinates are of form: [x-coordinate of the left edge, y-coordinate of the top edge, " +
             "x-coordinate of the right edge, y-coordinate of the bottom edge])"
 
 object ToolHandler {
     private val toolCallCounter = AtomicLong(0)
-
+    private const val TAG = "ToolHandler"
 
     private fun newToolCallId(): String {
         return "call_${toolCallCounter.incrementAndGet()}"
@@ -281,7 +111,7 @@ object ToolHandler {
         return clickResult
     }
 
-    private fun hideKeyboard(context: Context, accessibilityService: AccessibilityService? = null) {
+    private fun hideKeyboard(context: Context) {
         val imm =
             context.getSystemService(Context.INPUT_METHOD_SERVICE) as? InputMethodManager ?: return
 
@@ -332,8 +162,8 @@ object ToolHandler {
 
             val appInfo = "App: ${activeWindow.packageName}"
             val hierarchy = buildCompactHierarchy(activeWindow)
-            System.out.println("build compact: " + hierarchy)
-            "$appInfo $cordinateHint\n$hierarchy"
+            Log.d(TAG, "build compact: $hierarchy")
+            "$appInfo $coordinateHint\n$hierarchy"
         } catch (e: Exception) {
             "ERROR: Failed to get UI hierarchy: ${e.message}"
         }
@@ -375,11 +205,22 @@ object ToolHandler {
 
             // Get the node type
             val nodeType = node.className?.toString()?.substringAfterLast('.') ?: "View"
-            
+
             // Check if this node should be filtered out
-            val filteredNodeTypes = listOf("FrameLayout", "LinearLayout", "RelativeLayout", "ViewGroup", "View", "ImageView", "TextView", "ListView", "ComposeView", )
-            val shouldFilter = filteredNodeTypes.contains(nodeType) && !(hasContentDescription || hasText)
-            
+            val filteredNodeTypes = listOf(
+                "FrameLayout",
+                "LinearLayout",
+                "RelativeLayout",
+                "ViewGroup",
+                "View",
+                "ImageView",
+                "TextView",
+                "ListView",
+                "ComposeView",
+            )
+            val shouldFilter =
+                filteredNodeTypes.contains(nodeType) && !(hasContentDescription || hasText)
+
             // Format bounds compactly with midpoint
             val midX = (bounds.left + bounds.right) / 2
             val midY = (bounds.top + bounds.bottom) / 2
@@ -395,19 +236,23 @@ object ToolHandler {
             val childrenStr = if (node.childCount > 0) {
                 val childrenLines = mutableListOf<String>()
                 for (i in 0 until node.childCount) {
-                    node.getChild(i)?.let { childNode ->
+                    val childNode = node.getChild(i)
+                    if (childNode != null) {
                         try {
                             val childResult = buildCompactHierarchy(childNode, depth + 1)
                             if (childResult.isNotEmpty()) {
                                 childrenLines.add(childResult)
                             }
                         } catch (e: Exception) {
-                            childrenLines.add("${indent}  ERROR: Failed to serialize child: ${e.message}")
+                            childrenLines.add("$indent  ERROR: Failed to serialize child: ${e.message}")
                         }
                     }
                 }
                 if (childrenLines.isNotEmpty()) "\n" + childrenLines.joinToString("\n") else ""
-            } else ""
+            } else {
+                ""
+            }
+
 
             return nodeLine + childrenStr
 
@@ -540,7 +385,7 @@ object ToolHandler {
             "Failed to swipe from ($startX, $startY) to ($endX, $endY)"
         }
     }
-    
+
     @Tool(
         name = "scrollBrowse",
         description = "Scroll up a screen's worth from the current position and return the UI hierarchy at that new position. " +
@@ -562,26 +407,28 @@ object ToolHandler {
         requiresAccessibility = true
     )
     fun scrollBrowse(accessibilityService: AccessibilityService, args: JSONObject): String {
-        val scrollDuration = if (args.has("scroll_duration")) args.getInt("scroll_duration") else 300
-        val pauseAfterScroll = if (args.has("pause_after_scroll")) args.getInt("pause_after_scroll") else 1000
-        
+        val scrollDuration =
+            if (args.has("scroll_duration")) args.getInt("scroll_duration") else 300
+        val pauseAfterScroll =
+            if (args.has("pause_after_scroll")) args.getInt("pause_after_scroll") else 1000
+
         // Get screen dimensions for calculating scroll coordinates
         val displayMetrics = accessibilityService.resources.displayMetrics
         val screenWidth = displayMetrics.widthPixels
         val screenHeight = displayMetrics.heightPixels
-        
+
         // Center X coordinate
         val centerX = screenWidth / 2
-        
+
         // Calculate scroll coordinates (from bottom third to top third)
         val startY = (screenHeight * 0.7).toInt()
         val endY = (screenHeight * 0.3).toInt()
-        
+
         // Perform swipe gesture
         val swipePath = Path()
         swipePath.moveTo(centerX.toFloat(), startY.toFloat())
         swipePath.lineTo(centerX.toFloat(), endY.toFloat())
-        
+
         val gestureBuilder = GestureDescription.Builder()
         gestureBuilder.addStroke(
             GestureDescription.StrokeDescription(
@@ -590,24 +437,24 @@ object ToolHandler {
                 scrollDuration.toLong()
             )
         )
-        
+
         val swipeResult = performGesture(gestureBuilder.build(), accessibilityService)
-        
+
         if (!swipeResult) {
             return "Failed to scroll the screen"
         }
-        
+
         // Wait for content to settle
         Thread.sleep(pauseAfterScroll.toLong())
-        
+
         // Get UI hierarchy at this position
         return try {
             val activeWindow = accessibilityService.rootInActiveWindow
                 ?: return "ERROR: No active window found after scrolling"
-            
+
             val appInfo = "App: ${activeWindow.packageName}"
             val hierarchyText = buildCompactHierarchy(activeWindow)
-            "$appInfo $cordinateHint\n$hierarchyText"
+            "$appInfo $coordinateHint\n$hierarchyText"
         } catch (e: Exception) {
             "ERROR: Failed to get UI hierarchy after scrolling: ${e.message}"
         }
@@ -636,6 +483,7 @@ object ToolHandler {
         return null
     }
 
+    @RequiresApi(Build.VERSION_CODES.R)
     @Tool(
         name = "enterText",
         description = "Enter text into the a text field. Make sure the field you want the " +
@@ -725,7 +573,7 @@ object ToolHandler {
         }
     }
 
-
+    @RequiresApi(Build.VERSION_CODES.R)
     @Tool(
         name = "enterTextByDescription",
         description = "Enter text into a text field. You must specify either the field's ID or " +
@@ -927,7 +775,7 @@ object ToolHandler {
             val hierarchy = buildCompactHierarchy(activeWindow)
 
             return "The search is done. What follows are the results " +
-                    "(${cordinateHint}):\n\n${hierarchy}"
+                    "(${coordinateHint}):\n\n${hierarchy}"
 
         } catch (e: Exception) {
             return "Failed to perform web search: ${e.message}"
@@ -1004,7 +852,7 @@ object ToolHandler {
             val hierarchy = buildCompactHierarchy(activeWindow)
 
             return "The URL has been opened. ${appInfo}. What follows is the contents. " +
-                    "(${cordinateHint}):\n\n${hierarchy}"
+                    "(${coordinateHint}):\n\n${hierarchy}"
         } catch (e: Exception) {
             Log.e("Tools", "Failed to open URL", e)
             "Failed to open URL: ${e.message}"
@@ -1137,7 +985,7 @@ object ToolHandler {
                     }
                 }
             } catch (e: Exception) {
-                System.err.println("Error loading MCP tools: ${e.message}")
+                Log.e(TAG, "Error loading MCP tools: ${e.message}")
             }
         }
 
@@ -1226,7 +1074,7 @@ object ToolHandler {
                 nameParts[2],
                 toolCall.arguments.toString()
             )
-            System.out.println("TOOL CALL RESULT: " + result)
+            Log.d(TAG, "TOOL CALL RESULT: $result")
             return "" + result
 
         }

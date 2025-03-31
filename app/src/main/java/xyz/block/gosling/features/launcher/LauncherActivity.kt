@@ -25,21 +25,18 @@ class LauncherActivity : ComponentActivity() {
     override fun onResume() {
         super.onResume()
         GoslingApplication.isLauncherActivityRunning = true
-        // Update overlay visibility
         OverlayService.getInstance()?.updateOverlayVisibility()
     }
 
     override fun onPause() {
         super.onPause()
         GoslingApplication.isLauncherActivityRunning = false
-        // Update overlay visibility
         OverlayService.getInstance()?.updateOverlayVisibility()
     }
 
     override fun onDestroy() {
         super.onDestroy()
         GoslingApplication.isLauncherActivityRunning = false
-        // Update overlay visibility
         OverlayService.getInstance()?.updateOverlayVisibility()
     }
 } 

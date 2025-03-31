@@ -1,9 +1,13 @@
 package xyz.block.gosling.features.agent
 
+import android.util.Log
+
 /**
  * Store and retrieve per app instructions.
  */
 object AppInstructions {
+    private const val TAG = "AppInstructions"
+
     /**
      * Map of package names to their corresponding instructions and URL schemes.
      * Each instruction is a multiline string providing guidance for the specific app.
@@ -64,7 +68,7 @@ object AppInstructions {
                 "waze://search" // For search
             )
         ),
-        
+
         // Amazon app
         "com.amazon.mShop.android.shopping" to AppInstructionInfo(
             instructions = """                        
@@ -94,7 +98,7 @@ object AppInstructions {
                 "amzn://gp/search" // For search URLs
             )
         ),
-        
+
         // Ride-sharing (Uber)
         "com.ubercab" to AppInstructionInfo(
             instructions = """
@@ -361,18 +365,18 @@ object AppInstructions {
      * @return The instructions as a string, or null if no instructions exist for the package
      */
     fun getInstructions(packageName: String): String? {
-        System.out.println("GETTING INSTRUCTIONS FOR: " + packageName)
+        Log.d(TAG, "GETTING INSTRUCTIONS FOR: $packageName")
         // First try exact match
         appInstructionsMap[packageName]?.let { return it.instructions }
-        
+
         // If no exact match, try pattern matching
         val lowercasePackage = packageName.lowercase()
-        
+
         return when {
             // Maps apps
-            lowercasePackage.contains("map") || 
-            lowercasePackage.contains("navigation") || 
-            lowercasePackage.contains("gps") -> """
+            lowercasePackage.contains("map") ||
+                    lowercasePackage.contains("navigation") ||
+                    lowercasePackage.contains("gps") -> """
                 This appears to be a mapping or navigation app.
                 
                 When using mapping apps:
@@ -385,12 +389,12 @@ object AppInstructions {
                 IMPORTANT: Don't just search for A to B, but search for separate places first.
                 Add stops if needed. Map search is not general search.
             """.trimIndent()
-            
+
             // Shopping apps
-            lowercasePackage.contains("shop") || 
-            lowercasePackage.contains("store") || 
-            lowercasePackage.contains("market") || 
-            lowercasePackage.contains("buy") -> """
+            lowercasePackage.contains("shop") ||
+                    lowercasePackage.contains("store") ||
+                    lowercasePackage.contains("market") ||
+                    lowercasePackage.contains("buy") -> """
                 This appears to be a shopping or e-commerce app.
                 
                 When using shopping apps:
@@ -400,21 +404,21 @@ object AppInstructions {
                 4. Review cart contents before checkout
                 5. Look for shipping options and payment methods during checkout
             """.trimIndent()
-            
+
             // Social media apps
-            lowercasePackage.contains("social") || 
-            lowercasePackage.contains("chat") || 
-            lowercasePackage.contains("message") || 
-            lowercasePackage.contains("community") -> """
+            lowercasePackage.contains("social") ||
+                    lowercasePackage.contains("chat") ||
+                    lowercasePackage.contains("message") ||
+                    lowercasePackage.contains("community") -> """
                 This appears to be a social media or messaging app.
                 This can be used for research or answering a user query                
             """.trimIndent()
-            
+
             // Food delivery apps
-            lowercasePackage.contains("food") || 
-            lowercasePackage.contains("delivery") || 
-            lowercasePackage.contains("order") || 
-            lowercasePackage.contains("restaurant") -> """
+            lowercasePackage.contains("food") ||
+                    lowercasePackage.contains("delivery") ||
+                    lowercasePackage.contains("order") ||
+                    lowercasePackage.contains("restaurant") -> """
                 This appears to be a food delivery or restaurant app.
                 
                 When using food delivery apps:
@@ -426,12 +430,12 @@ object AppInstructions {
                 6. Select payment method and complete order
                 7. Track delivery status after ordering
             """.trimIndent()
-            
+
             // Transportation/ride-sharing apps
-            lowercasePackage.contains("ride") || 
-            lowercasePackage.contains("taxi") || 
-            lowercasePackage.contains("transit") || 
-            lowercasePackage.contains("transport") -> """
+            lowercasePackage.contains("ride") ||
+                    lowercasePackage.contains("taxi") ||
+                    lowercasePackage.contains("transit") ||
+                    lowercasePackage.contains("transport") -> """
                 This appears to be a transportation or ride-sharing app.
                 
                 When using transportation apps:
@@ -442,12 +446,12 @@ object AppInstructions {
                 5. Track vehicle approach and verify driver information
                 6. Check for payment options and ride history features
             """.trimIndent()
-            
+
             // Banking/payment apps
-            lowercasePackage.contains("bank") || 
-            lowercasePackage.contains("pay") || 
-            lowercasePackage.contains("finance") || 
-            lowercasePackage.contains("money") -> """
+            lowercasePackage.contains("bank") ||
+                    lowercasePackage.contains("pay") ||
+                    lowercasePackage.contains("finance") ||
+                    lowercasePackage.contains("money") -> """
                 This appears to be a banking or payment app.
                 
                 When using banking/payment apps:

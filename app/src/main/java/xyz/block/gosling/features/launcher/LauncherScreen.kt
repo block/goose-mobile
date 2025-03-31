@@ -60,11 +60,8 @@ fun LauncherScreen() {
     var appList by remember { mutableStateOf<List<AppInfo>>(emptyList()) }
     val coroutineScope = rememberCoroutineScope()
 
-    // State for keyboard input drawer
     var showKeyboardDrawer by remember { mutableStateOf(false) }
     var textInput by remember { mutableStateOf("") }
-
-    // Current time for the clock widget
     var currentTime by remember { mutableStateOf(getCurrentTime()) }
 
     // Update the clock every minute
@@ -177,7 +174,6 @@ fun LauncherScreen() {
                         startVoiceRecognition(context)
                     },
                     onKeyboardClick = {
-                        // Show keyboard input drawer
                         showKeyboardDrawer = true
                     }
                 )
@@ -196,8 +192,7 @@ fun LauncherScreen() {
             }
         }
     }
-
-    // Keyboard input drawer
+    
     if (showKeyboardDrawer) {
         KeyboardInputDrawer(
             value = textInput,

@@ -32,10 +32,8 @@ class GoslingAccessibilityService : AccessibilityService() {
         info.apply {
             eventTypes = AccessibilityEvent.TYPES_ALL_MASK
             feedbackType = AccessibilityServiceInfo.FEEDBACK_GENERIC
-            flags = AccessibilityServiceInfo.FLAG_INCLUDE_NOT_IMPORTANT_VIEWS or
-                    AccessibilityServiceInfo.FLAG_REPORT_VIEW_IDS or
-                    AccessibilityServiceInfo.FLAG_REQUEST_TOUCH_EXPLORATION_MODE or
-                    AccessibilityServiceInfo.FLAG_RETRIEVE_INTERACTIVE_WINDOWS
+            flags =
+                AccessibilityServiceInfo.FLAG_INCLUDE_NOT_IMPORTANT_VIEWS or AccessibilityServiceInfo.FLAG_REPORT_VIEW_IDS or AccessibilityServiceInfo.FLAG_REQUEST_TOUCH_EXPLORATION_MODE or AccessibilityServiceInfo.FLAG_RETRIEVE_INTERACTIVE_WINDOWS
             notificationTimeout = 100
         }
 
@@ -48,17 +46,13 @@ class GoslingAccessibilityService : AccessibilityService() {
 
         val notificationIntent = Intent(this, MainActivity::class.java)
         val pendingIntent = PendingIntent.getActivity(
-            this, 0, notificationIntent,
-            PendingIntent.FLAG_IMMUTABLE
+            this, 0, notificationIntent, PendingIntent.FLAG_IMMUTABLE
         )
 
         val notification = NotificationCompat.Builder(this, NOTIFICATION_CHANNEL_ID)
-            .setContentTitle("Gosling Assistant")
-            .setContentText("Running in background")
-            .setSmallIcon(R.drawable.ic_launcher_foreground)
-            .setContentIntent(pendingIntent)
-            .setOngoing(true)
-            .build()
+            .setContentTitle("Gosling Assistant").setContentText("Running in background")
+            .setSmallIcon(R.drawable.ic_launcher_foreground).setContentIntent(pendingIntent)
+            .setOngoing(true).build()
 
         startForeground(NOTIFICATION_ID, notification)
     }
@@ -81,23 +75,17 @@ class GoslingAccessibilityService : AccessibilityService() {
         val agent = Agent.getInstance() ?: return
         val parcelableData = event.parcelableData
         if (parcelableData is Notification) {
-
             val packageName = event.packageName?.toString() ?: return
             if (packageName == "xyz.block.gosling") return
 
-
-            // Create an AgentServiceManager to handle notifications
             val agentServiceManager = xyz.block.gosling.features.agent.AgentServiceManager(this)
 
-            // Set up status listener
             agent.setStatusListener { status ->
-                // Update notification via AgentServiceManager
                 agentServiceManager.updateNotification(status)
             }
 
             val rawText = event.text.joinToString(" ")
             val extras = parcelableData.extras
-
 
             if (extras == null) {
                 agent.handleNotification(
@@ -109,13 +97,12 @@ class GoslingAccessibilityService : AccessibilityService() {
                 return
             }
 
-            val title = extras.getString(Notification.EXTRA_TITLE_BIG)
-                ?: extras.getString(Notification.EXTRA_TITLE)
-                ?: ""
+            val title = extras.getString(Notification.EXTRA_TITLE_BIG) ?: extras.getString(
+                Notification.EXTRA_TITLE
+            ) ?: ""
 
             val content = extras.getCharSequence(Notification.EXTRA_BIG_TEXT)?.toString()
-                ?: extras.getCharSequence(Notification.EXTRA_TEXT)?.toString()
-                ?: rawText
+                ?: extras.getCharSequence(Notification.EXTRA_TEXT)?.toString() ?: rawText
 
             agent.handleNotification(
                 packageName = packageName,

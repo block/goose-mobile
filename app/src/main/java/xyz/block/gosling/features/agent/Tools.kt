@@ -332,6 +332,7 @@ object ToolHandler {
 
             val appInfo = "App: ${activeWindow.packageName}"
             val hierarchy = buildCompactHierarchy(activeWindow)
+            System.out.println("build compact: " + hierarchy)
             "$appInfo $cordinateHint\n$hierarchy"
         } catch (e: Exception) {
             "ERROR: Failed to get UI hierarchy: ${e.message}"
@@ -344,10 +345,12 @@ object ToolHandler {
             val attributes = mutableListOf<String>()
 
             // Add key attributes in a compact format
+            val hasText = node.text?.isNotEmpty() == true
             node.text?.toString()?.takeIf { it.isNotEmpty() }?.let {
                 attributes.add("text=\"$it\"")
             }
 
+            val hasContentDescription = node.contentDescription?.toString()?.isNotEmpty() == true
             node.contentDescription?.toString()?.takeIf { it.isNotEmpty() }?.let {
                 attributes.add("desc=\"$it\"")
             }
@@ -370,17 +373,23 @@ object ToolHandler {
                 return buildCompactHierarchy(node.getChild(0), depth)
             }
 
+            // Get the node type
+            val nodeType = node.className?.toString()?.substringAfterLast('.') ?: "View"
+            
+            // Check if this node should be filtered out
+            val filteredNodeTypes = listOf("FrameLayout", "LinearLayout", "RelativeLayout", "ViewGroup", "View", "ImageView", "TextView", "ListView", "ComposeView", )
+            val shouldFilter = filteredNodeTypes.contains(nodeType) && !(hasContentDescription || hasText)
+            
             // Format bounds compactly with midpoint
             val midX = (bounds.left + bounds.right) / 2
             val midY = (bounds.top + bounds.bottom) / 2
             val boundsStr =
                 "[${bounds.left},${bounds.top},${bounds.right},${bounds.bottom}] midpoint=($midX,$midY)"
 
-            // Build the node line
+            // Build the node line, or set to empty string if filtered
             val indent = "  ".repeat(depth)
-            val nodeType = node.className?.toString()?.substringAfterLast('.') ?: "View"
             val attrStr = if (attributes.isNotEmpty()) " " + attributes.joinToString(" ") else ""
-            val nodeLine = "$indent$nodeType$attrStr $boundsStr"
+            val nodeLine = if (shouldFilter) "" else "$indent$nodeType$attrStr $boundsStr"
 
             // Process children if any
             val childrenStr = if (node.childCount > 0) {
@@ -388,13 +397,16 @@ object ToolHandler {
                 for (i in 0 until node.childCount) {
                     node.getChild(i)?.let { childNode ->
                         try {
-                            childrenLines.add(buildCompactHierarchy(childNode, depth + 1))
+                            val childResult = buildCompactHierarchy(childNode, depth + 1)
+                            if (childResult.isNotEmpty()) {
+                                childrenLines.add(childResult)
+                            }
                         } catch (e: Exception) {
                             childrenLines.add("${indent}  ERROR: Failed to serialize child: ${e.message}")
                         }
                     }
                 }
-                "\n" + childrenLines.joinToString("\n")
+                if (childrenLines.isNotEmpty()) "\n" + childrenLines.joinToString("\n") else ""
             } else ""
 
             return nodeLine + childrenStr

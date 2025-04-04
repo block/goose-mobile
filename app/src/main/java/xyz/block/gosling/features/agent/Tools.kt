@@ -228,9 +228,9 @@ object ToolHandler {
                 "[${bounds.left},${bounds.top},${bounds.right},${bounds.bottom}] midpoint=($midX,$midY)"
 
             // Build the node line, or set to empty string if filtered
-            val indent = "  ".repeat(depth)
+            val indent = " -".repeat(depth)
             val attrStr = if (attributes.isNotEmpty()) " " + attributes.joinToString(" ") else ""
-            val nodeLine = if (shouldFilter) "" else "$indent$nodeType$attrStr $boundsStr"
+            val nodeLine = if (shouldFilter) "" else "$indent$attrStr $boundsStr"
 
             // Process children if any
             val childrenStr = if (node.childCount > 0) {

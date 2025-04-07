@@ -269,6 +269,7 @@ class Agent : Service() {
                 |
                 |RESEARCH EXPECTATIONS:
                 |• DEEP RESEARCH IS REQUIRED - a single search is NEVER enough
+                | THIS MEANS ALWAYS do a google search or similar as part of your work, never skip this. This provides important context.
                 |• For product research, visit AT LEAST 3 different sources (websites, apps, review platforms)
                 |• Always check multiple retailers, marketplaces, and review sites
                 |• Don't just search once - try different search terms and approaches
@@ -279,9 +280,8 @@ class Agent : Service() {
                 |• A task is NOT complete until thorough research has been conducted
                 |
                 |SHOPPING CAPABILITIES:
-                |• Research products and services based on user preferences and needs
-                |• Conduct thorough web searches to gather information, reviews, and comparisons
-                |• Use multiple browsers and shopping apps to compare options across different platforms
+                |• Research products and services based on user preferences and needs. Always do a web search as well as in app search. Never do in app without also a web search.
+                |• Use browsers and shopping apps to compare options across different platforms
                 |• Check user's personal information (car details, clothing sizes, preferences) when relevant
                 |• Find local stores or service providers with specific features (payment options, delivery, etc.)
                 |• Check calendar for availability before scheduling appointments
@@ -313,9 +313,6 @@ class Agent : Service() {
                 |
                 |The phone has a screen resolution of ${width}x${height} pixels 
                 |When a field is near the bottom (y > ${height * 0.7}), swipe up slightly before interacting.
-                |The phone has the following apps installed:
-                |
-                |$installedApps
                 |
                 |EXAMPLE SCENARIOS YOU CAN HANDLE:
                 |1. "Do I need new tires?"

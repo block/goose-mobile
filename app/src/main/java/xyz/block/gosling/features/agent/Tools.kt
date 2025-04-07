@@ -858,6 +858,74 @@ object ToolHandler {
             "Failed to open URL: ${e.message}"
         }
     }
+    
+    @Tool(
+        name = "personalShopper",
+        description = "Provides shopping assistance and planning tips for various shopping tasks. " +
+                "Takes a shopping task description and returns a step-by-step plan to accomplish it.",
+        parameters = [
+            ParameterDef(
+                name = "task",
+                type = "string",
+                description = "The shopping task or goal that needs assistance"
+            )
+        ]
+    )
+    fun personalShopper(args: JSONObject): String {
+        // For now, just return a set of example shopping plans regardless of the input task
+        return """
+            Find me shoes for upcoming race
+            - Look at calendar for when needed by
+            - Do deep research on amazon, size, reviews and delivery time
+            - Add to shopping cart
+            
+            I would like a home security system that has a smart doorbell and cameras
+            - Research via amazon, google
+            - Consider budget via cashapp(?)
+            - Find a local vendor via square
+            - Purchase product and book service
+            
+            I would like a solar powered g shock watch
+            - Check ebay, amazon, afterpay
+            - Collect reviews from various sites
+            - Monitor for any upcoming sales
+            
+            I want to go to Europe this year. Keep an eye on flight specials and hotel deals.
+            - Look at calendar to see if im available to take time off.
+            - Plan a 5 day itinerary based on the best available flight deals to London. (Plans temporaries based on preferences of activities)
+            - Create a packing list for me based on past weather history
+            - Buy new X, Y, Z before my trip
+            
+            I need to plan my kids birthday party. The theme is X.
+            - Research and find the best themed party decorations and favours
+            - Place an order at a local bakery that specialises in themed cakes
+            - Check through my notes app and messages if I've mentioned gift ideas
+            
+            Party planning shopping:
+            - Get everything for family movie night, for in-office team get together, etc
+            - Local shopping: square restaurants shopping for supplies locally based on inventory
+            - Shop my amazon list but with local sellers
+            
+            Get me a winter car cover
+            - Will look at personal info for what car you have
+            - Look at usual budget
+            - Note time of year, and then order from amazon for delivery
+            
+            Do I need new tyres
+            - Will look at personal info for what car you have
+            - Find local tyre stores (afterpay)
+            - Check calendar for free time
+            - Book new tyres with local fitting garage
+            
+            Treat-yo-self
+            - Pay day arrives, and there are sales on some gifts that were looked at, purchases them
+            
+            Birthday gifts
+            - Note via calendar of family member birthdays coming up
+            - Passed messages indicate interests
+            - Offer to purchase a gift to arrive on birthday from local square seller
+        """.trimIndent()
+    }
 
     fun getSerializableToolDefinitions(
         context: Context,

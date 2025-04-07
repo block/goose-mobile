@@ -74,16 +74,26 @@ object AppInstructions {
             instructions = """                        
                 important instructions on how to use amazon app:
                 
-                Use the search bar to find specific products, but try variations on the search.
-                Don't just search for exact description user provides necessarily, you will need to search for general product sometimes, and then scroll and click in to see if it meets other requirements.
-                For example: if looking for stinky fruit, look up fruit first, and then look if any are titled stinky, or description or reviews say are stinky.
-                ALWAYS scroll/swipe to look at products, don't just pick the first one
-                Click on the product to read information about it, including ratings, may need to click in a few levels.
-                If asked, look for specific detailed in descriptions or reviews after clicking in and scrolling
-                Consider if the query mentions a specific brand, in which case, ensure items you are reviewing match that specific brand 
-                Add items to cart if asked
-                Always ignore sponsored items, only view non sponsored
-                Always scroll several items, swiping down the screen. Never stop at first screen.
+                UI element tips: 
+                 - text or desc with "Sponsored Ad" is ideally something to skip over
+                 - desc or text mentioning stars and ratings may indicate the rating of a product (and can click to get to ratings)
+                 - "4 Stars & Up Add filter" for filtering by ratings
+                 - you can filter by Brands, Popular and other relevant items based on the text value (some times you can click on it and it will show more filtering criteria)
+                                 
+                On product search: 
+                    Use the search bar to find specific products, but try variations on the search.
+                    Don't just search for exact description user provides necessarily, you will need to search for general product sometimes, and then scroll and click in to see if it meets other requirements.
+                    For example: if looking for stinky fruit, look up fruit first, and then look if any are titled stinky, or description or reviews say are stinky.
+                    If asked, look for specific detailed in descriptions or reviews after clicking in and scrolling
+                    Consider if the query mentions a specific brand, in which case, ensure items you are reviewing match that specific brand
+                
+                using app tips: 
+                    ALWAYS scroll/swipe to look at products, don't just pick the first one
+                    Click on the product to read information about it, including ratings, may need to click in a few levels and swipe down a fair bit                                       
+                    Add items to cart if asked with "Add to cat" text clickable
+                    The app has a lot more depth, so do click in, back, explore and scroll a fair bit to make sure you have seen enough content to satisfy users request.
+                
+                
 
                 URL Schemes:
                 - Use 'amzn://' to open the main app

@@ -256,6 +256,17 @@ class Agent : Service() {
                 |6. Be flexible and creative in finding solutions - try alternative apps if your first choice doesn't work
                 |7. Use multiple apps in combination - don't limit yourself to a single app for the entire task
                 |
+                |APP USAGE GUIDELINES:
+                |• UTILIZE ALL RELEVANT INSTALLED APPS - not just web browsers
+                |• Check the installed apps list below and use specialized apps when appropriate
+                |• Shopping apps (Amazon, eBay, etc.) often provide better information than general web searches
+                |• Use dedicated apps for specific domains (travel apps for trips, food apps for restaurants, etc.)
+                |• Review apps often have more detailed ratings than websites
+                |• Payment apps may offer special deals or financing options
+                |• Local service apps may have exclusive listings not found on the web
+                |• Social media apps can provide user experiences and recommendations
+                |• Don't hesitate to switch between multiple apps to gather comprehensive information
+                |
                 |RESEARCH EXPECTATIONS:
                 |• DEEP RESEARCH IS REQUIRED - a single search is NEVER enough
                 |• For product research, visit AT LEAST 3 different sources (websites, apps, review platforms)
@@ -309,8 +320,9 @@ class Agent : Service() {
                 |EXAMPLE SCENARIOS YOU CAN HANDLE:
                 |1. "Do I need new tires?"
                 |   • Check personal info for car details
-                |   • Research tire options and prices using multiple web browsers and shopping apps
+                |   • Research tire options using dedicated auto parts apps and web browsers
                 |   • Compare prices and reviews across at least 3 different tire retailers
+                |   • Use specialized automotive apps to check compatibility with your vehicle
                 |   • Read specific customer reviews about durability and performance
                 |   • Find local tire stores with preferred payment options
                 |   • Check calendar for available appointment times
@@ -319,16 +331,18 @@ class Agent : Service() {
                 |2. "I need a new outfit for Friday's dinner"
                 |   • Check calendar for Friday's event details
                 |   • Look up user's clothing sizes and preferences
-                |   • Search across multiple shopping apps and websites for options
+                |   • Search across multiple dedicated shopping apps (not just websites)
                 |   • Compare styles, materials, and prices across different retailers
+                |   • Use fashion apps to check current trends and recommendations
                 |   • Find appropriate clothing options at nearby stores
                 |   • Check store hours and availability
                 |   • Add items to cart or create shopping list
                 |
                 |3. "Find me a plumber that takes Afterpay"
-                |   • Search for local plumbers using multiple web browsers and service apps
+                |   • Search for local plumbers using service apps like Yelp, Angi, and HomeAdvisor
                 |   • Verify payment options on their websites and through service platforms
                 |   • Filter for those accepting Afterpay
+                |   • Use payment apps to confirm Afterpay availability
                 |   • Read detailed customer reviews about quality and reliability
                 |   • Check reviews and availability
                 |   • Check calendar for free time slots
@@ -336,8 +350,9 @@ class Agent : Service() {
                 |
                 |4. "Plan my Europe trip for this summer"
                 |   • Check calendar for available time off
-                |   • Research flight and hotel deals to London across multiple travel sites
+                |   • Research flight and hotel deals using dedicated travel apps (Kayak, Expedia, etc.)
                 |   • Compare prices and options from different airlines and hotel chains
+                |   • Use travel planning apps to organize itinerary options
                 |   • Read traveler reviews about neighborhoods and accommodations
                 |   • Create itinerary based on user interests
                 |   • Generate packing list based on weather forecast
@@ -346,7 +361,8 @@ class Agent : Service() {
                 |5. "Find a birthday gift for my sister"
                 |   • Check calendar for upcoming birthday
                 |   • Review messages/notes for mentioned interests
-                |   • Research gift options across multiple online stores and local businesses
+                |   • Research gift options using dedicated shopping apps (Amazon, Etsy, etc.)
+                |   • Check social media apps for wishlists or interests
                 |   • Read product reviews and ratings from multiple sources
                 |   • Compare prices, quality, and delivery times across at least 3 retailers
                 |   • Purchase from preferred vendor with appropriate timing

@@ -861,70 +861,419 @@ object ToolHandler {
     
     @Tool(
         name = "personalShopper",
-        description = "Provides shopping assistance and planning tips for various shopping tasks. " +
-                "Takes a shopping task description and returns a step-by-step plan to accomplish it.",
+        description = "Use this when you need to be a personal shopping assistant: Provides shopping assistance and planning tips for various shopping tasks." +
+                "Will suggest how to plan",
         parameters = [
             ParameterDef(
                 name = "task",
                 type = "string",
-                description = "The shopping task or goal that needs assistance"
+                description = "shopping task or goal"
             )
         ]
     )
     fun personalShopper(args: JSONObject): String {
         // For now, just return a set of example shopping plans regardless of the input task
         return """
+            Here is how you plan some hypothetical tasks and their steps you can be inspired by. 
+            Consider these as possible scenarios to plan around, based on the actual task.
+            You will need to come up with a more specific plan based on installed and recently used apps and what you can do.
+            
+            Example scenarios and high level plans:
+             
             Find me shoes for upcoming race
             - Look at calendar for when needed by
             - Do deep research on amazon, size, reviews and delivery time
-            - Add to shopping cart
+            - Add to shopping cart if asked
             
             I would like a home security system that has a smart doorbell and cameras
-            - Research via amazon, google
-            - Consider budget via cashapp(?)
-            - Find a local vendor via square
-            - Purchase product and book service
+            - Research via amazon for prices and reviews, google search for reviews
+            - repeat above for doorbell and security cameras
+            - Consider budget via whatever apps are installed that could provide a balance for budget
+            - Find a local installer via google search 
+            - prepare to purchase by adding to shopping card and note installer
             
-            I would like a solar powered g shock watch
-            - Check ebay, amazon, afterpay
-            - Collect reviews from various sites
+            I would like a solar powered casio g shock watch
+            - Check ecommerce apps installed
+            - Collect reviews from various sites on ecom apps and web search
             - Monitor for any upcoming sales
+            - suggest products that appear to be a great discount
             
             I want to go to Europe this year. Keep an eye on flight specials and hotel deals.
-            - Look at calendar to see if im available to take time off.
+            - Look at calendar to see if im available to take time off in next 3 months
             - Plan a 5 day itinerary based on the best available flight deals to London. (Plans temporaries based on preferences of activities)
-            - Create a packing list for me based on past weather history
-            - Buy new X, Y, Z before my trip
+            - Create a packing list for me based on past weather history of when I could do
+            - Come up with hotel prices via google search or other relevant apps
             
             I need to plan my kids birthday party. The theme is X.
-            - Research and find the best themed party decorations and favours
-            - Place an order at a local bakery that specialises in themed cakes
+            - Think of creative ideas, perform a web search to be inspired with a few results (scroll down)
+            - Research and find the best themed party decorations and favours using ecom apps
+            - Fina a local local bakery that specialises in themed cakes that takes afterpay (as afterpay is installed)
             - Check through my notes app and messages if I've mentioned gift ideas
+            - suggest to user with option of placing orders
             
-            Party planning shopping:
-            - Get everything for family movie night, for in-office team get together, etc
+            Party planning shopping (Get everything for family movie night, for in-office team get together, etc):
+            - Find suitable products that are relevant (think up ideas that match) 
             - Local shopping: square restaurants shopping for supplies locally based on inventory
-            - Shop my amazon list but with local sellers
+            - Shop my amazon list but with local sellers (that can deliver in under 2 days)
             
             Get me a winter car cover
-            - Will look at personal info for what car you have
-            - Look at usual budget
-            - Note time of year, and then order from amazon for delivery
+            - Look up what sort of car I have from my notes
+            - Look at budget
+            - Consider products on ecommerce apps that can arrive in < 1 month that have 4 star reviews
+            - Note time of year, and then order from amazon for delivery (place in shopping cart)
             
             Do I need new tyres
             - Will look at personal info for what car you have
-            - Find local tyre stores (afterpay)
-            - Check calendar for free time
-            - Book new tyres with local fitting garage
-            
-            Treat-yo-self
-            - Pay day arrives, and there are sales on some gifts that were looked at, purchases them
-            
-            Birthday gifts
-            - Note via calendar of family member birthdays coming up
-            - Passed messages indicate interests
-            - Offer to purchase a gift to arrive on birthday from local square seller
+            - Find local tyre stores (afterpay search, google search)
+            - Check calendar for free time in coming month
+            - Book new tyres with local fitting garage (return a plan to)
+                        
+            Birthday gift shopping
+            - Note via calendar of family member birthdays coming up in next 3 months
+            - Look at any messages for conversations with that member which may indicate interest
+            - Offer to purchase a gift to arrive on birthday from local seller via ecom apps installed
         """.trimIndent()
+    }
+
+    @Tool(
+        name = "getCalendarEvents",
+        description = "Simply retrieves upcoming calendar events from the user's calendar. " +
+                "Can filter by date range and/or search terms." +
+                "If this doesn't work use open the calendar app and control it (and use the app for more sophisticated control)",
+        parameters = [
+            ParameterDef(
+                name = "days_ahead",
+                type = "integer",
+                description = "Number of days ahead to look for events (default: 7)",
+                required = false
+            ),
+            ParameterDef(
+                name = "search_term",
+                type = "string",
+                description = "Optional search term to filter events by title or description",
+                required = false
+            )
+        ],
+        requiresContext = true
+    )
+    fun getCalendarEvents(context: Context, args: JSONObject): String {
+        // Check if we have calendar permission
+        if (!PermissionsManager.hasCalendarPermission(context)) {
+            return "Calendar permission not granted. Please grant the Calendar permission in the app settings."
+        }
+
+        try {
+            val daysAhead = args.optInt("days_ahead", 7)
+            val searchTerm = args.optString("search_term", "").lowercase()
+
+            // Define time range
+            val startMillis = System.currentTimeMillis()
+            val endMillis = startMillis + (daysAhead * 24 * 60 * 60 * 1000L)
+
+            // Event projection
+            val projection = arrayOf(
+                android.provider.CalendarContract.Events._ID,
+                android.provider.CalendarContract.Events.TITLE,
+                android.provider.CalendarContract.Events.DESCRIPTION,
+                android.provider.CalendarContract.Events.DTSTART,
+                android.provider.CalendarContract.Events.DTEND,
+                android.provider.CalendarContract.Events.EVENT_LOCATION,
+                android.provider.CalendarContract.Events.ALL_DAY
+            )
+
+            // Query conditions
+            val selection = "${android.provider.CalendarContract.Events.DTSTART} >= ? AND " +
+                    "${android.provider.CalendarContract.Events.DTSTART} <= ?"
+            val selectionArgs = arrayOf(startMillis.toString(), endMillis.toString())
+
+            // Query the calendar
+            val uri = android.provider.CalendarContract.Events.CONTENT_URI
+            val cursor = context.contentResolver.query(
+                uri,
+                projection,
+                selection,
+                selectionArgs,
+                "${android.provider.CalendarContract.Events.DTSTART} ASC"
+            )
+
+            if (cursor == null) {
+                return "Unable to access calendar data."
+            }
+
+            val events = mutableListOf<Map<String, Any>>()
+
+            // Column indices
+            val idIdx = cursor.getColumnIndex(android.provider.CalendarContract.Events._ID)
+            val titleIdx = cursor.getColumnIndex(android.provider.CalendarContract.Events.TITLE)
+            val descIdx = cursor.getColumnIndex(android.provider.CalendarContract.Events.DESCRIPTION)
+            val startIdx = cursor.getColumnIndex(android.provider.CalendarContract.Events.DTSTART)
+            val endIdx = cursor.getColumnIndex(android.provider.CalendarContract.Events.DTEND)
+            val locIdx = cursor.getColumnIndex(android.provider.CalendarContract.Events.EVENT_LOCATION)
+            val allDayIdx = cursor.getColumnIndex(android.provider.CalendarContract.Events.ALL_DAY)
+
+            // Process results
+            while (cursor.moveToNext()) {
+                val title = cursor.getString(titleIdx) ?: "Untitled Event"
+                val description = cursor.getString(descIdx) ?: ""
+                
+                // Apply search filter if provided
+                if (searchTerm.isNotEmpty() &&
+                    !title.lowercase().contains(searchTerm) &&
+                    !description.lowercase().contains(searchTerm)) {
+                    continue
+                }
+                
+                val startTime = cursor.getLong(startIdx)
+                val endTime = cursor.getLong(endIdx)
+                val location = cursor.getString(locIdx) ?: ""
+                val isAllDay = cursor.getInt(allDayIdx) == 1
+                
+                events.add(
+                    mapOf(
+                        "title" to title,
+                        "description" to description,
+                        "startTime" to startTime,
+                        "endTime" to endTime,
+                        "location" to location,
+                        "isAllDay" to isAllDay
+                    )
+                )
+            }
+            
+            cursor.close()
+            
+            // Format the results
+            val sdf = java.text.SimpleDateFormat("EEE, MMM d, yyyy 'at' h:mm a", java.util.Locale.getDefault())
+            val resultBuilder = StringBuilder()
+            
+            if (events.isEmpty()) {
+                resultBuilder.append("No events found")
+                if (searchTerm.isNotEmpty()) {
+                    resultBuilder.append(" matching '${searchTerm}'")
+                }
+                resultBuilder.append(" in the next $daysAhead days.")
+            } else {
+                resultBuilder.append("Found ${events.size} events")
+                if (searchTerm.isNotEmpty()) {
+                    resultBuilder.append(" matching '${searchTerm}'")
+                }
+                resultBuilder.append(" in the next $daysAhead days:\n\n")
+                
+                var currentDate = ""
+                
+                events.forEach { event ->
+                    val startDate = java.util.Date(event["startTime"] as Long)
+                    val dateStr = sdf.format(startDate).substringBefore("at").trim()
+                    
+                    // Add date header if it's a new date
+                    if (dateStr != currentDate) {
+                        currentDate = dateStr
+                        resultBuilder.append("=== $currentDate ===\n")
+                    }
+                    
+                    // Format time
+                    val timeStr = if (event["isAllDay"] as Boolean) {
+                        "All day"
+                    } else {
+                        val startTimeStr = sdf.format(startDate).substringAfter("at").trim()
+                        val endTimeStr = sdf.format(java.util.Date(event["endTime"] as Long)).substringAfter("at").trim()
+                        "$startTimeStr - $endTimeStr"
+                    }
+                    
+                    // Add event details
+                    resultBuilder.append("• ${event["title"]}\n")
+                    resultBuilder.append("  Time: $timeStr\n")
+                    
+                    if ((event["location"] as String).isNotEmpty()) {
+                        resultBuilder.append("  Location: ${event["location"]}\n")
+                    }
+                    
+                    if ((event["description"] as String).isNotEmpty()) {
+                        val desc = event["description"] as String
+                        val shortDesc = if (desc.length > 100) desc.substring(0, 97) + "..." else desc
+                        resultBuilder.append("  Description: $shortDesc\n")
+                    }
+                    
+                    resultBuilder.append("\n")
+                }
+            }
+            
+            return resultBuilder.toString().trim()
+            
+        } catch (e: Exception) {
+            Log.e("CalendarTool", "Error accessing calendar: ${e.message}")
+            return "Error accessing calendar: ${e.message}"
+        }
+    }
+
+    @Tool(
+        name = "searchContacts",
+        description = "simply searches the user's contacts by name, phone number, or email. " +
+                "Requires contacts permission. If this doesn't work you can open the contacts app and control it for more access",
+        parameters = [
+            ParameterDef(
+                name = "query",
+                type = "string",
+                description = "Search term to find in contacts (name, phone, email)"
+            ),
+            ParameterDef(
+                name = "limit",
+                type = "integer",
+                description = "Maximum number of contacts to return (default: 10)",
+                required = false
+            )
+        ],
+        requiresContext = true
+    )
+    fun searchContacts(context: Context, args: JSONObject): String {
+        // Check if we have contacts permission
+        if (!PermissionsManager.hasContactsPermission(context)) {
+            return "Contacts permission not granted. Please grant the Contacts permission in the app settings."
+        }
+
+        try {
+            val query = args.getString("query")
+            val limit = args.optInt("limit", 10)
+            
+            if (query.isBlank()) {
+                return "Please provide a search term to find contacts."
+            }
+            
+            // Define the columns we want
+            val projection = arrayOf(
+                android.provider.ContactsContract.Contacts._ID,
+                android.provider.ContactsContract.Contacts.DISPLAY_NAME_PRIMARY,
+                android.provider.ContactsContract.Contacts.HAS_PHONE_NUMBER
+            )
+            
+            // Query conditions - search by display name
+            val selection = "${android.provider.ContactsContract.Contacts.DISPLAY_NAME_PRIMARY} LIKE ?"
+            val selectionArgs = arrayOf("%$query%")
+            
+            // Query the contacts
+            val cursor = context.contentResolver.query(
+                android.provider.ContactsContract.Contacts.CONTENT_URI,
+                projection,
+                selection,
+                selectionArgs,
+                "${android.provider.ContactsContract.Contacts.DISPLAY_NAME_PRIMARY} ASC LIMIT $limit"
+            )
+            
+            if (cursor == null) {
+                return "Unable to access contacts data."
+            }
+            
+            val contacts = mutableListOf<Map<String, Any>>()
+            
+            // Column indices
+            val idIdx = cursor.getColumnIndex(android.provider.ContactsContract.Contacts._ID)
+            val nameIdx = cursor.getColumnIndex(android.provider.ContactsContract.Contacts.DISPLAY_NAME_PRIMARY)
+            val hasPhoneIdx = cursor.getColumnIndex(android.provider.ContactsContract.Contacts.HAS_PHONE_NUMBER)
+            
+            // Process results
+            while (cursor.moveToNext()) {
+                val id = cursor.getString(idIdx)
+                val name = cursor.getString(nameIdx) ?: "Unknown"
+                val hasPhone = cursor.getInt(hasPhoneIdx) > 0
+                
+                val phoneNumbers = mutableListOf<String>()
+                val emails = mutableListOf<String>()
+                
+                // Get phone numbers if available
+                if (hasPhone) {
+                    val phoneCursor = context.contentResolver.query(
+                        android.provider.ContactsContract.CommonDataKinds.Phone.CONTENT_URI,
+                        arrayOf(android.provider.ContactsContract.CommonDataKinds.Phone.NUMBER),
+                        "${android.provider.ContactsContract.CommonDataKinds.Phone.CONTACT_ID} = ?",
+                        arrayOf(id),
+                        null
+                    )
+                    
+                    phoneCursor?.use { pc ->
+                        val phoneIdx = pc.getColumnIndex(android.provider.ContactsContract.CommonDataKinds.Phone.NUMBER)
+                        while (pc.moveToNext()) {
+                            pc.getString(phoneIdx)?.let { phoneNumbers.add(it) }
+                        }
+                    }
+                }
+                
+                // Get email addresses
+                val emailCursor = context.contentResolver.query(
+                    android.provider.ContactsContract.CommonDataKinds.Email.CONTENT_URI,
+                    arrayOf(android.provider.ContactsContract.CommonDataKinds.Email.DATA),
+                    "${android.provider.ContactsContract.CommonDataKinds.Email.CONTACT_ID} = ?",
+                    arrayOf(id),
+                    null
+                )
+                
+                emailCursor?.use { ec ->
+                    val emailIdx = ec.getColumnIndex(android.provider.ContactsContract.CommonDataKinds.Email.DATA)
+                    while (ec.moveToNext()) {
+                        ec.getString(emailIdx)?.let { emails.add(it) }
+                    }
+                }
+                
+                // Only add contact if it matches the query in name, phone, or email
+                val matchesPhone = phoneNumbers.any { it.contains(query) }
+                val matchesEmail = emails.any { it.lowercase().contains(query.lowercase()) }
+                
+                if (name.lowercase().contains(query.lowercase()) || matchesPhone || matchesEmail) {
+                    contacts.add(
+                        mapOf(
+                            "name" to name,
+                            "phones" to phoneNumbers,
+                            "emails" to emails
+                        )
+                    )
+                }
+                
+                // Stop if we've reached the limit
+                if (contacts.size >= limit) {
+                    break
+                }
+            }
+            
+            cursor.close()
+            
+            // Format the results
+            val resultBuilder = StringBuilder()
+            
+            if (contacts.isEmpty()) {
+                resultBuilder.append("No contacts found matching '$query'.")
+            } else {
+                resultBuilder.append("Found ${contacts.size} contacts matching '$query':\n\n")
+                
+                contacts.forEachIndexed { index, contact ->
+                    resultBuilder.append("${index + 1}. ${contact["name"]}\n")
+                    
+                    val phones = contact["phones"] as List<String>
+                    if (phones.isNotEmpty()) {
+                        resultBuilder.append("   Phone: ${phones.first()}")
+                        if (phones.size > 1) {
+                            resultBuilder.append(" (+${phones.size - 1} more)")
+                        }
+                        resultBuilder.append("\n")
+                    }
+                    
+                    val emails = contact["emails"] as List<String>
+                    if (emails.isNotEmpty()) {
+                        resultBuilder.append("   Email: ${emails.first()}")
+                        if (emails.size > 1) {
+                            resultBuilder.append(" (+${emails.size - 1} more)")
+                        }
+                        resultBuilder.append("\n")
+                    }
+                    
+                    resultBuilder.append("\n")
+                }
+            }
+            
+            return resultBuilder.toString().trim()
+            
+        } catch (e: Exception) {
+            Log.e("ContactsTool", "Error accessing contacts: ${e.message}")
+            return "Error accessing contacts: ${e.message}"
+        }
     }
 
     fun getSerializableToolDefinitions(

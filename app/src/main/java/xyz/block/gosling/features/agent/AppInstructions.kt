@@ -86,6 +86,7 @@ object AppInstructions {
                     For example: if looking for stinky fruit, look up fruit first, and then look if any are titled stinky, or description or reviews say are stinky.
                     If asked, look for specific detailed in descriptions or reviews after clicking in and scrolling
                     Consider if the query mentions a specific brand, in which case, ensure items you are reviewing match that specific brand
+                    Consider delivery time preferences
                 
                 using app tips: 
                     ALWAYS scroll/swipe to look at products, don't just pick the first one

@@ -3,6 +3,8 @@ package xyz.block.gosling.features.agent
 import android.app.Service
 import android.content.Context
 import android.content.Intent
+import android.content.pm.ApplicationInfo
+import android.content.pm.PackageManager
 import android.net.Uri
 import android.os.Binder
 import android.os.IBinder
@@ -179,11 +181,51 @@ class Agent : Service() {
         try {
             isCancelled = false
 
+            // Get a complete list of all installed apps using PackageManager directly
+            val packageManager = context.packageManager
+            val allPackages = packageManager.getInstalledPackages(PackageManager.GET_META_DATA)
+            
+            // Also get intent-based apps for better categorization
             val availableIntents = IntentScanner.getAvailableIntents(
                 context,
                 GoslingAccessibilityService.getInstance()
             )
-            val installedApps = IntentAppKinds.groupIntentsByCategory(availableIntents)
+            
+            // Combine both approaches for a more comprehensive list
+            val intentAppMap = availableIntents.associateBy { it.packageName }
+            val categorizedApps = mutableMapOf<String, MutableList<String>>()
+            
+            allPackages.forEach { packageInfo ->
+                val packageName = packageInfo.packageName
+                packageInfo.applicationInfo?.let { applicationInfo ->
+                    val appLabel = packageManager.getApplicationLabel(applicationInfo).toString()
+                    val isSystemApp = (applicationInfo.flags and ApplicationInfo.FLAG_SYSTEM) != 0
+                    
+                    // Include non-system apps and selected system apps
+                    if (!isSystemApp || packageName.startsWith("com.android.vending")) { // Include Play Store
+                        // Determine category using existing logic when possible
+                        val category = intentAppMap[packageName]?.kind 
+                            ?: IntentAppKinds.getCategoryForPackage(packageName)?.name 
+                            ?: "other"
+                        
+                        // Add to category list
+                        categorizedApps.getOrPut(category) { mutableListOf() }
+                            .add("- $appLabel: $packageName")
+                    }
+                }
+            }
+            
+            // Format output
+            val installedApps = buildString {
+                categorizedApps.forEach { (category, apps) ->
+                    appendLine("## ${category.replaceFirstChar { if (it.isLowerCase()) it.titlecase() else it.toString() }}")
+                    appendLine()
+                    apps.sorted().forEach { app ->
+                        appendLine(app)
+                    }
+                    appendLine()
+                }
+            }
 
             val windowManager = context.getSystemService(Context.WINDOW_SERVICE) as WindowManager
             val displayMetrics = DisplayMetrics()
@@ -199,6 +241,8 @@ class Agent : Service() {
                 TriggerType.IMAGE -> "analyzing images on the users android phone"
                 TriggerType.ASSISTANT -> "providing assistant services on the users android phone"
             }
+
+            System.out.println("Installed apps\n\n\n\n\n" + installedApps + "\n\n\n\n\n")
 
             val systemMessage = """
                 |${getDeviceSpecificSystemMessage(context, role)}

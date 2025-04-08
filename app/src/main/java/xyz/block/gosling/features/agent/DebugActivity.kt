@@ -1,6 +1,7 @@
 package xyz.block.gosling.features.agent
 
 import android.os.Bundle
+import android.os.Environment
 import android.util.Log
 import androidx.appcompat.app.AppCompatActivity
 import kotlinx.coroutines.CoroutineScope
@@ -9,8 +10,17 @@ import kotlinx.coroutines.launch
 import org.json.JSONObject
 import xyz.block.gosling.features.accessibility.GoslingAccessibilityService
 import xyz.block.gosling.features.agent.ToolHandler.getUiHierarchy
+import java.io.File
+import java.text.SimpleDateFormat
+import java.util.Date
+import java.util.Locale
 
 class DebugActivity : AppCompatActivity() {
+    companion object {
+        private const val COMMAND_OUTPUT_FILE = "command_result.txt"
+        private const val LATEST_COMMAND_LINK = "latest_command_result.txt"
+    }
+    
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
 
@@ -34,14 +44,19 @@ class DebugActivity : AppCompatActivity() {
                     agentServiceManager.bindAndStartAgent { agent ->
                         CoroutineScope(Dispatchers.IO).launch {
                             try {
-                                agent.processCommand(
+                                val result = agent.processCommand(
                                     userInput = command,
                                     context = this@DebugActivity,
                                     triggerType = Agent.TriggerType.MAIN
                                 )
                                 Log.d("DebugActivity", "Command executed successfully")
+                                
+                                // Write result to file
+                                writeResultToFile(command, result.toString())
                             } catch (e: Exception) {
                                 Log.e("DebugActivity", "Error executing command: ${e.message}")
+                                // Write error to file
+                                writeResultToFile(command, "Error: ${e.message}")
                             }
                         }
                     }
@@ -54,5 +69,47 @@ class DebugActivity : AppCompatActivity() {
         }
 
         finish()
+    }
+    
+    /**
+     * Writes the command result to a file in the app's external files directory.
+     * Creates both a timestamped file and updates a "latest" file for easy access.
+     * 
+     * @param command The command that was executed
+     * @param result The result of the command execution
+     */
+    private fun writeResultToFile(command: String, result: String) {
+        try {
+            // Create a timestamp for the filename
+            val timestamp = SimpleDateFormat("yyyyMMdd_HHmmss", Locale.US).format(Date())
+            val filename = "command_result_${timestamp}.txt"
+            
+            // Get the app's external files directory
+            val externalDir = getExternalFilesDir(null)
+            if (externalDir != null && externalDir.exists()) {
+                // Create the result file with timestamp
+                val resultFile = File(externalDir, filename)
+                
+                // Create the content with command and result
+                val content = StringBuilder()
+                    .append("Command: ").append(command).append("\n\n")
+                    .append("Result:\n").append(result).append("\n")
+                    .toString()
+                
+                // Write to the timestamped file
+                resultFile.writeText(content)
+                Log.d("DebugActivity", "Wrote result to file: ${resultFile.absolutePath}")
+                
+                // Also update the "latest" file for easy access
+                val latestFile = File(externalDir, LATEST_COMMAND_LINK)
+                latestFile.writeText(content)
+                Log.d("DebugActivity", "Updated latest result file: ${latestFile.absolutePath}")
+            } else {
+                Log.e("DebugActivity", "External directory not available")
+            }
+        } catch (e: Exception) {
+            Log.e("DebugActivity", "Error writing result to file: ${e.message}")
+            e.printStackTrace()
+        }
     }
 }

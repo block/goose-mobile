@@ -38,3 +38,9 @@ echo ""
 # Extract just the assistant's last response using grep and sed
 echo "Assistant's response:"
 adb shell "cat /storage/emulated/0/Android/data/xyz.block.gosling/files/latest_command_result.txt" | grep -o '"text": "[^"]*"' | tail -1 | sed 's/"text": "\(.*\)"/\1/'
+
+# Take a screenshot and save it
+echo "Taking screenshot..."
+adb shell screencap -p /sdcard/latest_command_result.png
+adb pull /sdcard/latest_command_result.png ./latest_command_result.png
+echo "Screenshot saved as latest_command_result.png"

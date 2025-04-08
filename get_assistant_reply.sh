@@ -16,24 +16,23 @@ adb shell "am start -a xyz.block.gosling.EXECUTE_COMMAND -n xyz.block.gosling/.f
 
 # Wait a bit for the command to complete
 echo "Waiting for response..."
+
+adb shell 'rm -rf /storage/emulated/0/Android/data/xyz.block.gosling/files/latest_command_result.txt'
+
 sleep 5
 
-# Keep checking for the result file to be updated
+# Keep checking for the result file to exist
+
 while true; do
-  # Get the last modification time of the file
-  LAST_MOD=$(adb shell "stat -c %Y /storage/emulated/0/Android/data/xyz.block.gosling/files/latest_command_result.txt 2>/dev/null || echo 0")
-  CURRENT_TIME=$(adb shell "date +%s")
-  
-  # If file was modified in the last 3 seconds, we're probably still writing to it
-  if [ $((CURRENT_TIME - LAST_MOD)) -gt 3 ]; then
+  if adb shell '[ -f /storage/emulated/0/Android/data/xyz.block.gosling/files/latest_command_result.txt ]'; then
+    echo "File exists!"
     break
+  else
+    echo -n "."
+    sleep 1
   fi
-  
-  echo -n "."
-  sleep 2
 done
 
-echo ""
 
 # Extract just the assistant's last response using grep and sed
 echo "Assistant's response:"

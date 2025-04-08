@@ -6,7 +6,10 @@ import android.util.Log
 import androidx.appcompat.app.AppCompatActivity
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.flow.firstOrNull
 import kotlinx.coroutines.launch
+import kotlinx.serialization.encodeToString
+import kotlinx.serialization.json.Json
 import org.json.JSONObject
 import xyz.block.gosling.features.accessibility.GoslingAccessibilityService
 import xyz.block.gosling.features.agent.ToolHandler.getUiHierarchy
@@ -44,6 +47,7 @@ class DebugActivity : AppCompatActivity() {
                     agentServiceManager.bindAndStartAgent { agent ->
                         CoroutineScope(Dispatchers.IO).launch {
                             try {
+                                // Process the command
                                 val result = agent.processCommand(
                                     userInput = command,
                                     context = this@DebugActivity,
@@ -51,8 +55,15 @@ class DebugActivity : AppCompatActivity() {
                                 )
                                 Log.d("DebugActivity", "Command executed successfully")
                                 
-                                // Write result to file
-                                writeResultToFile(command, result.toString())
+                                // Get the full conversation content
+                                val conversation = agent.conversationManager.currentConversation.firstOrNull()
+                                if (conversation != null) {
+                                    // Write the rich conversation content to file
+                                    writeRichResultToFile(command, result.toString(), conversation)
+                                } else {
+                                    // Fallback to simple result if conversation is null
+                                    writeResultToFile(command, result.toString())
+                                }
                             } catch (e: Exception) {
                                 Log.e("DebugActivity", "Error executing command: ${e.message}")
                                 // Write error to file
@@ -110,6 +121,91 @@ class DebugActivity : AppCompatActivity() {
         } catch (e: Exception) {
             Log.e("DebugActivity", "Error writing result to file: ${e.message}")
             e.printStackTrace()
+        }
+    }
+    
+    /**
+     * Writes the rich conversation content to a file in the app's external files directory.
+     * This includes all messages exchanged during the conversation, providing the full context
+     * and rich information that would be displayed in the GUI.
+     * 
+     * @param command The command that was executed
+     * @param result The simple result string
+     * @param conversation The full conversation object with all messages
+     */
+    private fun writeRichResultToFile(command: String, result: String, conversation: Conversation) {
+        try {
+            // Create a timestamp for the filename
+            val timestamp = SimpleDateFormat("yyyyMMdd_HHmmss", Locale.US).format(Date())
+            val filename = "command_result_${timestamp}.txt"
+            
+            // Get the app's external files directory
+            val externalDir = getExternalFilesDir(null)
+            if (externalDir != null && externalDir.exists()) {
+                // Create the result file with timestamp
+                val resultFile = File(externalDir, filename)
+                
+                // Create a pretty JSON formatter
+                val jsonFormatter = Json { 
+                    prettyPrint = true 
+                    encodeDefaults = true
+                    ignoreUnknownKeys = true
+                }
+                
+                // Extract user and assistant messages for a cleaner output
+                val relevantMessages = conversation.messages.filter { 
+                    it.role == "user" || it.role == "assistant" || it.role == "tool"
+                }
+                
+                // Build the content with command, result, and rich conversation
+                val content = StringBuilder()
+                    .append("Command: ").append(command).append("\n\n")
+                    .append("Simple Result: ").append(result).append("\n\n")
+                    .append("Rich Conversation Content:\n")
+                
+                // Add each message with its content
+                relevantMessages.forEach { message ->
+                    content.append("\n--- ${message.role.uppercase()} ---\n")
+                    
+                    // Handle different message content types
+                    message.content?.forEach { contentItem ->
+                        when (contentItem) {
+                            is Content.Text -> content.append(contentItem.text).append("\n")
+                            is Content.ImageUrl -> content.append("[Image: ${contentItem.imageUrl.url}]\n")
+                        }
+                    }
+                    
+                    // Add tool calls if present
+                    message.toolCalls?.forEach { toolCall ->
+                        content.append("\nTool Call: ${toolCall.function.name}\n")
+                        content.append("Arguments: ${toolCall.function.arguments}\n")
+                    }
+                    
+                    // Add a separator between messages
+                    content.append("\n")
+                }
+                
+                // Add the full JSON representation for programmatic use
+                content.append("\n\n--- FULL JSON REPRESENTATION ---\n")
+                content.append(jsonFormatter.encodeToString(conversation))
+                
+                // Write to the timestamped file
+                resultFile.writeText(content.toString())
+                Log.d("DebugActivity", "Wrote rich result to file: ${resultFile.absolutePath}")
+                
+                // Also update the "latest" file for easy access
+                val latestFile = File(externalDir, LATEST_COMMAND_LINK)
+                latestFile.writeText(content.toString())
+                Log.d("DebugActivity", "Updated latest result file: ${latestFile.absolutePath}")
+            } else {
+                Log.e("DebugActivity", "External directory not available")
+            }
+        } catch (e: Exception) {
+            Log.e("DebugActivity", "Error writing rich result to file: ${e.message}")
+            e.printStackTrace()
+            
+            // Fall back to simple result writing
+            writeResultToFile(command, result)
         }
     }
 }

@@ -24,6 +24,7 @@ import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
+import androidx.compose.material.icons.filled.QrCodeScanner
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
@@ -259,16 +260,44 @@ fun SettingsScreen(
                         verticalArrangement = Arrangement.spacedBy(8.dp)
                     ) {
                         Text(text = "API Key")
-                        OutlinedTextField(
-                            value = apiKey,
-                            onValueChange = {
-                                apiKey = it
-                                settingsStore.setApiKey(currentModel.provider, it)
-                            },
+                        Row(
                             modifier = Modifier.fillMaxWidth(),
-                            visualTransformation = PasswordVisualTransformation(),
-                            keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Password)
-                        )
+                            horizontalArrangement = Arrangement.spacedBy(8.dp),
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            OutlinedTextField(
+                                value = apiKey,
+                                onValueChange = {
+                                    apiKey = it
+                                    settingsStore.setApiKey(currentModel.provider, it)
+                                },
+                                modifier = Modifier.weight(1f),
+                                visualTransformation = PasswordVisualTransformation(),
+                                keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Password)
+                            )
+                            
+                            var showQRScanner by remember { mutableStateOf(false) }
+                            
+                            IconButton(
+                                onClick = { showQRScanner = true },
+                                modifier = Modifier.align(Alignment.CenterVertically)
+                            ) {
+                                Icon(
+                                    imageVector = Icons.Default.QrCodeScanner,
+                                    contentDescription = "Scan QR Code"
+                                )
+                            }
+                            
+                            if (showQRScanner) {
+                                QRCodeScannerDialog(
+                                    onDismiss = { showQRScanner = false },
+                                    onQRCodeScanned = { scannedApiKey ->
+                                        apiKey = scannedApiKey
+                                        settingsStore.setApiKey(currentModel.provider, scannedApiKey)
+                                    }
+                                )
+                            }
+                        }
                     }
                 }
 

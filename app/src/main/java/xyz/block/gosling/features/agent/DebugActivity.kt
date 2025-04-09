@@ -20,7 +20,6 @@ import java.util.Locale
 
 class DebugActivity : AppCompatActivity() {
     companion object {
-        private const val COMMAND_OUTPUT_FILE = "command_result.txt"
         private const val LATEST_COMMAND_LINK = "latest_command_result.txt"
     }
     
@@ -195,7 +194,7 @@ class DebugActivity : AppCompatActivity() {
                 
                 // Also update the "latest" file for easy access
                 val latestFile = File(externalDir, LATEST_COMMAND_LINK)
-                latestFile.writeText(content.toString())
+                latestFile.writeText(conversation.messages.last().content.toString())
                 Log.d("DebugActivity", "Updated latest result file: ${latestFile.absolutePath}")
             } else {
                 Log.e("DebugActivity", "External directory not available")

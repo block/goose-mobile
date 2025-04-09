@@ -25,7 +25,6 @@ sleep 5
 
 while true; do
   if adb shell '[ -f /storage/emulated/0/Android/data/xyz.block.gosling/files/latest_command_result.txt ]'; then
-    echo "File exists!"
     break
   else
     echo -n "."

@@ -3,6 +3,7 @@ package xyz.block.gosling.features.onboarding
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.imePadding
@@ -11,11 +12,14 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.QrCodeScanner
 import androidx.compose.material3.Button
 import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.ExposedDropdownMenuBox
 import androidx.compose.material3.ExposedDropdownMenuDefaults
+import androidx.compose.material3.Icon
 import androidx.compose.material3.MenuAnchorType
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Text
@@ -30,6 +34,7 @@ import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.unit.dp
 import xyz.block.gosling.features.agent.AiModel
+import xyz.block.gosling.features.settings.QRCodeScannerDialog
 import xyz.block.gosling.features.settings.SettingsStore
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -42,6 +47,7 @@ fun LLMConfigStep(
     var currentModel by remember { mutableStateOf(AiModel.fromIdentifier(llmModel)) }
     var apiKey by remember { mutableStateOf(settingsStore.getApiKey(currentModel.provider)) }
     var expanded by remember { mutableStateOf(false) }
+    var showQRScanner by remember { mutableStateOf(false) }
 
     val models = AiModel.AVAILABLE_MODELS.map {
         it.identifier to it.displayName
@@ -102,13 +108,44 @@ fun LLMConfigStep(
                     verticalArrangement = Arrangement.spacedBy(8.dp)
                 ) {
                     Text(text = "API Key")
-                    OutlinedTextField(
-                        value = apiKey,
-                        onValueChange = { apiKey = it },
+                    Row(
                         modifier = Modifier.fillMaxWidth(),
-                        visualTransformation = PasswordVisualTransformation(),
-                        keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Password)
-                    )
+                        horizontalArrangement = Arrangement.spacedBy(8.dp),
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        OutlinedTextField(
+                            value = apiKey,
+                            onValueChange = { apiKey = it },
+                            modifier = Modifier.weight(1f),
+                            visualTransformation = PasswordVisualTransformation(),
+                            keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Password)
+                        )
+                        
+                        // QR Code scanner button
+                        Button(
+                            onClick = { showQRScanner = true },
+                            modifier = Modifier.align(Alignment.CenterVertically)
+                        ) {
+                            Icon(
+                                imageVector = Icons.Default.QrCodeScanner,
+                                contentDescription = "Scan QR Code"
+                            )
+                            Text(
+                                text = "Scan",
+                                modifier = Modifier.padding(start = 8.dp)
+                            )
+                        }
+                        
+                        // QR Code scanner dialog
+                        if (showQRScanner) {
+                            QRCodeScannerDialog(
+                                onDismiss = { showQRScanner = false },
+                                onQRCodeScanned = { scannedApiKey ->
+                                    apiKey = scannedApiKey
+                                }
+                            )
+                        }
+                    }
                 }
             }
         }

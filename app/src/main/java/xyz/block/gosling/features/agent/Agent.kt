@@ -327,6 +327,10 @@ class Agent : Service() {
                             val errorMsg = "API key error: ${e.message}"
                             updateStatus(AgentStatus.Error(errorMsg))
                             Log.e(tag, "API key error", e)
+                            // Make sure we're properly reporting this to the UI
+                            CoroutineScope(Dispatchers.Main).launch {
+                                statusListener?.invoke(AgentStatus.Error(errorMsg))
+                            }
                             return@withContext errorMsg
                         }
 
@@ -518,6 +522,18 @@ class Agent : Service() {
                 updateStatus(AgentStatus.Success("Operation cancelled"))
                 return "Operation cancelled by user"
             }
+            
+            // Special handling for API key exceptions
+            if (e is ApiKeyException) {
+                val errorMsg = "API key error: ${e.message}"
+                updateStatus(AgentStatus.Error(errorMsg))
+                Log.e(tag, "API key error", e)
+                // Make sure we're properly reporting this to the UI
+                CoroutineScope(Dispatchers.Main).launch {
+                    statusListener?.invoke(AgentStatus.Error(errorMsg))
+                }
+                return errorMsg
+            }
 
             val errorMsg = "Error: ${e.message}"
             updateStatus(AgentStatus.Error(errorMsg))
@@ -570,7 +586,8 @@ class Agent : Service() {
                     scope = CoroutineScope(Dispatchers.IO + job)
                     updateStatus(AgentStatus.Success("Operation cancelled"))
                 } else {
-                    updateStatus(AgentStatus.Error("Error: ${e.message}"))
+                    val errorMsg = "Error: ${e.message}"
+                    updateStatus(AgentStatus.Error(errorMsg))
                 }
             }
         }
@@ -603,6 +620,13 @@ class Agent : Service() {
         apiKey: String?,
         model: AiModel
     ): JSONObject {
+        // Check for missing API key before making the request
+        if (apiKey.isNullOrBlank()) {
+            val errorMsg = "API key is missing for ${model.provider}. Please add your API key in settings."
+            Log.e(tag, errorMsg)
+            throw ApiKeyException(errorMsg)
+        }
+        
         val request = Request.Builder()
             .url(urlString)
             .post(requestBody.toRequestBody("application/json".toMediaType()))
@@ -639,6 +663,12 @@ class Agent : Service() {
         val settings = SettingsStore(context)
         val model = AiModel.fromIdentifier(settings.llmModel)
         val apiKey = settings.getApiKey(model.provider)
+        
+        // Check for empty API key early
+        if (apiKey.isNullOrBlank()) {
+            updateStatus(AgentStatus.Error("API key is missing. Please add your API key in settings."))
+            throw ApiKeyException("API key is missing. Please add your API key in settings.")
+        }
 
         val processedMessages = removeOutdatedPayloads(messages)
 
@@ -762,7 +792,10 @@ class Agent : Service() {
 
     private fun handleHttpError(responseCode: Int, errorResponse: String): Nothing {
         if (isApiKeyError(responseCode)) {
-            throw ApiKeyException(errorResponse)
+            val errorMessage = "Invalid API key. Please check your API key in settings."
+            Log.e(tag, "API key error: $errorResponse")
+            updateStatus(AgentStatus.Error(errorMessage))
+            throw ApiKeyException(errorMessage)
         }
 
         throw AgentException(errorResponse)
@@ -782,7 +815,7 @@ class Agent : Service() {
                     imageUri = uri
                 )
             } catch (e: Exception) {
-                Log.e(tag, "Error handling notification", e)
+                Log.e(tag, "Error handling screenshot", e)
 
                 // If it's a cancellation exception, handle it gracefully
                 if (e is kotlinx.coroutines.CancellationException) {
@@ -791,7 +824,8 @@ class Agent : Service() {
                     scope = CoroutineScope(Dispatchers.IO + job)
                     updateStatus(AgentStatus.Success("Operation cancelled"))
                 } else {
-                    updateStatus(AgentStatus.Error("Error: ${e.message}"))
+                    val errorMsg = "Error: ${e.message}"
+                    updateStatus(AgentStatus.Error(errorMsg))
                 }
             }
         }

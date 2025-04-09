@@ -610,8 +610,13 @@ private fun processAgentCommand(
                     val errorMessage = "Error: ${status.message}"
                     onMessageReceived?.invoke(errorMessage, false)
 
-                    statusToast.setText(errorMessage)
-                    statusToast.show()
+                    // Show error message in toast - use LENGTH_LONG for API key errors
+                    if (status.message.contains("API key", ignoreCase = true)) {
+                        Toast.makeText(context, errorMessage, Toast.LENGTH_LONG).show()
+                    } else {
+                        statusToast.setText(errorMessage)
+                        statusToast.show()
+                    }
 
                     OverlayService.getInstance()?.updateStatus(status)
                     OverlayService.getInstance()?.setIsPerformingAction(false)
@@ -634,6 +639,9 @@ private fun processAgentCommand(
                 onMessageReceived?.invoke(errorMessage, false)
                 statusToast.setText(errorMessage)
                 statusToast.show()
+                
+                OverlayService.getInstance()?.updateStatus(AgentStatus.Error(e.message ?: "Unknown error"))
+                OverlayService.getInstance()?.setIsPerformingAction(false)
             }
         }
     }

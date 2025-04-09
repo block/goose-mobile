@@ -278,13 +278,18 @@ fun SettingsScreen(
                             
                             var showQRScanner by remember { mutableStateOf(false) }
                             
-                            IconButton(
+                            // Use Button instead of IconButton to make it more visible
+                            Button(
                                 onClick = { showQRScanner = true },
                                 modifier = Modifier.align(Alignment.CenterVertically)
                             ) {
                                 Icon(
                                     imageVector = Icons.Default.QrCodeScanner,
                                     contentDescription = "Scan QR Code"
+                                )
+                                Text(
+                                    text = "Scan",
+                                    modifier = Modifier.padding(start = 8.dp)
                                 )
                             }
                             

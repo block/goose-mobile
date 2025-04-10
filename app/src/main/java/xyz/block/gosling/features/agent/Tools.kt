@@ -120,13 +120,14 @@ object ToolHandler {
         imm.hideSoftInputFromWindow(view.windowToken, 0)
     }
 
+    /* not operational
     @Tool(
         name = "recentApps",
         description = "list recently used apps",
         parameters = [],
         requiresContext = true
     )
-    fun recentApps(context: Context): String {
+    fun recentApps(context: Context, args: JSONObject): String {
         if (!AppUsageStats.hasPermission(context)) {
             return "Don't have permission to collect app stats, consult app settings to correct this."
         }
@@ -145,6 +146,8 @@ object ToolHandler {
         }
         return AppUsageStats.getFrequentApps(context, limit = 20).joinToString { ", " }
     }
+    */
+     */
 
     @Tool(
         name = "getUiHierarchy",

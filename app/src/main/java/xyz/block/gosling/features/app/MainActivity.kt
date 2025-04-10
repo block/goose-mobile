@@ -17,6 +17,8 @@ import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
+import androidx.core.app.ActivityCompat
+import androidx.core.content.ContextCompat
 import androidx.core.net.toUri
 import androidx.navigation.compose.rememberNavController
 import xyz.block.gosling.GoslingApplication
@@ -30,6 +32,7 @@ import xyz.block.gosling.shared.theme.GoslingTheme
 class MainActivity : ComponentActivity() {
     companion object {
         private const val REQUEST_NOTIFICATION_PERMISSION = 1234
+        private const val REQUEST_CALENDAR_CONTACTS_PERMISSION = 1235
         private const val TAG = "MainActivity"
     }
 
@@ -101,6 +104,26 @@ class MainActivity : ComponentActivity() {
                     REQUEST_NOTIFICATION_PERMISSION
                 )
             }
+        }
+        
+        // Request calendar and contacts permissions if needed
+        val permissionsToRequest = mutableListOf<String>()
+        
+        if (checkSelfPermission(Manifest.permission.READ_CALENDAR) != 
+            PackageManager.PERMISSION_GRANTED) {
+            permissionsToRequest.add(Manifest.permission.READ_CALENDAR)
+        }
+        
+        if (checkSelfPermission(Manifest.permission.READ_CONTACTS) != 
+            PackageManager.PERMISSION_GRANTED) {
+            permissionsToRequest.add(Manifest.permission.READ_CONTACTS)
+        }
+        
+        if (permissionsToRequest.isNotEmpty()) {
+            requestPermissions(
+                permissionsToRequest.toTypedArray(),
+                REQUEST_CALENDAR_CONTACTS_PERMISSION
+            )
         }
     }
 

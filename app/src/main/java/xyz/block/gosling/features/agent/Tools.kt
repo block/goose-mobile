@@ -253,7 +253,6 @@ object ToolHandler {
                 ""
             }
 
-
             return nodeLine + childrenStr
 
         } catch (e: Exception) {
@@ -742,7 +741,8 @@ object ToolHandler {
 
     @Tool(
         name = "webSearch",
-        description = "Perform a web search using the default search engine.",
+        description = "Perform a web search using the default search engine." +
+                "If you don't see a clear result, use the click or scrollBrowser tools along with getUIHierarchy to look further.",
         parameters = [
             ParameterDef(
                 name = "query",

@@ -147,7 +147,7 @@ object ToolHandler {
         return AppUsageStats.getFrequentApps(context, limit = 20).joinToString { ", " }
     }
     */
-     */
+
 
     @Tool(
         name = "getUiHierarchy",

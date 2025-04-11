@@ -1,10 +1,12 @@
 package xyz.block.gosling.features.agent
 
+import android.Manifest
 import android.accessibilityservice.AccessibilityService
 import android.accessibilityservice.GestureDescription
 import android.app.SearchManager
 import android.content.Context
 import android.content.Intent
+import android.content.pm.PackageManager
 import android.graphics.Path
 import android.graphics.Rect
 import android.os.Build
@@ -13,6 +15,7 @@ import android.util.Log
 import android.view.accessibility.AccessibilityNodeInfo
 import android.view.inputmethod.InputMethodManager
 import androidx.annotation.RequiresApi
+import androidx.core.content.ContextCompat
 import androidx.core.net.toUri
 import org.json.JSONObject
 import xyz.block.gosling.features.overlay.OverlayService
@@ -885,7 +888,7 @@ object ToolHandler {
     )
     fun getCalendarEvents(context: Context, args: JSONObject): String {
         // Check if we have calendar permission
-        if (!PermissionsManager.hasCalendarPermission(context)) {
+        if (ContextCompat.checkSelfPermission(context, Manifest.permission.READ_CALENDAR) != PackageManager.PERMISSION_GRANTED) {
             return "Calendar permission not granted. Please grant the Calendar permission in the app settings."
         }
 
@@ -1054,7 +1057,7 @@ object ToolHandler {
     )
     fun searchContacts(context: Context, args: JSONObject): String {
         // Check if we have contacts permission
-        if (!PermissionsManager.hasContactsPermission(context)) {
+        if (ContextCompat.checkSelfPermission(context, Manifest.permission.READ_CONTACTS) != PackageManager.PERMISSION_GRANTED) {
             return "Contacts permission not granted. Please grant the Contacts permission in the app settings."
         }
 

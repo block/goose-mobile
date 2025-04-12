@@ -27,10 +27,10 @@ class GoslingAccessibilityService : AccessibilityService() {
         super.onServiceConnected()
         instance = this
 
-        // Set up service info with all capabilities enabled
+        // Set up service info with notification monitoring only
         val info = AccessibilityServiceInfo()
         info.apply {
-            eventTypes = AccessibilityEvent.TYPES_ALL_MASK
+            eventTypes = AccessibilityEvent.TYPE_NOTIFICATION_STATE_CHANGED
             feedbackType = AccessibilityServiceInfo.FEEDBACK_GENERIC
             flags =
                 AccessibilityServiceInfo.FLAG_INCLUDE_NOT_IMPORTANT_VIEWS or AccessibilityServiceInfo.FLAG_REPORT_VIEW_IDS or AccessibilityServiceInfo.FLAG_REQUEST_TOUCH_EXPLORATION_MODE or AccessibilityServiceInfo.FLAG_RETRIEVE_INTERACTIVE_WINDOWS

@@ -12,6 +12,7 @@ data class AiModel(
 ) {
     companion object {
         val AVAILABLE_MODELS = listOf(
+            AiModel("GPT-4.1", "gpt-4.1", ModelProvider.OPENAI),
             AiModel("GPT-4o", "gpt-4o", ModelProvider.OPENAI),
             AiModel("GPT-4o mini", "gpt-4o-mini", ModelProvider.OPENAI),
             AiModel("O3 Mini", "o3-mini", ModelProvider.OPENAI),

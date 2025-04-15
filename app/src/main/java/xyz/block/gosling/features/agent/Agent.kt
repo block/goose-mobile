@@ -277,18 +277,30 @@ class Agent : Service() {
                 )
             }
 
-            val newConversation = Conversation(
-                startTime = startTime,
-                fileName = conversationManager.fileNameFor(userInput),
-                messages = mutableListOf(
-                    Message(
-                        role = "system",
-                        content = contentWithText(systemMessage)
-                    ),
-                    userMessage
+            val newConversation = if (conversationManager.currentConversation.value != null) {
+                val conv = conversationManager.currentConversation.value!!
+                Conversation(
+                    startTime = startTime,
+                    fileName = conversationManager.fileNameFor(userInput),
+                    messages = conv.messages.filter { it.role != "stats" } + userMessage
                 )
-            )
+            } else {
+                Conversation(
+                    startTime = startTime,
+                    fileName = conversationManager.fileNameFor(userInput),
+                    messages = mutableListOf(
+                        Message(
+                            role = "system",
+                            content = contentWithText(systemMessage)
+                        ),
+                        userMessage
+                    )
+                )
+            }
+            
             conversationManager.updateCurrentConversation(newConversation)
+
+
 
             updateStatus(AgentStatus.Processing("Thinking..."))
 

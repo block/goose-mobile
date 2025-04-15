@@ -79,6 +79,7 @@ import xyz.block.gosling.R
 import xyz.block.gosling.features.agent.Agent
 import xyz.block.gosling.features.agent.AgentStatus
 import xyz.block.gosling.features.agent.Conversation
+import xyz.block.gosling.features.agent.getConversationTitle
 import xyz.block.gosling.features.overlay.OverlayService
 import xyz.block.gosling.features.settings.SettingsStore
 import xyz.block.gosling.shared.services.VoiceRecognitionService
@@ -109,6 +110,7 @@ fun MainScreen(
     val activity = context as MainActivity
     var conversations by remember { mutableStateOf<List<Conversation>>(emptyList()) }
     var textInput by remember { mutableStateOf("") }
+    var currentConversation by remember { mutableStateOf<Conversation?>(null) }
     val listState = rememberLazyListState()
     var showPresetQueries by remember { mutableStateOf(false) }
     var isRecording by remember { mutableStateOf(false) }
@@ -320,7 +322,13 @@ fun MainScreen(
                         value = textInput,
                         onValueChange = { textInput = it },
                         modifier = Modifier.fillMaxWidth(),
-                        placeholder = { Text("What can gosling do for you?") },
+                        placeholder = { 
+                            if (currentConversation != null) {
+                                Text("Continue conversation with ${getConversationTitle(currentConversation!!)}")
+                            } else {
+                                Text("What can gosling do for you?") 
+                            }
+                        },
                         colors = TextFieldDefaults.colors(
                             unfocusedContainerColor = Color.Transparent,
                             focusedContainerColor = Color.Transparent,
@@ -431,7 +439,7 @@ fun MainScreen(
                 LazyColumn(
                     modifier = Modifier
                         .fillMaxSize()
-                        .padding(horizontal = 8.dp),
+                        .padding(horizontal = 16.dp),
                     contentPadding = PaddingValues(
                         start = paddingValues.calculateStartPadding(LayoutDirection.Ltr),
                         top = paddingValues.calculateTopPadding(),
@@ -439,12 +447,13 @@ fun MainScreen(
                         bottom = paddingValues.calculateBottomPadding() + 8.dp
                     ),
                     state = listState,
-                    verticalArrangement = Arrangement.spacedBy(8.dp)
+                    verticalArrangement = Arrangement.spacedBy(12.dp)
                 ) {
                     items(conversations) { conversation ->
                         ConversationCard(
                             conversation = conversation,
-                            onClick = { onNavigateToConversation(conversation.id) }
+                            onClick = { onNavigateToConversation(conversation.id) },
+                            isCurrentConversation = currentConversation?.id == conversation.id
                         )
                     }
                 }
@@ -498,6 +507,12 @@ fun MainScreen(
             CoroutineScope(Dispatchers.Main).launch {
                 agent.conversationManager.conversations.collect { updatedConversations ->
                     conversations = updatedConversations
+                }
+            }
+            
+            CoroutineScope(Dispatchers.Main).launch {
+                agent.conversationManager.currentConversation.collect { updatedCurrentConversation ->
+                    currentConversation = updatedCurrentConversation
                 }
             }
         }

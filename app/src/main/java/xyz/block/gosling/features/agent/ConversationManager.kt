@@ -62,6 +62,11 @@ class ConversationManager(context: Context) {
 
         saveConversation(conversation)
     }
+    
+    fun setCurrentConversation(conversationId: String) {
+        val conversation = _conversations.value.find { it.id == conversationId }
+        conversation?.let { updateCurrentConversation(it) }
+    }
 
     private fun saveConversation(conversation: Conversation) {
         contextRef.get()?.getExternalFilesDir(null)?.let { filesDir ->

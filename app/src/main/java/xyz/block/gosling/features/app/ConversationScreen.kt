@@ -115,6 +115,10 @@ fun ConversationScreen(
             scope.launch(Dispatchers.Main) {
                 boundAgent.conversationManager.conversations.collect { conversations ->
                     conversation = conversations.find { it.id == conversationId }
+                    // Set this as the current conversation
+                    conversation?.let {
+                        boundAgent.conversationManager.setCurrentConversation(conversationId)
+                    }
                 }
             }
         }

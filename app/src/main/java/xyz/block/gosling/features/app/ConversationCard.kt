@@ -10,8 +10,10 @@ import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.imePadding
 import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.padding
@@ -129,7 +131,8 @@ private fun decodeBase64Image(base64Url: String): ImageBitmap? {
 fun ConversationCard(
     conversation: Conversation,
     onClick: () -> Unit,
-    modifier: Modifier = Modifier
+    modifier: Modifier = Modifier,
+    isCurrentConversation: Boolean = false
 ) {
     // Get the first user message to check for image
     val userMessage = conversation.messages.firstOrNull { it.role == "user" }
@@ -146,24 +149,33 @@ fun ConversationCard(
             .fillMaxWidth()
             .clickable(onClick = onClick),
         colors = CardDefaults.cardColors(
-            containerColor = MaterialTheme.colorScheme.surfaceContainer
+            containerColor = if (isCurrentConversation) 
+                MaterialTheme.colorScheme.primaryContainer 
+            else 
+                MaterialTheme.colorScheme.surfaceContainer
         )
     ) {
         Row(
             modifier = Modifier
                 .fillMaxWidth()
-                .padding(16.dp),
+                .padding(16.dp)
+                .height(120.dp),  // Make the card taller
             horizontalArrangement = Arrangement.spacedBy(8.dp),
             verticalAlignment = Alignment.CenterVertically
         ) {
             Column(
-                modifier = Modifier.weight(1f),
-                verticalArrangement = Arrangement.spacedBy(4.dp)
+                modifier = Modifier
+                    .weight(1f)
+                    .fillMaxHeight(),  // Fill the available height
+                verticalArrangement = Arrangement.spacedBy(8.dp)  // Increased spacing
             ) {
                 Text(
                     text = getConversationTitle(conversation),
                     style = MaterialTheme.typography.titleMedium,
-                    color = MaterialTheme.colorScheme.onSurface,
+                    color = if (isCurrentConversation)
+                        MaterialTheme.colorScheme.onPrimaryContainer
+                    else
+                        MaterialTheme.colorScheme.onSurface,
                     maxLines = 1,
                     overflow = TextOverflow.Ellipsis
                 )
@@ -171,8 +183,11 @@ fun ConversationCard(
                     Text(
                         text = firstText(message),
                         style = MaterialTheme.typography.bodyMedium,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant,
-                        maxLines = 3,
+                        color = if (isCurrentConversation)
+                            MaterialTheme.colorScheme.onPrimaryContainer
+                        else
+                            MaterialTheme.colorScheme.onSurfaceVariant,
+                        maxLines = 5,  // Increased from 3 to 5 lines
                         overflow = TextOverflow.Ellipsis
                     )
                 }
@@ -191,13 +206,19 @@ fun ConversationCard(
                             " (${formatDuration(duration)})"
                         } ?: ""),
                         style = MaterialTheme.typography.labelSmall,
-                        color = MaterialTheme.colorScheme.onSecondaryContainer.copy(alpha = 0.7f)
+                        color = if (isCurrentConversation)
+                            MaterialTheme.colorScheme.onPrimaryContainer.copy(alpha = 0.7f)
+                        else
+                            MaterialTheme.colorScheme.onSecondaryContainer.copy(alpha = 0.7f)
                     )
                     if (conversation.endTime == null) {
                         CircularProgressIndicator(
                             modifier = Modifier.size(12.dp),
                             strokeWidth = 2.dp,
-                            color = MaterialTheme.colorScheme.primary
+                            color = if (isCurrentConversation)
+                                MaterialTheme.colorScheme.onPrimaryContainer
+                            else
+                                MaterialTheme.colorScheme.primary
                         )
                     }
                 }
@@ -207,14 +228,17 @@ fun ConversationCard(
                     bitmap = bitmap,
                     contentDescription = "Conversation image",
                     modifier = Modifier
-                        .size(48.dp)
+                        .size(40.dp)
                         .clickable { showFullscreenImage = true }
                 )
             }
             Icon(
                 imageVector = Icons.AutoMirrored.Filled.ArrowForward,
                 contentDescription = "View conversation",
-                tint = MaterialTheme.colorScheme.onSecondaryContainer.copy(alpha = 0.7f)
+                tint = if (isCurrentConversation)
+                    MaterialTheme.colorScheme.onPrimaryContainer.copy(alpha = 0.7f)
+                else
+                    MaterialTheme.colorScheme.onSecondaryContainer.copy(alpha = 0.7f)
             )
         }
     }

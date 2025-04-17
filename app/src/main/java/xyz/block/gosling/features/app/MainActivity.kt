@@ -61,13 +61,29 @@ class MainActivity : ComponentActivity() {
                 currentAgent = agent
                 // Mark any stale active conversations as completed
                 val currentTime = System.currentTimeMillis()
-                agent.conversationManager.conversations.value
+                val staleConversations = agent.conversationManager.conversations.value
                     .filter { it.endTime == null }
-                    .forEach { conversation ->
-                        agent.conversationManager.updateCurrentConversation(
-                            conversation.copy(endTime = currentTime)
-                        )
+                
+                // If there are stale conversations, mark them as completed
+                // but keep the most recent one as the current conversation
+                if (staleConversations.isNotEmpty()) {
+                    val mostRecent = staleConversations.maxByOrNull { it.startTime }
+                    
+                    staleConversations.forEach { conversation ->
+                        if (conversation.id != mostRecent?.id) {
+                            // Mark other stale conversations as completed
+                            agent.conversationManager.updateCurrentConversation(
+                                conversation.copy(endTime = currentTime)
+                            )
+                        }
                     }
+                    
+                    // Set the most recent stale conversation as current
+                    mostRecent?.let {
+                        agent.conversationManager.setCurrentConversation(it.id)
+                    }
+                }
+                
                 Log.d(TAG, "Agent service started successfully")
             }
 
@@ -145,6 +161,16 @@ class MainActivity : ComponentActivity() {
             if (currentAgent == null) {
                 agentServiceManager.bindAndStartAgent { agent ->
                     currentAgent = agent
+                    
+                    // Ensure we have a current conversation set if available
+                    if (agent.conversationManager.currentConversation.value == null && 
+                        agent.conversationManager.conversations.value.isNotEmpty()) {
+                        val mostRecent = agent.conversationManager.conversations.value.maxByOrNull { it.startTime }
+                        mostRecent?.let {
+                            agent.conversationManager.setCurrentConversation(it.id)
+                        }
+                    }
+                    
                     Log.d(TAG, "Agent service started successfully")
                 }
             }

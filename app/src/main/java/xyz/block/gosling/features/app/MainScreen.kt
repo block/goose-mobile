@@ -483,7 +483,7 @@ fun MainScreen(
                             verticalAlignment = Alignment.CenterVertically
                         ) {
                             Text(
-                                text = if (showAllConversations) "Hide Conversations" else "Show More Conversations",
+                                text = if (showAllConversations) "Hide Conversations" else "Show past Conversations",
                                 style = MaterialTheme.typography.labelLarge,
                                 color = MaterialTheme.colorScheme.onSurfaceVariant
                             )

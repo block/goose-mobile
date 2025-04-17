@@ -44,6 +44,11 @@ class ConversationManager(context: Context) {
                     ?.sortedByDescending { it.startTime } ?: emptyList()
 
                 _conversations.value = conversations
+                
+                // Set the most recent conversation as the current conversation if it exists
+                if (conversations.isNotEmpty()) {
+                    _currentConversation.value = conversations.first()
+                }
             }
         }
     }

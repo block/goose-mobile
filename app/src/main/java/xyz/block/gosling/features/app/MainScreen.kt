@@ -324,7 +324,7 @@ fun MainScreen(
                         modifier = Modifier.fillMaxWidth(),
                         placeholder = { 
                             if (currentConversation != null) {
-                                Text("Continue conversation with ${getConversationTitle(currentConversation!!)}")
+                                Text("Continue conversation ...")
                             } else {
                                 Text("What can gosling do for you?") 
                             }

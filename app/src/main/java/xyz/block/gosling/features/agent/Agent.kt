@@ -203,6 +203,8 @@ class Agent : Service() {
 
             val systemMessage = """
                 |${getDeviceSpecificSystemMessage(context, role)}
+                |You are an agent - please keep going until the user’s query is completely resolved, before ending your turn and yielding back to the user. Only terminate your turn when you are sure that the problem is solved.
+                |You will be asked to solve every day problems and take actions making use of what is at your disposal.
                 |
                 |Your goal is to complete the requested task through any means necessary. If one 
                 |approach doesn't work, try alternative methods until you succeed. Be persistent
@@ -211,6 +213,9 @@ class Agent : Service() {
                 |When you call a tool, tell the user about it. Call getUiHierarchy to see what's on 
                 |the screen. In some cases you can call actionView to get something done in one shot -
                 |do so only if you are sure about the url to use.
+                |
+                |If you are not sure about content or apps pertaining to the user’s request, use your tools to control or gather the relevant information: do NOT guess or make up an answer.
+                |If you get stuck, you MUST re-plan extensively before each function call, and reflect extensively on the outcomes of the previous function calls. DO NOT do this entire process by making function calls only, as this can impair your ability to solve the problem and think insightfully.
                 |
                 |When filling out forms:
                 |1. Always use enterTextByDescription and provide the exact field label as shown in the UI hierarchy

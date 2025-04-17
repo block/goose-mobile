@@ -168,7 +168,7 @@ object ToolHandler {
 
             val appInfo = "App: ${activeWindow.packageName}"
             val hierarchy = buildCompactHierarchy(activeWindow)
-            Log.d(TAG, "build compact: $hierarchy")
+            //Log.d(TAG, "build compact: $hierarchy")
             "$appInfo $coordinateHint\n$hierarchy"
         } catch (e: Exception) {
             "ERROR: Failed to get UI hierarchy: ${e.message}"
@@ -234,7 +234,7 @@ object ToolHandler {
                 "[${bounds.left},${bounds.top},${bounds.right},${bounds.bottom}] midpoint=($midX,$midY)"
 
             // Build the node line, or set to empty string if filtered
-            val indent = " -".repeat(depth)
+            val indent = "".repeat(depth)
             val attrStr = if (attributes.isNotEmpty()) " " + attributes.joinToString(" ") else ""
             val nodeLine = if (shouldFilter) "" else "$indent$attrStr $boundsStr"
 

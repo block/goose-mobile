@@ -1206,6 +1206,77 @@ object ToolHandler {
         }
     }
 
+    @Tool(
+        name = "notificationHandler",
+        description = "Configure automatic notification handling. Enable or disable notification processing and set rules for how notifications should be handled.",
+        parameters = [
+            ParameterDef(
+                name = "enable",
+                type = "boolean",
+                description = "Whether to enable or disable automatic notification processing"
+            ),
+            ParameterDef(
+                name = "rules",
+                type = "string",
+                description = "Rules for handling notifications. These are instructions for how to process different types of notifications.",
+                required = false
+            ),
+            ParameterDef(
+                name = "replaceRules",
+                type = "boolean",
+                description = "If true, the provided rules will replace existing rules. If false, the rules will be appended to existing rules.",
+                required = false
+            )
+        ],
+        requiresContext = true
+    )
+    fun notificationHandler(context: Context, args: JSONObject): String {
+        val enable = args.getBoolean("enable")
+        val rules = if (args.has("rules")) args.getString("rules") else null
+        val replaceRules = args.optBoolean("replaceRules", true) // Default to replacing rules
+        
+        val settings = xyz.block.gosling.features.settings.SettingsStore(context)
+        
+        // Update notification processing setting
+        settings.shouldProcessNotifications = enable
+        
+        // Update rules if provided
+        if (rules != null) {
+            if (replaceRules) {
+                // Replace existing rules
+                settings.messageHandlingPreferences = rules
+            } else {
+                // Append to existing rules
+                val existingRules = settings.messageHandlingPreferences
+                val updatedRules = if (existingRules.isBlank()) {
+                    rules
+                } else {
+                    "$existingRules\n\n$rules"
+                }
+                settings.messageHandlingPreferences = updatedRules
+            }
+        }
+        
+        val currentRules = settings.messageHandlingPreferences
+        val rulesStatus = if (currentRules.isBlank()) {
+            "No specific handling rules are configured."
+        } else {
+            "Current rules: $currentRules"
+        }
+        
+        val actionTaken = if (rules != null) {
+            if (replaceRules) "Rules have been replaced." else "Rules have been appended."
+        } else {
+            "Rules were not modified."
+        }
+        
+        return if (enable) {
+            "Notification handling has been enabled. $actionTaken $rulesStatus"
+        } else {
+            "Notification handling has been disabled. $actionTaken Rules are preserved but will not be applied."
+        }
+    }
+
     fun getSerializableToolDefinitions(
         context: Context,
         provider: ModelProvider

@@ -104,6 +104,7 @@ private val suggestionBubbles = listOf(
     "What can you help me with?",
     "Can you find the nearest pharmacy and make a vaccination appointment",
     "Find me some new tyres I can afford and when I can pick them up",
+    "can you always reply to messages that ask about my availability",
     "Do I have any time next week when the weather is good to go surfing?",
 )
 

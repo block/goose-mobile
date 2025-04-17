@@ -102,8 +102,9 @@ private val predefinedQueries = listOf(
 
 private val suggestionBubbles = listOf(
     "What can you help me with?",
-    "Can you find a day when its sunny I can go to the beach",
-    "Text 3"
+    "Can you find the nearest pharmacy and make a vaccination appointment",
+    "Find me some new tyres I can afford and when I can pick them up",
+    "Do I have any time next week when the weather is good to go surfing?",
 )
 
 @OptIn(ExperimentalMaterial3Api::class, ExperimentalFoundationApi::class)

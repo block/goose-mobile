@@ -482,6 +482,16 @@ fun MainScreen(
                             horizontalArrangement = Arrangement.Center,
                             verticalAlignment = Alignment.CenterVertically
                         ) {
+                            if (!showAllConversations) {
+                                Icon(
+                                    painter = painterResource(id = R.drawable.goose),
+                                    contentDescription = null,
+                                    tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                                    modifier = Modifier
+                                        .size(24.dp)
+                                        .padding(end = 8.dp)
+                                )
+                            }
                             Text(
                                 text = if (showAllConversations) "Hide Conversations" else "Show past Conversations",
                                 style = MaterialTheme.typography.labelLarge,

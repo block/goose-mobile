@@ -10,6 +10,9 @@ import kotlinx.serialization.json.Json
 import java.io.File
 import java.lang.ref.WeakReference
 
+// we will not bother with really old conversations
+const val OLDEST_CONVERSATION_MS = 1 * 60 * 60 * 1000
+
 class ConversationManager(context: Context) {
     private val contextRef = WeakReference(context)
     private val _conversations = MutableStateFlow<List<Conversation>>(emptyList())
@@ -17,6 +20,7 @@ class ConversationManager(context: Context) {
 
     private val _currentConversation = MutableStateFlow<Conversation?>(null)
     val currentConversation: StateFlow<Conversation?> = _currentConversation.asStateFlow()
+
 
     private val json = Json {
         prettyPrint = true
@@ -27,6 +31,8 @@ class ConversationManager(context: Context) {
     init {
         loadConversations()
     }
+
+
 
     private fun loadConversations() {
         contextRef.get()?.getExternalFilesDir(null)?.let { filesDir ->
@@ -41,6 +47,7 @@ class ConversationManager(context: Context) {
                             null
                         }
                     }
+                    ?.filter { it.startTime > System.currentTimeMillis() - OLDEST_CONVERSATION_MS }
                     ?.sortedByDescending { it.startTime } ?: emptyList()
 
                 _conversations.value = conversations

@@ -180,16 +180,19 @@ fun ConversationCard(
                     overflow = TextOverflow.Ellipsis
                 )
                 getCurrentAssistantMessage(conversation)?.let { message ->
-                    Text(
-                        text = firstText(message),
-                        style = MaterialTheme.typography.bodyMedium,
-                        color = if (isCurrentConversation)
-                            MaterialTheme.colorScheme.onPrimaryContainer
-                        else
-                            MaterialTheme.colorScheme.onSurfaceVariant,
-                        maxLines = 5,  // Increased from 3 to 5 lines
-                        overflow = TextOverflow.Ellipsis
-                    )
+                    val messageText = firstText(message)
+                    if (messageText.isNotBlank() && messageText != "<empty>") {
+                        Text(
+                            text = messageText,
+                            style = MaterialTheme.typography.bodyMedium,
+                            color = if (isCurrentConversation)
+                                MaterialTheme.colorScheme.onPrimaryContainer
+                            else
+                                MaterialTheme.colorScheme.onSurfaceVariant,
+                            maxLines = 5,  // Increased from 3 to 5 lines
+                            overflow = TextOverflow.Ellipsis
+                        )
+                    }
                 }
                 Row(
                     horizontalArrangement = Arrangement.spacedBy(4.dp),

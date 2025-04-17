@@ -6,7 +6,15 @@ fun firstText(message: Message): String {
     }
 
     val textContent = message.content.filterIsInstance<Content.Text>().firstOrNull()
-    return textContent?.text ?: "<image>"
+    val text = textContent?.text
+    
+    // Handle null or "null" text content
+    return when {
+        text == null -> "<image>"
+        text.equals("null", ignoreCase = true) -> "" // Replace "null" with empty string
+        text.isBlank() -> "<empty>" // Handle blank text
+        else -> text
+    }
 }
 
 fun firstImage(message: Message): Content.ImageUrl? {
@@ -25,10 +33,21 @@ fun contentWithText(text: String): List<Content.Text> {
 }
 
 fun getConversationTitle(conversation: Conversation): String {
-    return conversation.messages
-        .find { it.role == "user" }
-        ?.let { firstText(it) }
-        ?: "Conversation ${conversation.id}"
+    val userMessage = conversation.messages.find { it.role == "user" }
+    if (userMessage == null) {
+        return "Conversation ${conversation.id}"
+    }
+    
+    val text = firstText(userMessage)
+    
+    // If firstText returned empty or placeholder text, use a generic title
+    return when {
+        text.isBlank() || text == "<empty>" || text == "<image>" -> "Conversation ${conversation.id}"
+        else -> {
+            // Limit title length and add ellipsis if needed
+            if (text.length > 50) text.take(50) + "..." else text
+        }
+    }
 }
 
 fun getCurrentAssistantMessage(conversation: Conversation): Message? {

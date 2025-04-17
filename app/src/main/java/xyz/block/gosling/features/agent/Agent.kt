@@ -162,6 +162,17 @@ class Agent : Service() {
         job.cancel()
         job = SupervisorJob()
         scope = CoroutineScope(Dispatchers.IO + job)
+        
+        // Update the current conversation to mark it as complete when cancelled
+        conversationManager.currentConversation.value?.let { currentConv ->
+            conversationManager.updateCurrentConversation(
+                currentConv.copy(
+                    endTime = System.currentTimeMillis(),
+                    isComplete = true
+                )
+            )
+        }
+        
         updateStatus(AgentStatus.Success("Agent cancelled", 0.0))
     }
 
@@ -174,7 +185,7 @@ class Agent : Service() {
         context: Context,
         triggerType: TriggerType,
         imageUri: Uri? = null,
-        continueSession: Boolean = true,
+        continueSession: Boolean = false,
     ): String {
 
         try {
@@ -537,6 +548,17 @@ class Agent : Service() {
                 // Reset the job and scope to ensure future commands work
                 job = SupervisorJob()
                 scope = CoroutineScope(Dispatchers.IO + job)
+                
+                // Update the current conversation to mark it as complete when cancelled
+                conversationManager.currentConversation.value?.let { currentConv ->
+                    conversationManager.updateCurrentConversation(
+                        currentConv.copy(
+                            endTime = System.currentTimeMillis(),
+                            isComplete = true
+                        )
+                    )
+                }
+                
                 updateStatus(AgentStatus.Success("Operation cancelled"))
                 return "Operation cancelled by user"
             }
@@ -603,6 +625,17 @@ class Agent : Service() {
                     // Reset the job and scope to ensure future commands work
                     job = SupervisorJob()
                     scope = CoroutineScope(Dispatchers.IO + job)
+                    
+                    // Update the current conversation to mark it as complete when cancelled
+                    conversationManager.currentConversation.value?.let { currentConv ->
+                        conversationManager.updateCurrentConversation(
+                            currentConv.copy(
+                                endTime = System.currentTimeMillis(),
+                                isComplete = true
+                            )
+                        )
+                    }
+                    
                     updateStatus(AgentStatus.Success("Operation cancelled"))
                 } else {
                     val errorMsg = "Error: ${e.message}"
@@ -841,6 +874,17 @@ class Agent : Service() {
                     // Reset the job and scope to ensure future commands work
                     job = SupervisorJob()
                     scope = CoroutineScope(Dispatchers.IO + job)
+                    
+                    // Update the current conversation to mark it as complete when cancelled
+                    conversationManager.currentConversation.value?.let { currentConv ->
+                        conversationManager.updateCurrentConversation(
+                            currentConv.copy(
+                                endTime = System.currentTimeMillis(),
+                                isComplete = true
+                            )
+                        )
+                    }
+                    
                     updateStatus(AgentStatus.Success("Operation cancelled"))
                 } else {
                     val errorMsg = "Error: ${e.message}"

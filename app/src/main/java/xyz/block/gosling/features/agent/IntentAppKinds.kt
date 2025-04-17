@@ -312,7 +312,7 @@ object IntentAppKinds {
         )
     )
 
-    private val allCategories = listOf(
+    val allCategories = listOf(
         paymentApps,
         travelBookingApps,
         foodOrderingApps,

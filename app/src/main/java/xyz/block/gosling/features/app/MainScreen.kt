@@ -436,25 +436,77 @@ fun MainScreen(
                     )
                 }
             } else {
-                LazyColumn(
+                var showAllConversations by remember { mutableStateOf(false) }
+                
+                Column(
                     modifier = Modifier
                         .fillMaxSize()
                         .padding(horizontal = 16.dp),
-                    contentPadding = PaddingValues(
-                        start = paddingValues.calculateStartPadding(LayoutDirection.Ltr),
-                        top = paddingValues.calculateTopPadding(),
-                        end = paddingValues.calculateEndPadding(LayoutDirection.Ltr),
-                        bottom = paddingValues.calculateBottomPadding() + 8.dp
-                    ),
-                    state = listState,
-                    verticalArrangement = Arrangement.spacedBy(12.dp)
+                    verticalArrangement = Arrangement.spacedBy(8.dp)
                 ) {
-                    items(conversations) { conversation ->
-                        ConversationCard(
-                            conversation = conversation,
-                            onClick = { onNavigateToConversation(conversation.id) },
-                            isCurrentConversation = currentConversation?.id == conversation.id
+                    // Content padding for the column
+                    val topPadding = paddingValues.calculateTopPadding()
+                    val startPadding = paddingValues.calculateStartPadding(LayoutDirection.Ltr)
+                    val endPadding = paddingValues.calculateEndPadding(LayoutDirection.Ltr)
+                    val bottomPadding = paddingValues.calculateBottomPadding() + 8.dp
+                    
+                    // Show current conversation if it exists
+                    if (currentConversation != null) {
+                        Box(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .padding(top = topPadding, start = startPadding, end = endPadding)
+                        ) {
+                            ConversationCard(
+                                conversation = currentConversation!!,
+                                onClick = { onNavigateToConversation(currentConversation!!.id) },
+                                isCurrentConversation = true
+                            )
+                        }
+                    }
+                    
+                    // Show More button
+                    Card(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(bottom = if (showAllConversations) 0.dp else bottomPadding)
+                            .clickable { showAllConversations = !showAllConversations },
+                        colors = CardDefaults.cardColors(
+                            containerColor = MaterialTheme.colorScheme.surfaceVariant
                         )
+                    ) {
+                        Row(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .padding(16.dp),
+                            horizontalArrangement = Arrangement.Center,
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            Text(
+                                text = if (showAllConversations) "Hide Conversations" else "Show More Conversations",
+                                style = MaterialTheme.typography.labelLarge,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant
+                            )
+                        }
+                    }
+                    
+                    // Show other conversations if expanded
+                    if (showAllConversations) {
+                        LazyColumn(
+                            modifier = Modifier
+                                .fillMaxWidth(),
+                            contentPadding = PaddingValues(bottom = bottomPadding),
+                            state = listState,
+                            verticalArrangement = Arrangement.spacedBy(12.dp)
+                        ) {
+                            items(conversations.filter { it.id != currentConversation?.id }) { conversation ->
+                                ConversationCard(
+                                    conversation = conversation,
+                                    onClick = { onNavigateToConversation(conversation.id) },
+                                    isCurrentConversation = false
+                                )
+                            }
+                        }
                     }
                 }
             }

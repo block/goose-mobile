@@ -173,7 +173,8 @@ class Agent : Service() {
         userInput: String,
         context: Context,
         triggerType: TriggerType,
-        imageUri: Uri? = null
+        imageUri: Uri? = null,
+        continueSession: Boolean = true,
     ): String {
 
         try {
@@ -277,7 +278,7 @@ class Agent : Service() {
                 )
             }
 
-            val newConversation = if (conversationManager.currentConversation.value != null) {
+            val newConversation = if (continueSession && conversationManager.currentConversation.value != null) {
                 val conv = conversationManager.currentConversation.value!!
                 Conversation(
                     startTime = startTime,
@@ -587,6 +588,7 @@ class Agent : Service() {
                     prompt,
                     this@Agent,
                     triggerType = TriggerType.NOTIFICATION,
+                    continueSession = false,
                 )
             } catch (e: Exception) {
                 Log.e(tag, "Error handling notification", e)

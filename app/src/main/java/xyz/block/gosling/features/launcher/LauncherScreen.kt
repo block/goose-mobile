@@ -12,11 +12,17 @@ import androidx.compose.foundation.gestures.rememberDraggableState
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.imePadding
 import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.BottomSheetScaffold
+import androidx.compose.material3.Card
+import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.SheetValue
@@ -45,9 +51,20 @@ import kotlinx.coroutines.launch
 import xyz.block.gosling.features.agent.Agent
 import xyz.block.gosling.features.agent.AgentServiceManager
 import xyz.block.gosling.features.agent.AgentStatus
+import xyz.block.gosling.features.agent.Content
 import xyz.block.gosling.features.overlay.OverlayService
 import xyz.block.gosling.shared.services.VoiceRecognitionService
 import xyz.block.gosling.shared.theme.GoslingTheme
+
+/**
+ * Data class to store command results for display
+ */
+data class CommandResult(
+    val command: String,
+    val response: String,
+    val isError: Boolean = false,
+    val timestamp: Long = System.currentTimeMillis()
+)
 
 /**
  * The main launcher screen composable that displays the home screen with a clock
@@ -63,6 +80,9 @@ fun LauncherScreen() {
     var showKeyboardDrawer by remember { mutableStateOf(false) }
     var textInput by remember { mutableStateOf("") }
     var currentTime by remember { mutableStateOf(getCurrentTime()) }
+    
+    // State for persisted command results
+    var lastCommandResult by remember { mutableStateOf<CommandResult?>(null) }
 
     // Update the clock every minute
     LaunchedEffect(Unit) {
@@ -165,13 +185,27 @@ fun LauncherScreen() {
             ) {
                 Spacer(modifier = Modifier.height(48.dp))
                 ClockWidget(currentTime = currentTime)
+                
+                // Display the last command result if available
+                lastCommandResult?.let { result ->
+                    Spacer(modifier = Modifier.height(24.dp))
+                    CommandResultCard(
+                        commandResult = result,
+                        onDismiss = { lastCommandResult = null },
+                        modifier = Modifier.clickable { lastCommandResult = null }
+                    )
+                }
 
                 Spacer(modifier = Modifier.weight(0.8f))
 
                 InputOptions(
                     onMicrophoneClick = {
                         // Start voice recognition for agent commands
-                        startVoiceRecognition(context)
+                        startVoiceRecognition(context) { command ->
+                            processAgentCommand(context, command) { result ->
+                                lastCommandResult = result
+                            }
+                        }
                     },
                     onKeyboardClick = {
                         showKeyboardDrawer = true
@@ -203,7 +237,9 @@ fun LauncherScreen() {
             },
             onSubmit = {
                 if (textInput.isNotEmpty()) {
-                    processAgentCommand(context, textInput)
+                    processAgentCommand(context, textInput) { result ->
+                        lastCommandResult = result
+                    }
                 }
                 showKeyboardDrawer = false
                 textInput = ""
@@ -220,7 +256,80 @@ fun LauncherScreenPreview() {
     }
 }
 
-private fun startVoiceRecognition(context: Context) {
+/**
+ * Displays a command result card
+ */
+@Composable
+fun CommandResultCard(
+    commandResult: CommandResult,
+    onDismiss: () -> Unit,
+    modifier: Modifier = Modifier
+) {
+    Card(
+        modifier = modifier
+            .fillMaxWidth()
+            .padding(horizontal = 16.dp, vertical = 8.dp),
+        colors = CardDefaults.cardColors(
+            containerColor = if (commandResult.isError)
+                MaterialTheme.colorScheme.errorContainer
+            else
+                MaterialTheme.colorScheme.secondaryContainer
+        )
+    ) {
+        Column(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(16.dp)
+        ) {
+            // Command (question)
+            Text(
+                text = "\"${commandResult.command}\"",
+                style = MaterialTheme.typography.bodyMedium,
+                color = if (commandResult.isError)
+                    MaterialTheme.colorScheme.onErrorContainer
+                else
+                    MaterialTheme.colorScheme.onSecondaryContainer
+            )
+            
+            Spacer(modifier = Modifier.height(8.dp))
+            
+            // Response (answer) - with scrolling for long content
+            val scrollState = rememberScrollState()
+            Column(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .heightIn(max = 200.dp) // Limit height and enable scrolling for long answers
+                    .verticalScroll(scrollState)
+            ) {
+                Text(
+                    text = commandResult.response,
+                    style = MaterialTheme.typography.bodyLarge,
+                    color = if (commandResult.isError)
+                        MaterialTheme.colorScheme.onErrorContainer
+                    else
+                        MaterialTheme.colorScheme.onSecondaryContainer
+                )
+            }
+            
+            Spacer(modifier = Modifier.height(8.dp))
+            
+            Text(
+                text = "Tap to dismiss",
+                style = MaterialTheme.typography.bodySmall,
+                color = if (commandResult.isError)
+                    MaterialTheme.colorScheme.onErrorContainer.copy(alpha = 0.7f)
+                else
+                    MaterialTheme.colorScheme.onSecondaryContainer.copy(alpha = 0.7f),
+                modifier = Modifier.align(Alignment.End)
+            )
+        }
+    }
+}
+
+private fun startVoiceRecognition(
+    context: Context,
+    onCommandReceived: (String) -> Unit
+) {
     val activity = context as? Activity
     if (activity == null) {
         Toast.makeText(context, "Cannot start voice recognition", Toast.LENGTH_SHORT).show()
@@ -237,14 +346,17 @@ private fun startVoiceRecognition(context: Context) {
     voiceRecognitionManager.startVoiceRecognition(
         object : VoiceRecognitionService.VoiceRecognitionCallback {
             override fun onVoiceCommandReceived(command: String) {
-                processAgentCommand(context, command)
+                onCommandReceived(command)
             }
         }
     )
 }
 
-private fun processAgentCommand(context: Context, command: String) {
-
+private fun processAgentCommand(
+    context: Context, 
+    command: String,
+    onResultReceived: (CommandResult) -> Unit
+) {
     val statusToast = Toast.makeText(context.applicationContext, command, Toast.LENGTH_LONG)
     statusToast.show()
 
@@ -266,6 +378,27 @@ private fun processAgentCommand(context: Context, command: String) {
                     android.os.Handler(context.mainLooper).post {
                         statusToast.setText(status.message)
                         statusToast.show()
+                        
+                        // Get the actual answer from the conversation
+                        val actualAnswer = agent.conversationManager.currentConversation.value?.let { conversation ->
+                            // Find the last assistant message
+                            conversation.messages
+                                .filter { it.role == "assistant" }
+                                .lastOrNull()
+                                ?.content
+                                ?.filterIsInstance<Content.Text>()
+                                ?.firstOrNull()
+                                ?.text
+                                ?: status.message
+                        } ?: status.message
+                        
+                        // Create and store the command result
+                        val result = CommandResult(
+                            command = command,
+                            response = actualAnswer,
+                            isError = false
+                        )
+                        onResultReceived(result)
 
                         val homeIntent = Intent(Intent.ACTION_MAIN).apply {
                             addCategory(Intent.CATEGORY_HOME)
@@ -277,8 +410,18 @@ private fun processAgentCommand(context: Context, command: String) {
 
                 is AgentStatus.Error -> {
                     android.os.Handler(context.mainLooper).post {
-                        statusToast.setText("Error: ${status.message}")
+                        val errorMessage = "Error: ${status.message}"
+                        statusToast.setText(errorMessage)
                         statusToast.show()
+                        
+                        // Create and store the error result
+                        val result = CommandResult(
+                            command = command,
+                            response = errorMessage,
+                            isError = true
+                        )
+                        onResultReceived(result)
+                        
                         OverlayService.getInstance()?.setIsPerformingAction(false)
                     }
                 }
@@ -294,8 +437,17 @@ private fun processAgentCommand(context: Context, command: String) {
                 )
             } catch (e: Exception) {
                 android.os.Handler(context.mainLooper).post {
-                    statusToast.setText("Error: ${e.message}")
+                    val errorMessage = "Error: ${e.message}"
+                    statusToast.setText(errorMessage)
                     statusToast.show()
+                    
+                    // Create and store the error result
+                    val result = CommandResult(
+                        command = command,
+                        response = errorMessage,
+                        isError = true
+                    )
+                    onResultReceived(result)
                 }
             }
         }

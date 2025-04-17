@@ -24,11 +24,13 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.absoluteOffset
 import androidx.compose.foundation.layout.calculateEndPadding
 import androidx.compose.foundation.layout.calculateStartPadding
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.imePadding
 import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.padding
@@ -96,6 +98,12 @@ private val predefinedQueries = listOf(
     "Show me the best beer garden in Berlin in maps",
     "Turn on flashlight",
     "Take a picture using the camera and attach that to a new email. Save the email in drafts"
+)
+
+private val suggestionBubbles = listOf(
+    "What can you help me with?",
+    "Can you find a day when its sunny I can go to the beach",
+    "Text 3"
 )
 
 @OptIn(ExperimentalMaterial3Api::class, ExperimentalFoundationApi::class)
@@ -434,6 +442,27 @@ fun MainScreen(
                         color = MaterialTheme.colorScheme.onBackground,
                         modifier = Modifier.padding(top = 16.dp)
                     )
+                    
+                    Spacer(modifier = Modifier.height(32.dp))
+                    
+                    // Suggestion bubbles
+                    Column(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(horizontal = 24.dp),
+                        verticalArrangement = Arrangement.spacedBy(12.dp),
+                        horizontalAlignment = Alignment.CenterHorizontally
+                    ) {
+                        suggestionBubbles.forEach { suggestion ->
+                            SuggestionBubble(
+                                text = suggestion,
+                                onClick = {
+                                    processAgentCommand(context, suggestion)
+                                },
+                                modifier = Modifier.fillMaxWidth(0.8f)
+                            )
+                        }
+                    }
                 }
             } else {
                 var showAllConversations by remember { mutableStateOf(false) }
@@ -721,5 +750,28 @@ private fun processAgentCommand(
                 OverlayService.getInstance()?.setIsPerformingAction(false)
             }
         }
+    }
+}
+
+@Composable
+private fun SuggestionBubble(
+    text: String,
+    onClick: () -> Unit,
+    modifier: Modifier = Modifier
+) {
+    Card(
+        modifier = modifier
+            .clickable(onClick = onClick),
+        shape = RoundedCornerShape(16.dp),
+        colors = CardDefaults.cardColors(
+            containerColor = MaterialTheme.colorScheme.secondaryContainer
+        )
+    ) {
+        Text(
+            text = text,
+            style = MaterialTheme.typography.bodyMedium,
+            color = MaterialTheme.colorScheme.onSecondaryContainer,
+            modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp)
+        )
     }
 }

@@ -38,6 +38,21 @@ object AppInstructions {
             )
         ),
 
+        "com.android.chrome" to AppInstructionInfo(
+            instructions = """
+               As you use this browser, it is important to carefully plan where to click, and scroll.
+               Some web apps may make it difficult to click on or enter text, but you MUST persist and find creative ways.
+               This may mean clicking once, and checking the ui hierarchy again to confirm.
+               More scrolling may be needed. 
+               it is important that you plan especially for browser apps.
+               Do not skim surface, but click in to pages to solve problems and enter data.
+               DO PLAN if you are just looking for results to scroll around and click
+               If you are being asked to interact more deeply, plan further and access the web app deeper to solve the problem.
+               
+            """.trimIndent(),
+            urlSchemes = listOf()
+        ),
+
         "com.waze" to AppInstructionInfo(
             instructions = """
                 Waze is a community-driven navigation app focused on real-time traffic updates.

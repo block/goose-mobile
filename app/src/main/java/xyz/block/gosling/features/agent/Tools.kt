@@ -1226,6 +1226,101 @@ object ToolHandler {
     }
 
     @Tool(
+        name = "searchPastConversations",
+        description = "If you need to, search through past conversations for a specific query. Returns relevant messages from matching conversations.",
+        parameters = [
+            ParameterDef(
+                name = "query",
+                type = "string",
+                description = "The search term to look for in past conversations"
+            ),
+        ],
+        requiresContext = true
+    )
+    fun searchPastConversations(context: Context, args: JSONObject): String {
+        val query = args.getString("query").lowercase()
+        val maxConversations = args.optInt("max_conversations", 4)
+        val maxMessagesPerConversation = args.optInt("max_messages_per_conversation", 5)
+        
+        val agent = Agent.getInstance() ?: return "Error: Agent not available"
+        val conversationManager = agent.conversationManager
+        val allConversations = conversationManager.conversations.value
+        
+        if (allConversations.isEmpty()) {
+            return "No past conversations found."
+        }
+        
+        // Search for conversations containing the query
+        val matchingConversations = allConversations
+            .filter { conversation ->
+                conversation.messages.any { message ->
+                    // Only search in user and assistant messages
+                    (message.role == "user" || message.role == "assistant") &&
+                    message.content?.filterIsInstance<Content.Text>()?.any { 
+                        it.text.lowercase().contains(query) 
+                    } == true
+                }
+            }
+            .take(maxConversations)
+        
+        if (matchingConversations.isEmpty()) {
+            return "No conversations found matching query: \"$query\""
+        }
+        
+        val resultBuilder = StringBuilder()
+        resultBuilder.append("Found ${matchingConversations.size} conversations matching \"$query\":\n\n")
+        
+        // Process each matching conversation
+        matchingConversations.forEachIndexed { index, conversation ->
+            // Get conversation title
+            val title = getConversationTitle(conversation)
+            val formattedDate = java.text.SimpleDateFormat(
+                "MMM d, yyyy 'at' h:mm a", 
+                java.util.Locale.getDefault()
+            ).format(java.util.Date(conversation.startTime))
+            
+            resultBuilder.append("--- Conversation ${index + 1}: $title ($formattedDate) ---\n")
+            
+            // Get relevant messages (filter out system and tool messages, focus on user-assistant exchange)
+            val relevantMessages = conversation.messages
+                .filter { it.role == "user" || it.role == "assistant" }
+                .filter { message ->
+                    message.content?.filterIsInstance<Content.Text>()?.isNotEmpty() == true
+                }
+                .takeLast(maxMessagesPerConversation)
+            
+            if (relevantMessages.isEmpty()) {
+                resultBuilder.append("No relevant messages found in this conversation.\n\n")
+                return@forEachIndexed
+            }
+            
+            // Format and add messages
+            relevantMessages.forEach { message ->
+                val role = if (message.role == "user") "User" else "Assistant"
+                val messageText = firstText(message)
+                
+                // Highlight query matches in the text
+                val highlightedText = if (messageText.lowercase().contains(query)) {
+                    val startIndex = messageText.lowercase().indexOf(query)
+                    val endIndex = startIndex + query.length
+                    val before = messageText.substring(0, startIndex)
+                    val match = messageText.substring(startIndex, endIndex)
+                    val after = messageText.substring(endIndex)
+                    "$before[$match]$after"
+                } else {
+                    messageText
+                }
+                
+                resultBuilder.append("$role: $highlightedText\n")
+            }
+            
+            resultBuilder.append("\n")
+        }
+        
+        return resultBuilder.toString().trim()
+    }
+
+    @Tool(
         name = "notificationHandler",
         description = "Configure automatic notification handling. Enable or disable notification processing and set rules for how notifications should be handled.",
         parameters = [

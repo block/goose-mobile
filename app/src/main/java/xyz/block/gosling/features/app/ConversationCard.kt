@@ -237,7 +237,7 @@ fun ConversationCard(
             }
             Icon(
                 imageVector = Icons.AutoMirrored.Filled.ArrowForward,
-                contentDescription = "View conversation",
+                contentDescription = "View conversation history",
                 tint = if (isCurrentConversation)
                     MaterialTheme.colorScheme.onPrimaryContainer.copy(alpha = 0.7f)
                 else

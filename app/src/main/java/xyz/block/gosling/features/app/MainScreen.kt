@@ -524,7 +524,7 @@ fun MainScreen(
                                 )
                             }
                             Text(
-                                text = if (showAllConversations) "Hide Conversations" else "Show past Conversations",
+                                text = if (showAllConversations) "Hide Past Conversations" else "View Past Conversations",
                                 style = MaterialTheme.typography.labelLarge,
                                 color = MaterialTheme.colorScheme.onSurfaceVariant
                             )

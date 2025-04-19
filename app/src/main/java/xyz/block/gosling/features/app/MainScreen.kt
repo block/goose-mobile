@@ -582,9 +582,7 @@ fun MainScreen(
         val agent = activity.currentAgent
         if (agent != null) {
             CoroutineScope(Dispatchers.Main).launch {
-                agent.conversationManager.conversations.collect { updatedConversations ->
-                    conversations = updatedConversations
-                }
+                conversations = agent.conversationManager.recentConversations()
             }
         }
     }
@@ -594,9 +592,7 @@ fun MainScreen(
         val agent = activity.currentAgent
         if (agent != null) {
             CoroutineScope(Dispatchers.Main).launch {
-                agent.conversationManager.conversations.collect { updatedConversations ->
-                    conversations = updatedConversations
-                }
+                conversations = agent.conversationManager.recentConversations()
             }
             
             CoroutineScope(Dispatchers.Main).launch {

@@ -159,7 +159,7 @@ fun ConversationCard(
             modifier = Modifier
                 .fillMaxWidth()
                 .padding(16.dp)
-                .height(280.dp),  // Make the card taller
+                .height(350.dp),  // Make the card taller
             horizontalArrangement = Arrangement.spacedBy(8.dp),
             verticalAlignment = Alignment.CenterVertically
         ) {

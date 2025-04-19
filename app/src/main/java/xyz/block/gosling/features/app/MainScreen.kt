@@ -333,11 +333,7 @@ fun MainScreen(
                         onValueChange = { textInput = it },
                         modifier = Modifier.fillMaxWidth(),
                         placeholder = { 
-                            if (currentConversation != null) {
-                                Text("Continue conversation ...")
-                            } else {
-                                Text("What can gosling do for you?") 
-                            }
+                            Text("What can gosling do for you?")
                         },
                         colors = TextFieldDefaults.colors(
                             unfocusedContainerColor = Color.Transparent,

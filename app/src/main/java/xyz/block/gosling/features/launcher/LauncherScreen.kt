@@ -84,11 +84,30 @@ fun LauncherScreen() {
     // State for persisted command results
     var lastCommandResult by remember { mutableStateOf<CommandResult?>(null) }
 
-    // Update the clock every minute
-    LaunchedEffect(Unit) {
-        while (true) {
-            delay(60000) // Update every minute
-            currentTime = getCurrentTime()
+    // Update the clock using system broadcasts instead of polling
+    val timeTickReceiver = remember { 
+        object : android.content.BroadcastReceiver() {
+            override fun onReceive(context: android.content.Context?, intent: android.content.Intent?) {
+                if (intent?.action == android.content.Intent.ACTION_TIME_TICK) {
+                    currentTime = getCurrentTime()
+                }
+            }
+        }
+    }
+    
+    // Register for minute updates from the system and clean up properly
+    androidx.compose.runtime.DisposableEffect(Unit) {
+        context.registerReceiver(
+            timeTickReceiver,
+            android.content.IntentFilter(android.content.Intent.ACTION_TIME_TICK)
+        )
+        
+        onDispose {
+            try {
+                context.unregisterReceiver(timeTickReceiver)
+            } catch (e: Exception) {
+                android.util.Log.e("LauncherScreen", "Error unregistering time receiver", e)
+            }
         }
     }
 

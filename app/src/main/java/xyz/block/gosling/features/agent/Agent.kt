@@ -186,6 +186,13 @@ class Agent : Service() {
         triggerType: TriggerType,
         imageUri: Uri? = null,
     ): String {
+        // Cancel any existing agent operation to ensure only one runs at a time
+        if (instance != null && instance != this && !instance!!.isCancelled()) {
+            Log.d(tag, "Cancelling existing agent operation before starting a new one")
+            instance!!.cancel()
+            // Small delay to ensure cancellation completes
+            delay(100)
+        }
 
         // TODO: decide if we want long running sessions or not.
         // possibly not as we can just have it look at past converstations when needed.

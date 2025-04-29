@@ -9,7 +9,9 @@ import androidx.compose.foundation.clickable
 import androidx.compose.foundation.gestures.Orientation
 import androidx.compose.foundation.gestures.draggable
 import androidx.compose.foundation.gestures.rememberDraggableState
+import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -18,9 +20,12 @@ import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.imePadding
 import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.BottomSheetScaffold
+import androidx.compose.material3.Button
+import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.ExperimentalMaterial3Api
@@ -332,15 +337,45 @@ fun CommandResultCard(
             
             Spacer(modifier = Modifier.height(16.dp))  // Increased spacing
             
-            Text(
-                text = "Tap to dismiss",
-                style = MaterialTheme.typography.bodySmall,
-                color = if (commandResult.isError)
-                    MaterialTheme.colorScheme.onErrorContainer.copy(alpha = 0.7f)
-                else
-                    MaterialTheme.colorScheme.onSecondaryContainer.copy(alpha = 0.7f),
-                modifier = Modifier.align(Alignment.End)
-            )
+            // Bottom row with dismiss text and cancel button
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                // Only show cancel button if the response doesn't indicate completion
+                if (!commandResult.response.contains("Task completed") && 
+                    !commandResult.response.contains("cancelled") &&
+                    !commandResult.isError) {
+                    Button(
+                        onClick = {
+                            // Cancel the agent operation
+                            Agent.getInstance()?.cancel()
+                            // Dismiss the card after a short delay
+                            android.os.Handler(android.os.Looper.getMainLooper()).postDelayed({
+                                onDismiss()
+                            }, 500)
+                        },
+                        colors = ButtonDefaults.buttonColors(
+                            containerColor = MaterialTheme.colorScheme.errorContainer,
+                            contentColor = MaterialTheme.colorScheme.onErrorContainer
+                        )
+                    ) {
+                        Text("Cancel")
+                    }
+                } else {
+                    Spacer(modifier = Modifier.width(8.dp))
+                }
+                
+                Text(
+                    text = "Tap to dismiss",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = if (commandResult.isError)
+                        MaterialTheme.colorScheme.onErrorContainer.copy(alpha = 0.7f)
+                    else
+                        MaterialTheme.colorScheme.onSecondaryContainer.copy(alpha = 0.7f),
+                )
+            }
         }
     }
 }
@@ -381,6 +416,13 @@ private fun processAgentCommand(
 
     val agentServiceManager = AgentServiceManager(context)
     OverlayService.getInstance()?.setIsPerformingAction(true)
+    
+    // Show initial processing state
+    onResultReceived(CommandResult(
+        command = command,
+        response = "Processing your request...",
+        isError = false
+    ))
 
     agentServiceManager.bindAndStartAgent { agent ->
         agent.setStatusListener { status ->
@@ -390,6 +432,13 @@ private fun processAgentCommand(
                     android.os.Handler(context.mainLooper).post {
                         statusToast.setText(status.message)
                         statusToast.show()
+                        
+                        // Update the card with the current processing status
+                        onResultReceived(CommandResult(
+                            command = command,
+                            response = status.message,
+                            isError = false
+                        ))
                     }
                 }
 
@@ -418,12 +467,15 @@ private fun processAgentCommand(
                             isError = false
                         )
                         onResultReceived(result)
-
-                        val homeIntent = Intent(Intent.ACTION_MAIN).apply {
-                            addCategory(Intent.CATEGORY_HOME)
-                            flags = Intent.FLAG_ACTIVITY_NEW_TASK
-                        }
-                        context.startActivity(homeIntent)
+                        
+                        // Delay navigation to home to ensure the result is displayed
+                        android.os.Handler(context.mainLooper).postDelayed({
+                            val homeIntent = Intent(Intent.ACTION_MAIN).apply {
+                                addCategory(Intent.CATEGORY_HOME)
+                                flags = Intent.FLAG_ACTIVITY_NEW_TASK
+                            }
+                            context.startActivity(homeIntent)
+                        }, 1000) // 1 second delay to ensure the UI updates
                     }
                 }
 

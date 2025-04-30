@@ -437,12 +437,12 @@ fun MainScreen(
                         modifier = Modifier.size(80.dp)
                     )
                     Text(
-                        text = "No conversations yet",
+                        text = "Try something...",
                         style = MaterialTheme.typography.bodyLarge,
                         color = MaterialTheme.colorScheme.onBackground,
                         modifier = Modifier.padding(top = 16.dp)
                     )
-                    
+
                     Spacer(modifier = Modifier.height(32.dp))
                     
                     // Suggestion bubbles

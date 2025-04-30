@@ -31,12 +31,20 @@ class LauncherActivity : ComponentActivity() {
     override fun onPause() {
         super.onPause()
         GoslingApplication.isLauncherActivityRunning = false
+        
+        // Explicitly reset the overlay service state when leaving the launcher
+        OverlayService.getInstance()?.setIsPerformingAction(false)
+        
         OverlayService.getInstance()?.updateOverlayVisibility()
     }
 
     override fun onDestroy() {
         super.onDestroy()
         GoslingApplication.isLauncherActivityRunning = false
+        
+        // Explicitly reset the overlay service state when leaving the launcher
+        OverlayService.getInstance()?.setIsPerformingAction(false)
+        
         OverlayService.getInstance()?.updateOverlayVisibility()
     }
 } 

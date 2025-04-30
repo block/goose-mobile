@@ -1,6 +1,7 @@
 package xyz.block.gosling.features.agent
 
 import android.content.Context
+import android.util.Log
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -71,8 +72,10 @@ class ConversationManager(context: Context) {
     }
 
     fun updateCurrentConversation(conversation: Conversation) {
+        // Update the current conversation state
         _currentConversation.update { conversation }
 
+        // Update the conversations list
         _conversations.update { conversations ->
             val updatedList = if (conversations.any { it.id == conversation.id }) {
                 conversations.map { if (it.id == conversation.id) conversation else it }
@@ -82,7 +85,11 @@ class ConversationManager(context: Context) {
             updatedList.sortedByDescending { it.startTime }
         }
 
+        // Save the conversation to disk
         saveConversation(conversation)
+        
+        // Log the update for debugging
+        Log.d("ConversationManager", "Updated conversation: ${conversation.id}, messages: ${conversation.messages.size}")
     }
     
     fun setCurrentConversation(conversationId: String) {

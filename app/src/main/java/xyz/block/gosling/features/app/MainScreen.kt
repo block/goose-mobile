@@ -587,17 +587,28 @@ fun MainScreen(
         }
     }
 
-    // Watch for agent changes
+    // Watch for agent changes and conversation updates
     LaunchedEffect(activity.currentAgent) {
         val agent = activity.currentAgent
         if (agent != null) {
+            // Initial load of conversations
             CoroutineScope(Dispatchers.Main).launch {
                 conversations = agent.conversationManager.recentConversations()
             }
             
+            // Watch for changes to all conversations
+            CoroutineScope(Dispatchers.Main).launch {
+                agent.conversationManager.conversations.collect { updatedConversations ->
+                    conversations = agent.conversationManager.recentConversations()
+                    Log.d(TAG, "Updated conversations list, count: ${conversations.size}")
+                }
+            }
+            
+            // Watch for changes to current conversation
             CoroutineScope(Dispatchers.Main).launch {
                 agent.conversationManager.currentConversation.collect { updatedCurrentConversation ->
                     currentConversation = updatedCurrentConversation
+                    Log.d(TAG, "Current conversation updated: ${updatedCurrentConversation?.id}")
                 }
             }
         }
@@ -702,6 +713,22 @@ private fun processAgentCommand(
                                 Intent.FLAG_ACTIVITY_REORDER_TO_FRONT
                     }
                     context.startActivity(intent)
+                    
+                    // Force refresh the conversation list
+                    val mainActivity = context as? MainActivity
+                    mainActivity?.currentAgent?.let { agent ->
+                        CoroutineScope(Dispatchers.Main).launch {
+                            // Ensure the current conversation is properly set
+                            if (agent.conversationManager.currentConversation.value == null) {
+                                val recentConversations = agent.conversationManager.recentConversations()
+                                if (recentConversations.isNotEmpty()) {
+                                    val mostRecent = recentConversations.first()
+                                    agent.conversationManager.setCurrentConversation(mostRecent.id)
+                                    Log.d(TAG, "Setting current conversation to: ${mostRecent.id}")
+                                }
+                            }
+                        }
+                    }
                 }
             }
 
@@ -742,6 +769,19 @@ private fun processAgentCommand(
                 
                 OverlayService.getInstance()?.updateStatus(AgentStatus.Error(e.message ?: "Unknown error"))
                 OverlayService.getInstance()?.setIsPerformingAction(false)
+                
+                // Force refresh the conversation list
+                val mainActivity = context as? MainActivity
+                mainActivity?.currentAgent?.let { agent ->
+                    CoroutineScope(Dispatchers.Main).launch {
+                        // Refresh conversations list
+                        val recentConversations = agent.conversationManager.recentConversations()
+                        if (recentConversations.isNotEmpty()) {
+                            val mostRecent = recentConversations.first()
+                            agent.conversationManager.setCurrentConversation(mostRecent.id)
+                        }
+                    }
+                }
             }
         }
     }

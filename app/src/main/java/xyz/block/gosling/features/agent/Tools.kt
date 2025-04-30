@@ -1490,6 +1490,52 @@ object ToolHandler {
         }
     }
 
+    @Tool(
+        name = "storeMemory",
+        description = "Store a fact or preference about the user that should be remembered across conversations.",
+        parameters = [
+            ParameterDef(
+                name = "memory",
+                type = "string",
+                description = "The information to store, keep it extremely brief"
+            ),
+            ParameterDef(
+                name = "overwrite",
+                type = "boolean",
+                description = "Whether to overwrite existing memories (true) or append to them (false)",
+                required = false
+            )
+        ],
+        requiresContext = true
+    )
+    fun storeMemory(context: Context, args: JSONObject): String {
+        val memory = args.getString("memory")
+        val overwrite = args.optBoolean("overwrite", false) // Default to appending
+        
+        val settings = xyz.block.gosling.features.settings.SettingsStore(context)
+        
+        // First, fetch existing memories
+        val existingMemories = settings.userMemories
+
+        // Store or append memory
+        if (overwrite || existingMemories.isEmpty()) {
+            if (memory.length > 200) {
+                return "Memory should be under 200 chars, please compress it as best you can to what is important and try again. Current length: " + memory.length
+            }
+            settings.userMemories = memory
+            return "Memory stored. This will be included in future conversations."
+        } else {
+            if ((memory+settings.userMemories).length > 200) {
+                return "Memory should be under 200 chars, please combine existing memory prefs with the new and compress, or overwrite, and try again, overwriting next time to be under 200 chars. Existing memory:\n" + settings.userMemories
+            }
+
+            // Append to existing memories
+
+            settings.userMemories = "$existingMemories\n$memory"
+            return "Memory appended to existing memories. This will be included in future conversations."
+        }
+    }
+
     fun getSerializableToolDefinitions(
         context: Context,
         provider: ModelProvider

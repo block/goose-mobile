@@ -205,7 +205,20 @@ class Agent : Service() {
                 context,
                 GoslingAccessibilityService.getInstance()
             )
+            val settings = SettingsStore(context)
             val installedApps = IntentAppKinds.groupIntentsByCategory(availableIntents)
+
+            // Get user memories if they exist
+            val userMemories = settings.userMemories
+            val memoriesSection = if (userMemories.isNotEmpty()) {
+                """
+                |USER PREFS, FACTS AND IMPORTANT MEMORIES TO consider:
+                |$userMemories
+                |
+                """.trimMargin()
+            } else {
+                ""
+            }
 
             val windowManager = context.getSystemService(Context.WINDOW_SERVICE) as WindowManager
             val displayMetrics = DisplayMetrics()
@@ -226,7 +239,7 @@ class Agent : Service() {
                 |${getDeviceSpecificSystemMessage(context, role)}
                 |You are an agent - please keep going until the user’s query is completely resolved, before ending your turn and yielding back to the user. Only terminate your turn when you are sure that the problem is solved.
                 |You will be asked to solve every day problems and take actions making use of what is at your disposal.
-                |
+                |                
                 |Your goal is to complete the requested task through any means necessary. If one 
                 |approach doesn't work, try alternative methods until you succeed. Be persistent
                 |and creative in finding solutions.
@@ -246,6 +259,8 @@ class Agent : Service() {
                 |4. Handle each form section in sequence (e.g., basic info first, then address)
                 |5. Verify the form state after each major section is complete
                 |6. If a field is near the bottom of the screen (y-coordinate > ${height * 0.8}), swipe up slightly before interacting
+                |
+                |${memoriesSection}
                 |
                 |The phone has a screen resolution of ${width}x${height} pixels 
                 |When a field is near the bottom (y > ${height * 0.7}), swipe up slightly before interacting.

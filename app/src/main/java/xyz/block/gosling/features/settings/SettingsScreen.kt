@@ -545,6 +545,7 @@ fun SettingsScreen(
                 TextButton(
                     onClick = {
                         settingsStore.isFirstTime = true
+                        settingsStore.userMemories = "" // Clear user memories
                         showResetDialog = false
                     }
                 ) {

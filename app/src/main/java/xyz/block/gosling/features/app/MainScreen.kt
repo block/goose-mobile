@@ -108,6 +108,7 @@ private val suggestionBubbles = listOf(
     "Find me some new tyres I can afford and when I can pick them up",
     "can you always reply to messages that ask about my availability",
     "Do I have any time next week when the weather is good to go surfing?",
+    "shop for a smart doorbell and find one with great reviews on sale and add to shopping cart",
 )
 
 @OptIn(ExperimentalMaterial3Api::class, ExperimentalFoundationApi::class)

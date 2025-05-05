@@ -1,6 +1,8 @@
 # Gosling
 
-An open agent for android to do your dirty work so you can spend more time not on your phone.
+An experimental open agent for android to do your dirty work so you can spend more time not on your phone.
+
+![Screenshot 2025-05-05 at 12 18 07 pm](https://github.com/user-attachments/assets/22b11dd7-0adf-428b-94db-6c1afc600b3e)
 
 
 https://github.com/user-attachments/assets/87b73419-c27a-4368-9b60-c544e4d1b575

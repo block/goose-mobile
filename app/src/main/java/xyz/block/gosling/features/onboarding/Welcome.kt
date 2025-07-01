@@ -110,7 +110,7 @@ fun WelcomeStep(
                     style = MaterialTheme.typography.titleLarge,
                 )
                 Text(
-                    text = "Gosling needs accessibility permissions to interact with other apps and help you with tasks.",
+                    text = "Goose Mobile needs accessibility permissions to interact with other apps and help you with tasks.",
                     style = MaterialTheme.typography.bodyMedium,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                 )
@@ -138,7 +138,7 @@ fun WelcomeStep(
                     style = MaterialTheme.typography.titleLarge,
                 )
                 Text(
-                    text = "Make Gosling your default assistant app to get the most out of its features.",
+                    text = "Make Goose Mobile your default assistant app to get the most out of its features.",
                     style = MaterialTheme.typography.bodyMedium,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                 )
@@ -169,7 +169,7 @@ fun WelcomeStep(
                     style = MaterialTheme.typography.titleLarge,
                 )
                 Text(
-                    text = "Make Gosling your default home screen to access its features with a single tap.",
+                    text = "Make Goose Mobile your default home screen to access its features with a single tap.",
                     style = MaterialTheme.typography.bodyMedium,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                 )

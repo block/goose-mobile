@@ -6,7 +6,7 @@ import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
 import xyz.block.gosling.GoslingApplication
 import xyz.block.gosling.features.overlay.OverlayService
-import xyz.block.gosling.shared.theme.GoslingTheme
+import xyz.block.gosling.shared.theme.GooseMobileTheme
 
 /**
  * LauncherActivity serves as a custom Android home screen (launcher).
@@ -16,7 +16,7 @@ class LauncherActivity : ComponentActivity() {
         super.onCreate(savedInstanceState)
         enableEdgeToEdge()
         setContent {
-            GoslingTheme {
+            GooseMobileTheme {
                 LauncherScreen()
             }
         }

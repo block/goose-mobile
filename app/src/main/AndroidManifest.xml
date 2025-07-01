@@ -29,10 +29,10 @@
         android:name=".GoslingApplication"
         android:allowBackup="true"
         android:icon="@mipmap/ic_launcher"
-        android:label="Gosling"
+        android:label="Goose Mobile"
         android:roundIcon="@mipmap/ic_launcher_round"
         android:supportsRtl="true"
-        android:theme="@style/Theme.Gosling">
+        android:theme="@style/Theme.GooseMobile">
 
         <provider
             android:name="androidx.core.content.FileProvider"
@@ -47,7 +47,7 @@
         <activity
             android:name=".features.app.MainActivity"
             android:exported="true"
-            android:theme="@style/Theme.Gosling"
+            android:theme="@style/Theme.GooseMobile"
             android:windowSoftInputMode="adjustResize">
             <intent-filter>
                 <action android:name="android.intent.action.MAIN" />
@@ -58,10 +58,10 @@
         <activity
             android:name=".features.launcher.LauncherActivity"
             android:exported="true"
-            android:label="Gosling Launcher"
+            android:label="Goose Mobile Launcher"
             android:launchMode="singleTask"
             android:screenOrientation="portrait"
-            android:theme="@style/Theme.Gosling.NoActionBar">
+            android:theme="@style/Theme.GooseMobile.NoActionBar">
             <intent-filter>
                 <action android:name="android.intent.action.MAIN" />
 
@@ -74,7 +74,7 @@
             android:name=".features.assistant.AssistantActivity"
             android:excludeFromRecents="true"
             android:exported="true"
-            android:label="Gosling Assistant"
+            android:label="Goose Mobile Assistant"
             android:launchMode="singleInstance"
             android:showOnLockScreen="true"
             android:showWhenLocked="true"
@@ -91,11 +91,11 @@
             android:exported="true"
             android:theme="@android:style/Theme.Translucent.NoTitleBar">
             <intent-filter>
-                <action android:name="xyz.block.gosling.GET_UI_HIERARCHY" />
+                <action android:name="xyz.block.goosemobile.GET_UI_HIERARCHY" />
                 <category android:name="android.intent.category.DEFAULT" />
             </intent-filter>
             <intent-filter>
-                <action android:name="xyz.block.gosling.EXECUTE_COMMAND" />
+                <action android:name="xyz.block.goosemobile.EXECUTE_COMMAND" />
                 <category android:name="android.intent.category.DEFAULT" />
             </intent-filter>
         </activity>

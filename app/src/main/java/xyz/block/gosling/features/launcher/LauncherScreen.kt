@@ -59,7 +59,7 @@ import xyz.block.gosling.features.agent.AgentStatus
 import xyz.block.gosling.features.agent.Content
 import xyz.block.gosling.features.overlay.OverlayService
 import xyz.block.gosling.shared.services.VoiceRecognitionService
-import xyz.block.gosling.shared.theme.GoslingTheme
+import xyz.block.gosling.shared.theme.GooseMobileTheme
 
 /**
  * Data class to store command results for display
@@ -275,7 +275,7 @@ fun LauncherScreen() {
 @Preview(showBackground = true)
 @Composable
 fun LauncherScreenPreview() {
-    GoslingTheme {
+    GooseMobileTheme {
         LauncherScreen()
     }
 }

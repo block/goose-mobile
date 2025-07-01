@@ -336,7 +336,7 @@ fun MainScreen(
                         onValueChange = { textInput = it },
                         modifier = Modifier.fillMaxWidth(),
                         placeholder = { 
-                            Text("What can gosling do for you?")
+                            Text("What can Goose Mobile do for you?")
                         },
                         colors = TextFieldDefaults.colors(
                             unfocusedContainerColor = Color.Transparent,

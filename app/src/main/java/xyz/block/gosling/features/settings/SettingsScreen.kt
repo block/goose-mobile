@@ -343,7 +343,7 @@ fun SettingsScreen(
                             style = MaterialTheme.typography.titleLarge,
                         )
                         Text(
-                            text = "Allow Gosling to analyze and respond to notifications from other apps",
+                            text = "Allow Goose Mobile to analyze and respond to notifications from other apps",
                             style = MaterialTheme.typography.bodyMedium,
                             color = MaterialTheme.colorScheme.onSurfaceVariant
                         )
@@ -396,7 +396,7 @@ fun SettingsScreen(
                             style = MaterialTheme.typography.titleLarge,
                         )
                         Text(
-                            text = "Allow Gosling to look at screenshots and take " +
+                            text = "Allow Goose Mobile to look at screenshots and take " +
                                     "action based on your preferences and the contents " +
                                     "of the screenshot.",
                             style = MaterialTheme.typography.bodyMedium,
@@ -465,7 +465,7 @@ fun SettingsScreen(
                             style = MaterialTheme.typography.titleLarge,
                         )
                         Text(
-                            text = "Gosling needs accessibility permissions to interact with other apps and help you with tasks.",
+                            text = "Goose Mobile needs accessibility permissions to interact with other apps and help you with tasks.",
                             style = MaterialTheme.typography.bodyMedium,
                             color = MaterialTheme.colorScheme.onSurfaceVariant
                         )

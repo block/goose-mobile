@@ -27,7 +27,7 @@ import xyz.block.gosling.features.agent.AgentServiceManager
 import xyz.block.gosling.features.overlay.OverlayService
 import xyz.block.gosling.features.settings.SettingsStore
 import xyz.block.gosling.shared.navigation.NavGraph
-import xyz.block.gosling.shared.theme.GoslingTheme
+import xyz.block.gosling.shared.theme.GooseMobileTheme
 
 class MainActivity : ComponentActivity() {
     companion object {
@@ -102,7 +102,7 @@ class MainActivity : ComponentActivity() {
 
         enableEdgeToEdge()
         setContent {
-            GoslingTheme {
+            GooseMobileTheme {
                 val navController = rememberNavController()
                 NavGraph(
                     navController = navController,

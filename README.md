@@ -1,4 +1,4 @@
-# Gosling
+# Goose Mobile
 
 An experimental open agent for android to do your dirty work so you can spend more time not on your phone.
 
@@ -12,12 +12,12 @@ https://github.com/user-attachments/assets/87b73419-c27a-4368-9b60-c544e4d1b575
 
 This is sort but but very not a "port" of goose to android.
 
-Using various capabilities of android, this allows gosling to automate end to end tasks, 
+Using various capabilities of android, this allows Goose Mobile to automate end to end tasks, 
 either when needed, or using it as a home screen replacement.
 
 Very much a WIP - if you want to try this - fire it up in Android Studio!
 
-Gosling can also react to notifications that come in and spring into action on your behalf (you can set the rules).
+Goose Mobile can also react to notifications that come in and spring into action on your behalf (you can set the rules).
 (automatically update people on your availability in a calendar for example)
 You can try any multi step task that you like, it will use the apps on hand (literally if you run it on your phone).
 
@@ -28,16 +28,16 @@ in `benchmarking` there are some end to end scenarios (orchestrated with goose),
 MCP servers have been a wonderful addition to allow agents to take on additional functions they were never
 hard coded to do from other apps. 
 
-We are proposing a variant of this here, gosling can detect other apps that provide extensions which it can then use as tools
+We are proposing a variant of this here, Goose Mobile can detect other apps that provide extensions which it can then use as tools
 This allows it to perform background tasks without switching to another app (if you like).
 
 For example: looking up the weather and arranging a dog park visit with coffee could involve a few apps. Maps, weather or a google search, calendar. 
-With an extension then gosling can discover a "get_weather" tool and use that in a fraction of a second (vs switching apps).
+With an extension then Goose Mobile can discover a "get_weather" tool and use that in a fraction of a second (vs switching apps).
 
-This repo: https://github.com/michaelneale/breezy-weather/ - is currently an example of a very simple app that provides an extension that gosling can discover:
+This repo: https://github.com/michaelneale/breezy-weather/ - is currently an example of a very simple app that provides an extension that Goose Mobile can discover:
 
 
-You can extend gosling with any app as simply as the following:
+You can extend Goose Mobile with any app as simply as the following:
 
 ```kotlin
 class WeatherMCP : BroadcastReceiver() {
@@ -79,4 +79,4 @@ and on AndroidManifest.xml:
         </receiver>
 ```
 
-Gosling will discover and make use of that - note the finer details of this contract/interface will be changing of course!
+Goose Mobile will discover and make use of that - note the finer details of this contract/interface will be changing of course!

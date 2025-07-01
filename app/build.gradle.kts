@@ -6,11 +6,11 @@ plugins {
 }
 
 android {
-    namespace = "xyz.block.gosling"
+    namespace = "xyz.block.goosemobile"
     compileSdk = 35
 
     defaultConfig {
-        applicationId = "xyz.block.gosling"
+        applicationId = "xyz.block.goosemobile"
         minSdk = 26
         targetSdk = 34
         versionCode = 2

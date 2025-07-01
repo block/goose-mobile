@@ -27,7 +27,7 @@ class DebugActivity : AppCompatActivity() {
         super.onCreate(savedInstanceState)
 
         when (intent.action) {
-            "xyz.block.gosling.GET_UI_HIERARCHY" -> {
+            "xyz.block.goosemobile.GET_UI_HIERARCHY" -> {
                 val service = GoslingAccessibilityService.getInstance()
                 if (service != null) {
                     val hierarchyText = getUiHierarchy(service, JSONObject())
@@ -37,7 +37,7 @@ class DebugActivity : AppCompatActivity() {
                 }
             }
 
-            "xyz.block.gosling.EXECUTE_COMMAND" -> {
+            "xyz.block.goosemobile.EXECUTE_COMMAND" -> {
                 val command = intent.getStringExtra("command")
                 Log.d("DebugActivity", "Executing command: $command")
 

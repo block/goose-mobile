@@ -19,5 +19,5 @@ dependencyResolutionManagement {
     }
 }
 
-rootProject.name = "Gosling"
+rootProject.name = "GooseMobile"
 include(":app")

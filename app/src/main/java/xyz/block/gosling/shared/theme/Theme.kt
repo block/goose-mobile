@@ -93,7 +93,7 @@ private val LightColorScheme = lightColorScheme(
 )
 
 @Composable
-fun GoslingTheme(
+fun GooseMobileTheme(
     darkTheme: Boolean = isSystemInDarkTheme(),
     dynamicColor: Boolean = false,
     content: @Composable () -> Unit

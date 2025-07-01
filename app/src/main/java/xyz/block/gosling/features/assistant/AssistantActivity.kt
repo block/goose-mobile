@@ -23,7 +23,7 @@ import xyz.block.gosling.features.agent.AgentStatus
 import xyz.block.gosling.features.agent.ToolHandler.buildCompactHierarchy
 import xyz.block.gosling.features.overlay.OverlayService
 import xyz.block.gosling.shared.services.VoiceRecognitionService
-import xyz.block.gosling.shared.theme.GoslingTheme
+import xyz.block.gosling.shared.theme.GooseMobileTheme
 
 class AssistantActivity : ComponentActivity() {
     private var isVoiceInteraction = false
@@ -63,7 +63,7 @@ class AssistantActivity : ComponentActivity() {
         voiceRecognitionManager = VoiceRecognitionService(this)
 
         setContent {
-            GoslingTheme {
+            GooseMobileTheme {
                 AssistantUI(
                     isVoiceActive = isVoiceInteraction,
                     currentText = currentTranscription.value,

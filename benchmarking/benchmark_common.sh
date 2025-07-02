@@ -1,6 +1,6 @@
 #!/bin/bash
 
-# Common functions and variables for Gosling benchmark scripts
+# Common functions and variables for Goose Mobile benchmark scripts
 
 # Input field center coordinates
 INPUT_X=640

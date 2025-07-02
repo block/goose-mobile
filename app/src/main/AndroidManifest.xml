@@ -26,7 +26,7 @@
     </queries>
 
     <application
-        android:name=".GoslingApplication"
+        android:name=".GooseMobileApplication"
         android:allowBackup="true"
         android:icon="@mipmap/ic_launcher"
         android:label="Goose Mobile"
@@ -91,11 +91,11 @@
             android:exported="true"
             android:theme="@android:style/Theme.Translucent.NoTitleBar">
             <intent-filter>
-                <action android:name="xyz.block.gosling.GET_UI_HIERARCHY" />
+                <action android:name="xyz.block.goosemobile.GET_UI_HIERARCHY" />
                 <category android:name="android.intent.category.DEFAULT" />
             </intent-filter>
             <intent-filter>
-                <action android:name="xyz.block.gosling.EXECUTE_COMMAND" />
+                <action android:name="xyz.block.goosemobile.EXECUTE_COMMAND" />
                 <category android:name="android.intent.category.DEFAULT" />
             </intent-filter>
         </activity>
@@ -118,7 +118,7 @@
             android:permission="android.permission.BIND_VOICE_INTERACTION" />
 
         <service
-            android:name=".features.accessibility.GoslingAccessibilityService"
+            android:name=".features.accessibility.GooseMobileAccessibilityService"
             android:exported="false"
             android:foregroundServiceType="dataSync"
             android:permission="android.permission.BIND_ACCESSIBILITY_SERVICE">

@@ -12,19 +12,19 @@ fi
 # Execute the command
 COMMAND="$1"
 echo "Executing: $COMMAND"
-adb shell "am start -a xyz.block.gosling.EXECUTE_COMMAND -n xyz.block.gosling/.features.agent.DebugActivity --es command '$COMMAND'"
+adb shell "am start -a xyz.block.goosemobile.EXECUTE_COMMAND -n xyz.block.goosemobile/.features.agent.DebugActivity --es command '$COMMAND'"
 
 # Wait a bit for the command to complete
 echo "Waiting for response..."
 
-adb shell 'rm -rf /storage/emulated/0/Android/data/xyz.block.gosling/files/latest_command_result.txt'
+adb shell 'rm -rf /storage/emulated/0/Android/data/xyz.block.goosemobile/files/latest_command_result.txt'
 
 sleep 5
 
 # Keep checking for the result file to exist
 
 while true; do
-  if adb shell '[ -f /storage/emulated/0/Android/data/xyz.block.gosling/files/latest_command_result.txt ]'; then
+  if adb shell '[ -f /storage/emulated/0/Android/data/xyz.block.goosemobile/files/latest_command_result.txt ]'; then
     break
   else
     echo -n "."
@@ -35,7 +35,7 @@ done
 
 # Extract just the assistant's last response using grep and sed
 echo "Assistant's response:"
-adb shell "cat /storage/emulated/0/Android/data/xyz.block.gosling/files/latest_command_result.txt" | grep -o '"text": "[^"]*"' | tail -1 | sed 's/"text": "\(.*\)"/\1/'
+adb shell "cat /storage/emulated/0/Android/data/xyz.block.goosemobile/files/latest_command_result.txt" | grep -o '"text": "[^"]*"' | tail -1 | sed 's/"text": "\(.*\)"/\1/'
 
 # Take a screenshot and save it
 echo "Taking screenshot..."

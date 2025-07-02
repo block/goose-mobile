@@ -9,5 +9,5 @@
     android:canRetrieveWindowContent="true"
     android:notificationTimeout="100"
     android:packageNames="*"
-    android:settingsActivity="xyz.block.gosling.MainActivity"
+    android:settingsActivity="xyz.block.goosemobile.MainActivity"
     android:summary="@string/accessibility_service_summary"/>

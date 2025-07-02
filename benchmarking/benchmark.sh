@@ -17,23 +17,23 @@ if [ $# -gt 0 ]; then
 fi
 
 echo "======================================"
-echo "Gosling Benchmarking Tool"
+echo "Goose Mobile Benchmarking Tool"
 echo "======================================"
 echo
 
-# Function to return to Gosling app screen
-return_to_gosling() {
-    echo "Returning to Gosling app..."
+# Function to return to Goose Mobile app screen
+return_to_goose_mobile() {
+    echo "Returning to Goose Mobile app..."
     
-    adb shell am start -n xyz.block.gosling/.features.app.MainActivity
+    adb shell am start -n xyz.block.goosemobile/.features.app.MainActivity
     sleep 2
     
     # Verify the app is in foreground
     CURRENT_APP=$(adb shell dumpsys window | grep -E 'mCurrentFocus' | cut -d'/' -f1 | rev | cut -d' ' -f1 | rev)
-    if [[ "$CURRENT_APP" == *"xyz.block.gosling"* ]]; then
-        echo "Gosling app is now in foreground"
+    if [[ "$CURRENT_APP" == *"xyz.block.goosemobile"* ]]; then
+        echo "Goose Mobile app is now in foreground"
     else
-        echo "Warning: Gosling app may not be in foreground. Current app: $CURRENT_APP"
+        echo "Warning: Goose Mobile app may not be in foreground. Current app: $CURRENT_APP"
     fi
 }
 
@@ -49,7 +49,7 @@ collect_diagnostics() {
     echo "Pulling session dumps..."
     DUMPS_DIR="${test_dir}/session_dumps"
     mkdir -p "$DUMPS_DIR"
-    adb pull /storage/emulated/0/Android/data/xyz.block.gosling/files/session_dumps/ "${DUMPS_DIR}/" > /dev/null 2>&1
+    adb pull /storage/emulated/0/Android/data/xyz.block.goosemobile/files/session_dumps/ "${DUMPS_DIR}/" > /dev/null 2>&1
     
     # Take screenshot
     echo "Taking screenshot..."
@@ -122,11 +122,11 @@ for script in $SCENARIO_SCRIPTS; do
     # Make sure the script is executable
     chmod +x "$script"
     
-    # Return to Gosling app before running the scenario
-    return_to_gosling
+    # Return to Goose Mobile app before running the scenario
+    return_to_goose_mobile
 
     # clear out old session dumps:
-     adb shell rm -rf /storage/emulated/0/Android/data/xyz.block.gosling/files/session_dumps/
+     adb shell rm -rf /storage/emulated/0/Android/data/xyz.block.goosemobile/files/session_dumps/
     
     # Run the script and capture output
     OUTPUT=$(bash "$script" 2>&1)
@@ -147,7 +147,7 @@ for script in $SCENARIO_SCRIPTS; do
             break
         fi
         
-        FILES=$(adb shell ls /storage/emulated/0/Android/data/xyz.block.gosling/files/session_dumps/ 2>/dev/null)
+        FILES=$(adb shell ls /storage/emulated/0/Android/data/xyz.block.goosemobile/files/session_dumps/ 2>/dev/null)
         if [ -n "$FILES" ]; then
             echo "Session dump files found after ${elapsed_time} seconds: $FILES"
             break

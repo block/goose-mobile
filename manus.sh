@@ -83,7 +83,7 @@ if [ $START_EMULATORS -eq 1 ]; then
     echo "Starting the app on all emulators..."
     for device in $DEVICES; do
         echo "Starting app on $device..."
-        adb -s $device shell am start -n xyz.block.gosling/.features.app.MainActivity
+        adb -s $device shell am start -n xyz.block.goosemobile/.features.app.MainActivity
     done
 
    echo "All apps will start. Configure them manually"
@@ -105,7 +105,7 @@ else
         COMMAND="${COMMANDS[$i % ${#COMMANDS[@]}]}"
     
         echo "Executing on $device: '$COMMAND'"
-        adb -s $device shell "am start -a xyz.block.gosling.EXECUTE_COMMAND -n xyz.block.gosling/.features.agent.DebugActivity --es command \"$COMMAND\""
+        adb -s $device shell "am start -a xyz.block.goosemobile.EXECUTE_COMMAND -n xyz.block.goosemobile/.features.agent.DebugActivity --es command \"$COMMAND\""
     
         # Increment index for next command
         ((i++))

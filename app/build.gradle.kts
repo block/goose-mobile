@@ -6,7 +6,7 @@ plugins {
 }
 
 android {
-    namespace = "xyz.block.goosemobile"
+    namespace = "xyz.block.gosling"
     compileSdk = 35
 
     defaultConfig {

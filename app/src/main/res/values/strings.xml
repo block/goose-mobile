@@ -1,5 +1,5 @@
 <resources>
     <string name="app_name">Goose Mobile</string>
     <string name="accessibility_service_description">Enables Goose Assistant to interact with other apps on your device to perform tasks like clicking, swiping, and entering text based on your requests.</string>
-    <string name="accessibility_service_summary">Allow Goose to interact with apps on your device</string>
+    <string name="accessibility_service_summary">Allow Goose Mobile to interact with apps on your device</string>
 </resources>

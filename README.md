@@ -2,7 +2,7 @@
 
 An experimental open agent for android to do your dirty work so you can spend more time not on your phone.
 
-![Screenshot 2025-05-05 at 12 18 07 pm](https://github.com/user-attachments/assets/22b11dd7-0adf-428b-94db-6c1afc600b3e)
+![Screenshot_20250708_124558](https://github.com/user-attachments/assets/af9d7d83-54f4-4ace-ad66-9e19f86c8fb9)
 
 Goose Mobile as your home launcher 
 

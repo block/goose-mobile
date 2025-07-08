@@ -95,3 +95,9 @@ and on AndroidManifest.xml:
 ```
 
 Goose Mobile will discover and make use of that - note the finer details of this contract/interface will be changing of course!
+
+## Contributing
+
+We welcome contributions to Goose Mobile! Whether you're fixing bugs, adding new features, improving documentation, or creating extensions, your efforts are greatly appreciated.
+
+Please see our [Contributing Guide](CONTRIBUTING.md) for detailed information on Block Open Source

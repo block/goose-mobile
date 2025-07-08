@@ -751,7 +751,7 @@ object ToolHandler {
 
     @Tool(
         name = "checkSetup",
-        description = "Check how goose is currently setup. Start helping the user make the recommendations happen.",
+        description = "Check how goose mobile is currently setup. Start helping the user make the recommendations happen.",
         parameters = [],
         requiresContext = true,
         requiresAccessibility = true

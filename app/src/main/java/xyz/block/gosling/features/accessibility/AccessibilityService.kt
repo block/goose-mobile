@@ -50,7 +50,7 @@ class GoslingAccessibilityService : AccessibilityService() {
         )
 
         val notification = NotificationCompat.Builder(this, NOTIFICATION_CHANNEL_ID)
-            .setContentTitle("Goose Assistant").setContentText("Running in background")
+            .setContentTitle("Goose Mobile Assistant").setContentText("Running in background")
             .setSmallIcon(R.drawable.ic_launcher_foreground).setContentIntent(pendingIntent)
             .setOngoing(true).build()
 

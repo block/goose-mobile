@@ -396,7 +396,7 @@ fun SettingsScreen(
                             style = MaterialTheme.typography.titleLarge,
                         )
                         Text(
-                            text = "Allow Goose to look at screenshots and take " +
+                            text = "Allow Goose Mobile to look at screenshots and take " +
                                     "action based on your preferences and the contents " +
                                     "of the screenshot.",
                             style = MaterialTheme.typography.bodyMedium,

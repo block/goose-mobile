@@ -465,7 +465,7 @@ fun SettingsScreen(
                             style = MaterialTheme.typography.titleLarge,
                         )
                         Text(
-                            text = "Goose needs accessibility permissions to interact with other apps and help you with tasks.",
+                            text = "Goose Mobile needs accessibility permissions to interact with other apps and help you with tasks.",
                             style = MaterialTheme.typography.bodyMedium,
                             color = MaterialTheme.colorScheme.onSurfaceVariant
                         )

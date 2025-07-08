@@ -49,7 +49,7 @@ class AgentServiceManager(private val context: Context) {
     }
 
     private fun createNotificationChannel() {
-        val name = "Goose Agent"
+        val name = "Goose Mobile Agent"
         val descriptionText = "Handles network operations and command processing"
         val importance = NotificationManager.IMPORTANCE_LOW
         val channel = NotificationChannel(NOTIFICATION_CHANNEL_ID, name, importance).apply {

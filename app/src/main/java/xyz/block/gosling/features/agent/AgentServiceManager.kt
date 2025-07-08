@@ -133,7 +133,7 @@ class AgentServiceManager(private val context: Context) {
         )
 
         return NotificationCompat.Builder(context, NOTIFICATION_CHANNEL_ID)
-            .setContentTitle("Goose Agent")
+            .setContentTitle("Goose Mobile Agent")
             .setContentText(message)
             .setSmallIcon(R.drawable.ic_launcher_foreground)
             .setContentIntent(pendingIntent)

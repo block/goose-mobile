@@ -74,7 +74,7 @@
             android:name=".features.assistant.AssistantActivity"
             android:excludeFromRecents="true"
             android:exported="true"
-            android:label="Goose Assistant"
+            android:label="Goose Mobile Assistant"
             android:launchMode="singleInstance"
             android:showOnLockScreen="true"
             android:showWhenLocked="true"

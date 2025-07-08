@@ -4,12 +4,13 @@ An experimental open agent for android to do your dirty work so you can spend mo
 
 ![Screenshot 2025-05-05 at 12 18 07 pm](https://github.com/user-attachments/assets/22b11dd7-0adf-428b-94db-6c1afc600b3e)
 
+Goose Mobile as your home launcher 
 
 https://github.com/user-attachments/assets/87b73419-c27a-4368-9b60-c544e4d1b575
 
 
 ## Introduction
-Welcome to Goose Mobile, an interpretation of Goose, but for Android, providing maximal automation of every day tasks on a personal device.
+Welcome to Goose Mobile, an interpretation of [Goose](https://github.com/block/goose), but for Android, providing maximal automation of every day tasks on a personal device.
 
 Using various capabilities of android, this allows goose mobile to automate end to end tasks, 
 either when needed, or using it as a home screen replacement.
@@ -19,7 +20,9 @@ either when needed, or using it as a home screen replacement.
 
 Goose Mobile can also react to notifications that come in and spring into action on your behalf (you can set the rules).
 (automatically update people on your availability in a calendar for example)
-You can try any multi step task that you like, it will use the apps on hand (literally if you run it on your phone).
+You can try any multi step task that you like, it will use the apps on hand.
+
+https://github.com/user-attachments/assets/19f77d1f-9db4-415f-9f87-9b1cad4b1ec9
 
 in `benchmarking` there are some end to end scenarios (orchestrated with goose), but they are very simple to start with to establish a baseline.
 

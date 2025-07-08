@@ -200,7 +200,7 @@ class AppUsageStats(private val context: Context) {
             includeSystemApps: Boolean = false
         ): List<String> {
             return AppUsageStats(context).getRecentApps(limit, includeSystemApps)
-                .filter { it != "Goose" }
+                .filter { it != "Goose Mobile" }
         }
 
         @JvmStatic

@@ -2,7 +2,7 @@
 
 An experimental open agent for android to do your dirty work so you can spend more time not on your phone.
 
-![Screenshot 2025-05-05 at 12 18 07 pm](https://github.com/user-attachments/assets/22b11dd7-0adf-428b-94db-6c1afc600b3e)
+![Screenshot 2025-05-05 at 12 18 07 pm](https://github.com/user-attachments/assets/22b11dd7-0adf-428b-94db-6c1afc600b3e)
 
 Goose Mobile as your home launcher 
 
@@ -24,19 +24,76 @@ You can try any multi step task that you like, it will use the apps on hand.
 
 https://github.com/user-attachments/assets/19f77d1f-9db4-415f-9f87-9b1cad4b1ec9
 
-in `benchmarking` there are some end to end scenarios (orchestrated with goose), but they are very simple to start with to establish a baseline.
+In the `benchmarking` directory there are some end to end scenarios (orchestrated with goose), but they are very simple to start with to establish a baseline.
 
-## Usage 
-
-It is recommended to try this on a spare Android phone, or an emulator (you can run this project from the free Android Studio which will launch an emulator for you)
+## Getting Started
 
 > [!IMPORTANT]  
-> Goose Mobile is a research project, not for production use
+> Goose Mobile is a research project, not for production use. It is recommended to try this on a spare Android phone or an emulator.
 
 Goose will access information that you allow it to - so if you log in to personal email, calendar, ecommerce apps etc it will be able to make use of them.
 
-One way to get access is to use this <a href="https://appdistribution.firebase.google.com/pub/i/3f111ea732d5f7f6">firebase link</a> to get an invitation to add the device to your phone. 
-This firebase distribution we will endeavour to keep up to date, but it may be out dated, or non functional at this time.
+There are two ways to get started with Goose Mobile:
+
+### Option 1: Install Pre-built APK via Firebase
+
+The quickest way to try Goose Mobile is to install a pre-built version:
+
+1. On your Android device, visit the [Firebase distribution link](https://appdistribution.firebase.google.com/pub/i/3f111ea732d5f7f6)
+2. Follow the prompts to join the testing program
+3. Download and install the APK when prompted
+4. Grant all necessary permissions when launching the app
+
+> [!NOTE]
+> The Firebase distribution is updated regularly but may occasionally be outdated or non-functional. If you encounter issues, try building from source (Option 2).
+
+### Option 2: Build from Source
+
+For developers or those who want the latest version, you can build Goose Mobile locally:
+
+#### Prerequisites
+- [Android Studio](https://developer.android.com/studio) (latest stable version)
+- JDK 17 or higher
+- Git
+
+#### Building and Running
+
+1. **Clone the repository:**
+   ```bash
+   git clone https://github.com/block/goose-mobile.git
+   cd goose-mobile
+   ```
+
+2. **Open in Android Studio:**
+   - Launch Android Studio
+   - Select "Open an Existing Project"
+   - Navigate to the cloned repository and select it
+
+3. **Sync the project:**
+   - Android Studio will automatically prompt you to sync Gradle files
+   - If not, click "Sync Project with Gradle Files" in the toolbar
+
+4. **Run on an emulator:**
+   - Click the "Device Manager" icon in Android Studio
+   - Create a new Virtual Device (recommended: Pixel 6 with API 34+)
+   - Select your virtual device from the dropdown
+   - Click the "Run" button (green triangle)
+
+5. **Run on a physical device:**
+   - Enable Developer Options on your Android device:
+     - Go to Settings → About Phone
+     - Tap "Build Number" 7 times
+   - Enable USB Debugging in Developer Options
+   - Connect your device via USB
+   - Select your device from the dropdown in Android Studio
+   - Click the "Run" button
+
+#### First Launch Setup
+
+When you first launch Goose Mobile:
+
+[Installation Guide](INSTALLATION.md)
+
 
 ## Extending via "mobile MCP"
 
@@ -98,6 +155,13 @@ Goose Mobile will discover and make use of that - note the finer details of this
 
 ## Contributing
 
-We welcome contributions to Goose Mobile! Whether you're fixing bugs, adding new features, improving documentation, or creating extensions, your efforts are greatly appreciated.
+We welcome contributions to Goose Mobile! Whether you're fixing bugs, adding new features, improving documentation, or creating extensions, your help is appreciated.
 
-Please see our [Contributing Guide](CONTRIBUTING.md) for detailed information on Block Open Source
+Please see our [Contributing Guide](CONTRIBUTING.md) for detailed information on:
+- Setting up your development environment
+- Code style and standards
+- Submitting pull requests
+- Testing guidelines
+- Creating mobile MCP extensions
+
+Before contributing, please read through the guide to ensure your contributions align with the project's goals and standards.

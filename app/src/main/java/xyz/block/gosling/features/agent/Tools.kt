@@ -751,7 +751,7 @@ object ToolHandler {
 
     @Tool(
         name = "checkSetup",
-        description = "Check how gosling is currently setup. Start helping the user make the recommendations happen.",
+        description = "Check how goose is currently setup. Start helping the user make the recommendations happen.",
         parameters = [],
         requiresContext = true,
         requiresAccessibility = true
@@ -762,7 +762,7 @@ object ToolHandler {
         args: JSONObject
     ): String {
         val appKinds = IntentAppKinds.allCategories.toString()
-        return "IMPORTANT: you can check on the following on behalf of the user: Please check that gosling has a variety of apps, and be logged in to them. eg that the calendar is configured, email is setup and accounts logged in, messaging and more. " +
+        return "IMPORTANT: you can check on the following on behalf of the user: Please check that goose has a variety of apps, and be logged in to them. eg that the calendar is configured, email is setup and accounts logged in, messaging and more. " +
                 "Check if there are applications installed for things like ecommerce, " +
                 " Can suggest just a few apps if not there, eg amazon, ebay, afterpay and so on. Suggest other apps if you can sense what the user may benefit from. Some ideas to compare with what is available:" + appKinds ;
 

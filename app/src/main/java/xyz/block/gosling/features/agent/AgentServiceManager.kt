@@ -49,7 +49,7 @@ class AgentServiceManager(private val context: Context) {
     }
 
     private fun createNotificationChannel() {
-        val name = "Gosling Agent"
+        val name = "Goose Agent"
         val descriptionText = "Handles network operations and command processing"
         val importance = NotificationManager.IMPORTANCE_LOW
         val channel = NotificationChannel(NOTIFICATION_CHANNEL_ID, name, importance).apply {
@@ -133,7 +133,7 @@ class AgentServiceManager(private val context: Context) {
         )
 
         return NotificationCompat.Builder(context, NOTIFICATION_CHANNEL_ID)
-            .setContentTitle("Gosling Agent")
+            .setContentTitle("Goose Agent")
             .setContentText(message)
             .setSmallIcon(R.drawable.ic_launcher_foreground)
             .setContentIntent(pendingIntent)

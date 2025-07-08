@@ -50,7 +50,7 @@ class GoslingAccessibilityService : AccessibilityService() {
         )
 
         val notification = NotificationCompat.Builder(this, NOTIFICATION_CHANNEL_ID)
-            .setContentTitle("Gosling Assistant").setContentText("Running in background")
+            .setContentTitle("Goose Assistant").setContentText("Running in background")
             .setSmallIcon(R.drawable.ic_launcher_foreground).setContentIntent(pendingIntent)
             .setOngoing(true).build()
 
@@ -58,8 +58,8 @@ class GoslingAccessibilityService : AccessibilityService() {
     }
 
     private fun createNotificationChannel() {
-        val name = "Gosling Service"
-        val descriptionText = "Keeps Gosling running in background"
+        val name = "Goose Service"
+        val descriptionText = "Keeps Goose running in background"
         val importance = NotificationManager.IMPORTANCE_LOW
         val channel = NotificationChannel(NOTIFICATION_CHANNEL_ID, name, importance).apply {
             description = descriptionText

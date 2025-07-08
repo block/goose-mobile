@@ -29,7 +29,7 @@
         android:name=".GoslingApplication"
         android:allowBackup="true"
         android:icon="@mipmap/ic_launcher"
-        android:label="Gosling"
+        android:label="Goose"
         android:roundIcon="@mipmap/ic_launcher_round"
         android:supportsRtl="true"
         android:theme="@style/Theme.Gosling">
@@ -58,7 +58,7 @@
         <activity
             android:name=".features.launcher.LauncherActivity"
             android:exported="true"
-            android:label="Gosling Launcher"
+            android:label="Goose Launcher"
             android:launchMode="singleTask"
             android:screenOrientation="portrait"
             android:theme="@style/Theme.Gosling.NoActionBar">
@@ -74,7 +74,7 @@
             android:name=".features.assistant.AssistantActivity"
             android:excludeFromRecents="true"
             android:exported="true"
-            android:label="Gosling Assistant"
+            android:label="Goose Assistant"
             android:launchMode="singleInstance"
             android:showOnLockScreen="true"
             android:showWhenLocked="true"

@@ -157,11 +157,4 @@ Goose Mobile will discover and make use of that - note the finer details of this
 
 We welcome contributions to Goose Mobile! Whether you're fixing bugs, adding new features, improving documentation, or creating extensions, your help is appreciated.
 
-Please see our [Contributing Guide](CONTRIBUTING.md) for detailed information on:
-- Setting up your development environment
-- Code style and standards
-- Submitting pull requests
-- Testing guidelines
-- Creating mobile MCP extensions
-
-Before contributing, please read through the guide to ensure your contributions align with the project's goals and standards.
+Please see our [Contributing Guide](CONTRIBUTING.md) for detailed information

@@ -343,7 +343,7 @@ fun SettingsScreen(
                             style = MaterialTheme.typography.titleLarge,
                         )
                         Text(
-                            text = "Allow Goose to analyze and respond to notifications from other apps",
+                            text = "Allow Goose Mobile to analyze and respond to notifications from other apps",
                             style = MaterialTheme.typography.bodyMedium,
                             color = MaterialTheme.colorScheme.onSurfaceVariant
                         )

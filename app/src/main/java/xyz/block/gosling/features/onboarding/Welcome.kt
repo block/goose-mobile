@@ -138,7 +138,7 @@ fun WelcomeStep(
                     style = MaterialTheme.typography.titleLarge,
                 )
                 Text(
-                    text = "Make Goose your default assistant app to get the most out of its features.",
+                    text = "Make Goose Mobile your default assistant app to get the most out of its features.",
                     style = MaterialTheme.typography.bodyMedium,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                 )

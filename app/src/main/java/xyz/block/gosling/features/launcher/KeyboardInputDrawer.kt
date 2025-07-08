@@ -57,7 +57,7 @@ fun KeyboardInputDrawer(
                     .fillMaxWidth()
                     .padding(bottom = 16.dp)
                     .focusRequester(focusRequester),
-                placeholder = { Text("What can goose do for you?") },
+                placeholder = { Text("What can goose mobile do for you?") },
                 singleLine = false,
                 maxLines = 3,
                 keyboardOptions = KeyboardOptions(

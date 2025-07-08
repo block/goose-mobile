@@ -59,7 +59,7 @@ class GoslingAccessibilityService : AccessibilityService() {
 
     private fun createNotificationChannel() {
         val name = "Goose Service"
-        val descriptionText = "Keeps Goose running in background"
+        val descriptionText = "Keeps Goose Mobile running in background"
         val importance = NotificationManager.IMPORTANCE_LOW
         val channel = NotificationChannel(NOTIFICATION_CHANNEL_ID, name, importance).apply {
             description = descriptionText

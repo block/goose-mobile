@@ -169,7 +169,7 @@ fun WelcomeStep(
                     style = MaterialTheme.typography.titleLarge,
                 )
                 Text(
-                    text = "Make Goose your default home screen to access its features with a single tap.",
+                    text = "Make Goose Mobile your default home screen to access its features with a single tap.",
                     style = MaterialTheme.typography.bodyMedium,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                 )

@@ -42,7 +42,7 @@ The quickest way to try Goose Mobile is to install a pre-built version:
 1. On your Android device, visit the [Firebase distribution link](https://appdistribution.firebase.google.com/pub/i/3f111ea732d5f7f6)
 2. Follow the prompts to join the testing program
 3. Download and install the APK when prompted
-4. Grant all necessary permissions when launching the app
+
 
 > [!NOTE]
 > The Firebase distribution is updated regularly but may occasionally be outdated or non-functional. If you encounter issues, try building from source (Option 2).
@@ -88,7 +88,7 @@ For developers or those who want the latest version, you can build Goose Mobile 
    - Select your device from the dropdown in Android Studio
    - Click the "Run" button
 
-#### First Launch Setup
+### First Launch Setup
 
 When you first launch Goose Mobile:
 

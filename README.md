@@ -158,3 +158,17 @@ Goose Mobile will discover and make use of that - note the finer details of this
 We welcome contributions to Goose Mobile! Whether you're fixing bugs, adding new features, improving documentation, or creating extensions, your help is appreciated.
 
 Please see our [Contributing Guide](CONTRIBUTING.md) for detailed information
+
+## Building and distribution
+
+This is a standard android project, using gradle. 
+The build for the distribution for people to try out is done with `./gradlew assembleDebug` and then uploaded to firebase.
+
+## Help wanted
+
+There are many things that could be done, but some practical things: 
+
+* run reasonable tests in CI (perhaps using goose with openai to validate results as they are rarely deterministic)
+* unit tests where applicable
+* a pipeline to publish main to firebase
+* enhance provider to work with other models

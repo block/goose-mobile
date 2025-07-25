@@ -1644,6 +1644,7 @@ object ToolHandler {
         return when (provider) {
             ModelProvider.OPENAI -> xyz.block.gosling.features.agent.providers.OpenAIProviderHandler()
             ModelProvider.GEMINI -> xyz.block.gosling.features.agent.providers.GeminiProviderHandler()
+            ModelProvider.OPENROUTER -> xyz.block.gosling.features.agent.providers.OpenRouterProviderHandler()
         }
     }
 
@@ -1717,9 +1718,21 @@ object ToolHandler {
         return when {
             json.has("function") -> {
                 val functionObject = json.getJSONObject("function")
+                val argumentsString = functionObject.optString("arguments", "{}")
+                val arguments = try {
+                    if (argumentsString.isBlank()) {
+                        JSONObject("{}")
+                    } else {
+                        JSONObject(argumentsString)
+                    }
+                } catch (e: Exception) {
+                    android.util.Log.e(TAG, "Error parsing tool call arguments: '$argumentsString'", e)
+                    JSONObject("{}")
+                }
+                
                 InternalToolCall(
                     name = functionObject.getString("name"),
-                    arguments = JSONObject(functionObject.optString("arguments", "{}")),
+                    arguments = arguments,
                     toolId = json.optString("id", newToolCallId())
                 )
             }
@@ -1733,7 +1746,7 @@ object ToolHandler {
                 )
             }
 
-            else -> throw IllegalArgumentException("Unknown tool call format")
+            else -> throw IllegalArgumentException("Unknown tool call format: $json")
         }
     }
 }

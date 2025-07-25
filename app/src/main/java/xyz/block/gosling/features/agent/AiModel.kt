@@ -2,7 +2,8 @@ package xyz.block.gosling.features.agent
 
 enum class ModelProvider {
     OPENAI,
-    GEMINI
+    GEMINI,
+    OPENROUTER
 }
 
 data class AiModel(
@@ -21,7 +22,17 @@ data class AiModel(
             AiModel("O3 Large", "o3-large", ModelProvider.OPENAI),
 
             AiModel("Gemini Flash", "gemini-2.0-flash", ModelProvider.GEMINI),
-            AiModel("Gemini Flash light", "gemini-2.0-flash-lite", ModelProvider.GEMINI)
+            AiModel("Gemini Flash light", "gemini-2.0-flash-lite", ModelProvider.GEMINI),
+
+            // OpenRouter models (from various underlying providers)
+            AiModel("Claude 3.5 Sonnet", "anthropic/claude-3.5-sonnet", ModelProvider.OPENROUTER),
+            AiModel("Claude 3 Haiku", "anthropic/claude-3-haiku", ModelProvider.OPENROUTER),
+            AiModel("Claude 3 Opus", "anthropic/claude-3-opus", ModelProvider.OPENROUTER),
+            AiModel("Llama 3.1 70B", "meta-llama/llama-3.1-70b-instruct", ModelProvider.OPENROUTER),
+            AiModel("Llama 3.1 8B", "meta-llama/llama-3.1-8b-instruct", ModelProvider.OPENROUTER),
+            AiModel("Mistral Large", "mistralai/mistral-large", ModelProvider.OPENROUTER),
+            AiModel("Cohere Command R+", "cohere/command-r-plus", ModelProvider.OPENROUTER),
+            AiModel("DeepSeek V3", "deepseek/deepseek-chat", ModelProvider.OPENROUTER)
         )
 
         fun fromIdentifier(identifier: String): AiModel {

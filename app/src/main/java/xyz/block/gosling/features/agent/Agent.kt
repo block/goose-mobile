@@ -736,6 +736,7 @@ class Agent : Service() {
         return when (provider) {
             ModelProvider.OPENAI -> xyz.block.gosling.features.agent.providers.OpenAIProviderHandler()
             ModelProvider.GEMINI -> xyz.block.gosling.features.agent.providers.GeminiProviderHandler()
+            ModelProvider.OPENROUTER -> xyz.block.gosling.features.agent.providers.OpenRouterProviderHandler()
         }
     }
 

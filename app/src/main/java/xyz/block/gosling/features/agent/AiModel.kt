@@ -28,5 +28,11 @@ data class AiModel(
             return AVAILABLE_MODELS.find { it.identifier == identifier }
                 ?: AVAILABLE_MODELS.first()
         }
+
+        fun getProviders(): List<ModelProvider> = 
+            AVAILABLE_MODELS.map { it.provider }.distinct()
+        
+        fun getModelsForProvider(provider: ModelProvider): List<AiModel> = 
+            AVAILABLE_MODELS.filter { it.provider == provider }
     }
 }

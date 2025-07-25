@@ -45,12 +45,22 @@ fun LLMConfigStep(
 ) {
     var llmModel by remember { mutableStateOf(settingsStore.llmModel) }
     var currentModel by remember { mutableStateOf(AiModel.fromIdentifier(llmModel)) }
+    var selectedProvider by remember { mutableStateOf(currentModel.provider) }
+    var selectedModelId by remember { mutableStateOf(llmModel) }
     var apiKey by remember { mutableStateOf(settingsStore.getApiKey(currentModel.provider)) }
-    var expanded by remember { mutableStateOf(false) }
+    var providerExpanded by remember { mutableStateOf(false) }
+    var modelExpanded by remember { mutableStateOf(false) }
     var showQRScanner by remember { mutableStateOf(false) }
 
-    val models = AiModel.AVAILABLE_MODELS.map {
-        it.identifier to it.displayName
+    // When provider changes, reset to first model of that provider
+    androidx.compose.runtime.LaunchedEffect(selectedProvider) {
+        val modelsForProvider = AiModel.getModelsForProvider(selectedProvider)
+        if (modelsForProvider.isNotEmpty()) {
+            selectedModelId = modelsForProvider.first().identifier
+            llmModel = selectedModelId
+            currentModel = AiModel.fromIdentifier(selectedModelId)
+            apiKey = settingsStore.getApiKey(currentModel.provider)
+        }
     }
 
     Box(modifier = Modifier.fillMaxSize()) {
@@ -70,39 +80,76 @@ fun LLMConfigStep(
                     modifier = Modifier.fillMaxWidth(),
                     verticalArrangement = Arrangement.spacedBy(8.dp)
                 ) {
-                    Text(text = "Model")
+                    Text(text = "Provider")
+                    
+                    // Provider Dropdown
                     ExposedDropdownMenuBox(
-                        expanded = expanded,
-                        onExpandedChange = { expanded = it }
+                        expanded = providerExpanded,
+                        onExpandedChange = { providerExpanded = it }
                     ) {
                         OutlinedTextField(
-                            value = models.find { it.first == llmModel }?.second ?: llmModel,
+                            value = selectedProvider.name,
                             onValueChange = {},
                             readOnly = true,
                             modifier = Modifier
                                 .fillMaxWidth()
                                 .menuAnchor(MenuAnchorType.PrimaryNotEditable, true),
-                            trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = expanded) }
+                            trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = providerExpanded) }
                         )
 
                         ExposedDropdownMenu(
-                            expanded = expanded,
-                            onDismissRequest = { expanded = false }
+                            expanded = providerExpanded,
+                            onDismissRequest = { providerExpanded = false }
                         ) {
-                            models.forEach { (modelId, displayName) ->
+                            AiModel.getProviders().forEach { provider ->
                                 DropdownMenuItem(
-                                    text = { Text(displayName) },
+                                    text = { Text(provider.name) },
                                     onClick = {
-                                        llmModel = modelId
-                                        currentModel = AiModel.fromIdentifier(modelId)
-                                        apiKey = settingsStore.getApiKey(currentModel.provider)
-                                        expanded = false
+                                        selectedProvider = provider
+                                        providerExpanded = false
+                                    }
+                                )
+                            }
+                        }
+                    }
+                    
+                    // Model Dropdown
+                    Text(text = "Model")
+                    ExposedDropdownMenuBox(
+                        expanded = modelExpanded,
+                        onExpandedChange = { modelExpanded = it }
+                    ) {
+                        OutlinedTextField(
+                            value = AiModel.getModelsForProvider(selectedProvider)
+                                .find { it.identifier == selectedModelId }?.displayName ?: selectedModelId,
+                            onValueChange = {},
+                            readOnly = true,
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .menuAnchor(MenuAnchorType.PrimaryNotEditable, true),
+                            trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = modelExpanded) }
+                        )
+
+                        ExposedDropdownMenu(
+                            expanded = modelExpanded,
+                            onDismissRequest = { modelExpanded = false }
+                        ) {
+                            AiModel.getModelsForProvider(selectedProvider).forEach { model ->
+                                DropdownMenuItem(
+                                    text = { Text(model.displayName) },
+                                    onClick = {
+                                        selectedModelId = model.identifier
+                                        llmModel = model.identifier
+                                        currentModel = model
+                                        apiKey = settingsStore.getApiKey(model.provider)
+                                        modelExpanded = false
                                     }
                                 )
                             }
                         }
                     }
                 }
+                
                 Column(
                     modifier = Modifier.fillMaxWidth(),
                     verticalArrangement = Arrangement.spacedBy(8.dp)

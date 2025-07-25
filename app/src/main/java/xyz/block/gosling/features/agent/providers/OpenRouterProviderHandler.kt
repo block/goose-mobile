@@ -208,7 +208,7 @@ class OpenRouterProviderHandler : LLMProviderHandler {
     private fun supportsToolCalling(modelIdentifier: String): Boolean {
         // Based on general knowledge - this should be updated with current OpenRouter docs
         return when {
-            modelIdentifier.startsWith("anthropic/claude-3") -> true
+            modelIdentifier.startsWith("anthropic/claude-") -> true // Supports Claude 3, 4, and future versions
             modelIdentifier.startsWith("openai/gpt-4") -> true
             modelIdentifier.startsWith("openai/gpt-3.5") -> true
             modelIdentifier.startsWith("meta-llama/llama-3.1") -> true // Some Llama models support it

@@ -25,6 +25,8 @@ data class AiModel(
             AiModel("Gemini Flash light", "gemini-2.0-flash-lite", ModelProvider.GEMINI),
 
             // OpenRouter models (from various underlying providers)
+            AiModel("Claude 4 Sonnet", "anthropic/claude-sonnet-4", ModelProvider.OPENROUTER),
+            AiModel("Claude 4 Opus", "anthropic/claude-opus-4", ModelProvider.OPENROUTER),
             AiModel("Claude 3.5 Sonnet", "anthropic/claude-3.5-sonnet", ModelProvider.OPENROUTER),
             AiModel("Claude 3 Haiku", "anthropic/claude-3-haiku", ModelProvider.OPENROUTER),
             AiModel("Claude 3 Opus", "anthropic/claude-3-opus", ModelProvider.OPENROUTER),

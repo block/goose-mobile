@@ -1543,66 +1543,9 @@ object ToolHandler {
         val methods = ToolHandler::class.java.methods
             .filter { it.isAnnotationPresent(Tool::class.java) }
 
-        // Get the regular tool definitions first
-        val regularToolDefinitions = when (provider) {
-            ModelProvider.OPENAI -> {
-                methods.mapNotNull { method ->
-                    val tool = method.getAnnotation(Tool::class.java) ?: return@mapNotNull null
-
-                    // Always create a ToolParametersObject, even for tools with no parameters
-                    val toolParameters = ToolParametersObject(
-                        properties = tool.parameters.associate { param ->
-                            param.name to ToolParameter(
-                                type = param.type,
-                                description = param.description
-                            )
-                        },
-                        required = tool.parameters
-                            .filter { it.required }
-                            .map { it.name }
-                    )
-
-                    ToolDefinition(
-                        function = ToolFunctionDefinition(
-                            name = tool.name,
-                            description = tool.description,
-                            parameters = toolParameters
-                        )
-                    )
-                }
-            }
-
-            ModelProvider.GEMINI -> {
-                methods.mapNotNull { method ->
-                    val tool = method.getAnnotation(Tool::class.java) ?: return@mapNotNull null
-                    val toolParameters = ToolParametersObject(
-                        properties = tool.parameters.associate { param ->
-                            param.name to ToolParameter(
-                                type = when (param.type.lowercase(Locale.getDefault())) {
-                                    "integer" -> "string" // Use string for integers
-                                    "boolean" -> "boolean"
-                                    "string" -> "string"
-                                    "double", "float" -> "number"
-                                    else -> "string"
-                                },
-                                description = param.description
-                            )
-                        },
-                        required = tool.parameters
-                            .filter { it.required }
-                            .map { it.name }
-                    )
-
-                    ToolDefinition(
-                        function = ToolFunctionDefinition(
-                            name = tool.name,
-                            description = tool.description,
-                            parameters = toolParameters
-                        )
-                    )
-                }
-            }
-        }
+        // Use provider handler to create tool definitions
+        val providerHandler = getProviderHandler(provider)
+        val regularToolDefinitions = providerHandler.createToolDefinitions(methods)
 
         val settings = xyz.block.gosling.features.settings.SettingsStore(context)
         val enableAppExtensions = settings.enableAppExtensions
@@ -1667,28 +1610,40 @@ object ToolHandler {
         }
 
         // Combine regular tools and MCP tools
-        val allTools = regularToolDefinitions + mcpTools
-
-        return when (provider) {
-            ModelProvider.OPENAI -> SerializableToolDefinitions.OpenAITools(allTools)
-            ModelProvider.GEMINI -> {
-                // For Gemini, we need to convert the tool definitions to Gemini format
-                val functionDeclarations = allTools.map { toolDef ->
+        return when (regularToolDefinitions) {
+            is SerializableToolDefinitions.OpenAITools -> {
+                SerializableToolDefinitions.OpenAITools(regularToolDefinitions.definitions + mcpTools)
+            }
+            is SerializableToolDefinitions.GeminiTools -> {
+                // For Gemini, we need to convert the MCP tools to Gemini format
+                val mcpFunctionDeclarations = mcpTools.map { toolDef ->
                     GeminiFunctionDeclaration(
                         name = toolDef.function.name,
                         description = toolDef.function.description,
                         parameters = if (toolDef.function.parameters.properties.isEmpty()) null else toolDef.function.parameters
                     )
                 }
-
+                
+                val existingDeclarations = regularToolDefinitions.tools.firstOrNull()?.functionDeclarations ?: emptyList()
+                
                 SerializableToolDefinitions.GeminiTools(
                     listOf(
                         GeminiTool(
-                            functionDeclarations = functionDeclarations
+                            functionDeclarations = existingDeclarations + mcpFunctionDeclarations
                         )
                     )
                 )
             }
+        }
+    }
+    
+    /**
+     * Get the appropriate provider handler for the given provider.
+     */
+    private fun getProviderHandler(provider: ModelProvider): xyz.block.gosling.features.agent.providers.LLMProviderHandler {
+        return when (provider) {
+            ModelProvider.OPENAI -> xyz.block.gosling.features.agent.providers.OpenAIProviderHandler()
+            ModelProvider.GEMINI -> xyz.block.gosling.features.agent.providers.GeminiProviderHandler()
         }
     }
 

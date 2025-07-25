@@ -401,46 +401,10 @@ class Agent : Service() {
                     val llmDuration = (System.currentTimeMillis() - startTimeLLMCall) / 1000.0
 
                     try {
-                        val (assistantReply, toolCalls, annotation) = when {
-                            response.has("choices") -> {
-                                val assistantMessage =
-                                    response.getJSONArray("choices").getJSONObject(0)
-                                        .getJSONObject("message")
-                                val content = assistantMessage.optString("content", "Ok")
-                                val tools = assistantMessage.optJSONArray("tool_calls")?.let {
-                                    List(it.length()) { i -> ToolHandler.fromJson(it.getJSONObject(i)) }
-                                }
-                                val usage = response.getJSONObject("usage")
-                                val annotation = mapOf(
-                                    "duration" to llmDuration,
-                                    "input_tokens" to usage.getInt("prompt_tokens").toDouble(),
-                                    "output_tokens" to usage.getInt("completion_tokens").toDouble()
-                                )
-                                Triple(content, tools, annotation)
-                            }
-
-                            response.has("candidates") -> {
-                                val candidate = response.getJSONArray("candidates").getJSONObject(0)
-                                val content = candidate.getJSONObject("content")
-                                val text = content.getJSONArray("parts").getJSONObject(0)
-                                    .optString("text", "Ok")
-
-                                val tools = content.optJSONArray("parts")?.let { parts ->
-                                    List(parts.length()) { i ->
-                                        val part = parts.getJSONObject(i)
-                                        if (part.has("functionCall")) {
-                                            ToolHandler.fromJson(part)
-                                        } else null
-                                    }.filterNotNull()
-                                }
-                                val annotation = mapOf(
-                                    "duration" to llmDuration
-                                )
-                                Triple(text, tools, annotation)
-                            }
-
-                            else -> Triple("Unknown response format", null, emptyMap())
-                        }
+                        val settings = SettingsStore(context)
+                        val model = AiModel.fromIdentifier(settings.llmModel)
+                        val (assistantReply, toolCalls, annotation) = 
+                            getProviderHandler(model.provider).parseResponse(response, llmDuration)
 
                         if (isCancelled) {
                             updateStatus(AgentStatus.Success("Operation cancelled"))
@@ -693,22 +657,16 @@ class Agent : Service() {
     private fun makeHttpCall(
         urlString: String,
         requestBody: String,
-        apiKey: String?,
+        headers: Map<String, String>,
         model: AiModel
     ): JSONObject {
-        // Check for missing API key before making the request
-        if (apiKey.isNullOrBlank()) {
-            val errorMsg = "API key is missing for ${model.provider}. Please add your API key in settings."
-            Log.e(tag, errorMsg)
-            throw ApiKeyException(errorMsg)
-        }
-        
         val request = Request.Builder()
             .url(urlString)
             .post(requestBody.toRequestBody("application/json".toMediaType()))
             .apply {
-                if (model.provider == ModelProvider.OPENAI) {
-                    addHeader("Authorization", "Bearer $apiKey")
+                // Add provider-specific headers
+                headers.forEach { (key, value) ->
+                    addHeader(key, value)
                 }
             }
             .build()
@@ -748,55 +706,36 @@ class Agent : Service() {
 
         val processedMessages = removeOutdatedPayloads(messages)
 
-        val urlString = when (model.provider) {
-            ModelProvider.OPENAI -> "https://api.openai.com/v1/chat/completions"
-            ModelProvider.GEMINI -> "https://generativelanguage.googleapis.com/v1beta/models/${model.identifier}:generateContent?key=$apiKey"
-        }
-
-        val json = jsonFormat
-
-        val requestBody = when (model.provider) {
-            ModelProvider.OPENAI -> {
-                val toolDefinitions =
-                    when (val result = getSerializableToolDefinitions(context, model.provider)) {
-                        is SerializableToolDefinitions.OpenAITools -> result.definitions
-                        else -> emptyList()
-                    }
-
-                val openAIRequest = OpenAIRequest(
-                    model = model.identifier,
-                    messages = processedMessages,
-                    temperature = if (model.identifier != "o3-mini") 0.1 else null,
-                    tools = toolDefinitions
-                )
-
-                json.encodeToString(openAIRequest)
-            }
-
-            ModelProvider.GEMINI -> {
-                val combinedText = processedMessages.joinToString("\n") {
-                    "${it.role}: ${it.content}"
-                }
-
-                val tools =
-                    when (val result = getSerializableToolDefinitions(context, model.provider)) {
-                        is SerializableToolDefinitions.GeminiTools -> result.tools
-                        else -> emptyList()
-                    }
-
-                val geminiRequest = GeminiRequest(
-                    contents = GeminiContent(
-                        parts = listOf(GeminiPart(text = combinedText))
-                    ),
-                    tools = tools
-                )
-
-                json.encodeToString(geminiRequest)
-            }
-        }
+        // Get the appropriate provider handler
+        val providerHandler = getProviderHandler(model.provider)
+        
+        // Get tool definitions using the provider handler
+        val toolDefinitions = getSerializableToolDefinitions(context, model.provider)
+        
+        // Create request using provider handler
+        val requestBody = providerHandler.createRequest(
+            model.identifier,
+            processedMessages,
+            toolDefinitions,
+            apiKey
+        )
+        
+        // Get URL and headers from provider handler
+        val urlString = providerHandler.getApiUrl(model.identifier, apiKey)
+        val headers = providerHandler.getHeaders(apiKey)
 
         return withContext(Dispatchers.IO) {
-            makeHttpCall(urlString, requestBody, apiKey, model)
+            makeHttpCall(urlString, requestBody, headers, model)
+        }
+    }
+    
+    /**
+     * Get the appropriate provider handler for the given provider.
+     */
+    private fun getProviderHandler(provider: ModelProvider): xyz.block.gosling.features.agent.providers.LLMProviderHandler {
+        return when (provider) {
+            ModelProvider.OPENAI -> xyz.block.gosling.features.agent.providers.OpenAIProviderHandler()
+            ModelProvider.GEMINI -> xyz.block.gosling.features.agent.providers.GeminiProviderHandler()
         }
     }
 

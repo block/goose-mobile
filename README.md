@@ -2,12 +2,7 @@
 
 An experimental open agent for android to do your dirty work so you can spend more time not on your phone.
 
-![Screenshot 2025-05-05 at 12 18 07 pm](https://github.com/user-attachments/assets/22b11dd7-0adf-428b-94db-6c1afc600b3e)
-
-Goose Mobile as your home launcher 
-
-https://github.com/user-attachments/assets/87b73419-c27a-4368-9b60-c544e4d1b575
-
+![Screenshot_20250708_124558](https://github.com/user-attachments/assets/af9d7d83-54f4-4ace-ad66-9e19f86c8fb9)
 
 ## Introduction
 Welcome to Goose Mobile, an interpretation of [Goose](https://github.com/block/goose), but for Android, providing maximal automation of every day tasks on a personal device.
@@ -18,11 +13,15 @@ either when needed, or using it as a home screen replacement.
 > [!CAUTION]
 > This is an experimental project, and requires deep access to your device, use at own risk
 
+Here it is in action: 
+
+https://github.com/user-attachments/assets/19f77d1f-9db4-415f-9f87-9b1cad4b1ec9
+
+
 Goose Mobile can also react to notifications that come in and spring into action on your behalf (you can set the rules).
 (automatically update people on your availability in a calendar for example)
 You can try any multi step task that you like, it will use the apps on hand.
 
-https://github.com/user-attachments/assets/19f77d1f-9db4-415f-9f87-9b1cad4b1ec9
 
 In the `benchmarking` directory there are some end to end scenarios (orchestrated with goose), but they are very simple to start with to establish a baseline.
 
@@ -157,11 +156,18 @@ Goose Mobile will discover and make use of that - note the finer details of this
 
 We welcome contributions to Goose Mobile! Whether you're fixing bugs, adding new features, improving documentation, or creating extensions, your help is appreciated.
 
-Please see our [Contributing Guide](CONTRIBUTING.md) for detailed information on:
-- Setting up your development environment
-- Code style and standards
-- Submitting pull requests
-- Testing guidelines
-- Creating mobile MCP extensions
+Please see our [Contributing Guide](CONTRIBUTING.md) for detailed information
 
-Before contributing, please read through the guide to ensure your contributions align with the project's goals and standards.
+## Building and distribution
+
+This is a standard android project, using gradle. 
+The build for the distribution for people to try out is done with `./gradlew assembleDebug` and then uploaded to firebase.
+
+## Help wanted
+
+There are many things that could be done, but some practical things: 
+
+* run reasonable tests in CI (perhaps using goose with openai to validate results as they are rarely deterministic)
+* unit tests where applicable
+* a pipeline to publish main to firebase
+* enhance provider to work with other models

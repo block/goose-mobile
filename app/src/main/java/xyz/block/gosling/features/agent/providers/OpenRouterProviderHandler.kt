@@ -68,12 +68,11 @@ class OpenRouterProviderHandler : LLMProviderHandler {
                 "tool" -> {
                     // Tool messages need special handling for OpenRouter
                     val content = message.content?.firstOrNull()
-                    val textContent = if (content is Content.Text) content.text else content.toString()
                     
                     // Create a tool message using JSON directly
                     org.json.JSONObject().apply {
                         put("role", "tool")
-                        put("content", textContent)
+                        put("content", if (content is Content.Text) content.text else content.toString())
                         put("tool_call_id", message.toolCallId ?: "")
                         put("name", message.name ?: "")
                     }

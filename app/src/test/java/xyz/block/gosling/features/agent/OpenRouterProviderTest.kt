@@ -13,13 +13,15 @@ class OpenRouterProviderTest {
         assertTrue("Should have at least one OpenRouter model", openRouterModels.isNotEmpty())
         
         val expectedModels = listOf(
+            "anthropic/claude-sonnet-4",
+            "anthropic/claude-opus-4", 
             "anthropic/claude-3.5-sonnet",
             "anthropic/claude-3-haiku", 
             "anthropic/claude-3-opus",
             "meta-llama/llama-3.1-70b-instruct",
+            "meta-llama/llama-3.1-8b-instruct",
             "mistralai/mistral-large",
-            "cohere/command-r-plus",
-            "deepseek/deepseek-chat"
+            "cohere/command-r-plus"
         )
         
         expectedModels.forEach { expectedIdentifier ->

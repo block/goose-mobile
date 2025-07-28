@@ -6,6 +6,12 @@ After installing the app from firebase or building it locally
 
 ![Screenshot_20250708_124100](https://github.com/user-attachments/assets/8311a3ae-e159-4ba7-83f6-48220f794a2c)
 
+Even if the toggle is disabled, tap on it. After you get a warning message, exit the app and go to your device settings > goose mobile > app info > and then in the top right corner, click the 3 dots and select 'allow restricted settings' - video below showing how 
+
+https://github.com/user-attachments/assets/78d8ba5a-bb3f-4c4f-9696-d4e0222d50f4
+
+
+
 Tap `<-` twice after completing this step
 
 2. Enable Accessibility

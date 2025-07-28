@@ -59,14 +59,12 @@ class OpenAIProviderHandler : LLMProviderHandler {
             else -> emptyList()
         }
 
-        val openAIRequest = OpenAIRequest(
+        return jsonFormat.encodeToString(OpenAIRequest(
             model = modelIdentifier,
             messages = messages,
             temperature = if (modelIdentifier != "o3-mini") 0.1 else null,
             tools = toolDefinitions
-        )
-
-        return jsonFormat.encodeToString(openAIRequest)
+        ))
     }
     
     override fun getApiUrl(modelIdentifier: String, apiKey: String?): String {

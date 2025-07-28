@@ -33,8 +33,7 @@ data class AiModel(
             AiModel("Llama 3.1 70B", "meta-llama/llama-3.1-70b-instruct", ModelProvider.OPENROUTER),
             AiModel("Llama 3.1 8B", "meta-llama/llama-3.1-8b-instruct", ModelProvider.OPENROUTER),
             AiModel("Mistral Large", "mistralai/mistral-large", ModelProvider.OPENROUTER),
-            AiModel("Cohere Command R+", "cohere/command-r-plus", ModelProvider.OPENROUTER),
-            AiModel("DeepSeek V3", "deepseek/deepseek-chat", ModelProvider.OPENROUTER)
+            AiModel("Cohere Command R+", "cohere/command-r-plus", ModelProvider.OPENROUTER)
         )
 
         fun fromIdentifier(identifier: String): AiModel {

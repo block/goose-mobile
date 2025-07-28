@@ -183,10 +183,13 @@ fun SettingsScreen(
         apiKey = settingsStore.getApiKey(currentModel.provider)
     }
 
-    // When provider changes, reset to first model of that provider
+    // When provider changes, reset to first model of that provider only if the current model
+    // doesn't belong to the new provider
     LaunchedEffect(selectedProvider) {
         val modelsForProvider = AiModel.getModelsForProvider(selectedProvider)
-        if (modelsForProvider.isNotEmpty()) {
+        val currentModelBelongsToProvider = modelsForProvider.any { it.identifier == selectedModelId }
+        
+        if (modelsForProvider.isNotEmpty() && !currentModelBelongsToProvider) {
             selectedModelId = modelsForProvider.first().identifier
             // Update the stored model and current model
             llmModel = selectedModelId

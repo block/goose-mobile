@@ -60,7 +60,6 @@
             android:exported="true"
             android:label="Goose Mobile Launcher"
             android:launchMode="singleTask"
-            android:screenOrientation="portrait"
             android:theme="@style/Theme.Gosling.NoActionBar">
             <intent-filter>
                 <action android:name="android.intent.action.MAIN" />

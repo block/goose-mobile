@@ -132,9 +132,20 @@ class GooseAPIService: ObservableObject {
         // Log the sessionId we're about to use
         let actualSessionId = sessionId ?? ""
         
+        // Server expects user_message (the new message) and conversation_so_far (history)
+        // The last message in the array should be the new user message
+        guard let userMessage = messages.last else {
+            onError(APIError.noData)
+            return nil
+        }
+        
+        // All messages except the last one are the conversation history
+        let conversationHistory = messages.count > 1 ? Array(messages.dropLast()) : nil
+        
         let request = ChatRequest(
-            messages: messages,
-            sessionId: actualSessionId,  // Provide empty string if nil since server requires it
+            userMessage: userMessage,
+            conversationSoFar: conversationHistory,
+            sessionId: actualSessionId,
             recipeName: nil,
             recipeVersion: nil
         )

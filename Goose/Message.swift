@@ -365,13 +365,15 @@ struct AnyCodable: Codable {
 
 // MARK: - Chat Request/Response Models
 struct ChatRequest: Codable {
-    let messages: [Message]
-    let sessionId: String  // Changed to non-optional as server requires it
+    let userMessage: Message
+    let conversationSoFar: [Message]?
+    let sessionId: String
     let recipeName: String?
     let recipeVersion: String?
     
     enum CodingKeys: String, CodingKey {
-        case messages
+        case userMessage = "user_message"
+        case conversationSoFar = "conversation_so_far"
         case sessionId = "session_id"
         case recipeName = "recipe_name"
         case recipeVersion = "recipe_version"

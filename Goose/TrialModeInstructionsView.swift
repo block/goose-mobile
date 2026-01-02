@@ -6,11 +6,8 @@ struct TrialModeInstructionsView: View {
     @State private var showingDownloadSheet = false
 
     // Download URL for Goose Desktop - always redirects to latest version
-    // latest is this:
-    //    https://github.com/block/goose/releases/latest/download/Goose.zip
-    // but for now will use https://github.com/michaelneale/goose-tunnel/releases/download/test/Goose.zip to get one with desktop capability
     private let gooseDesktopDownloadURL =
-        "https://github.com/michaelneale/goose-tunnel/releases/download/test/Goose.zip"
+        "https://github.com/block/goose/releases/latest/download/Goose.zip"
 
     var body: some View {
         NavigationView {

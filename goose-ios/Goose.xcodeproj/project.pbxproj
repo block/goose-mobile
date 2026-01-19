@@ -1,0 +1,524 @@
+// !$*UTF8*$!
+{
+	archiveVersion = 1;
+	classes = {
+	};
+	objectVersion = 56;
+	objects = {
+
+/* Begin PBXBuildFile section */
+		4D6CA113A6714967B9BA0CA1001 /* AppNoticeOverlay.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4D6CA113A6714967B9BA0CA1000 /* AppNoticeOverlay.swift */; };
+		5FB46C8A5B96A5D68C7CA66F /* VoiceInputManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0F2CBE33C0F236E880C9F178 /* VoiceInputManager.swift */; };
+		832B7A0E2EA9E166000FB7AB /* TrialMode.swift in Sources */ = {isa = PBXBuildFile; fileRef = 832B7A0D2EA9E166000FB7AB /* TrialMode.swift */; };
+		8334E35E2EB89408009094CE /* AppNoticeCenter.swift in Frameworks */ = {isa = PBXBuildFile; fileRef = 8542CDA2877E4BEF8ADA8A5C000 /* AppNoticeCenter.swift */; };
+		8334E35F2EB89408009094CE /* AppNoticeOverlay.swift in Frameworks */ = {isa = PBXBuildFile; fileRef = 4D6CA113A6714967B9BA0CA1000 /* AppNoticeOverlay.swift */; };
+		8334E3612EB89C5D009094CE /* FavoriteSessionsStorage.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8334E3602EB89C5D009094CE /* FavoriteSessionsStorage.swift */; };
+		83398FCC2EA0D47900EB958C /* TrialModeInstructionsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 83398FCB2EA0D47900EB958C /* TrialModeInstructionsView.swift */; };
+		834A2CB82E98D93A00D15D6A /* ContinuousVoiceManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = 834A2CB72E98D93A00D15D6A /* ContinuousVoiceManager.swift */; };
+		834A2CB92E98D93B00D15D6A /* EnhancedVoiceManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = 834A2CB82E98D93B00D15D6A /* EnhancedVoiceManager.swift */; };
+		837D4D732EA6FAD6000A95B7 /* SessionsCard.swift in Sources */ = {isa = PBXBuildFile; fileRef = 837D4D722EA6FAD6000A95B7 /* SessionsCard.swift */; };
+		838F2DE52E9CA43D00E2FC48 /* SplashScreenView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 838F2DE32E9CA43D00E2FC48 /* SplashScreenView.swift */; };
+		838F2DE62E9CA43D00E2FC48 /* WelcomeView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 838F2DE42E9CA43D00E2FC48 /* WelcomeView.swift */; };
+		838F2DEB2E9E1CF700E2FC48 /* ThemeManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = 838F2DEA2E9E1CF700E2FC48 /* ThemeManager.swift */; };
+		838F2DEC2E9E1CF700E2FC48 /* TaskDetailView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 838F2DE92E9E1CF700E2FC48 /* TaskDetailView.swift */; };
+		838F2DEE2E9E24E200E2FC48 /* SidebarView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 838F2DED2E9E24E200E2FC48 /* SidebarView.swift */; };
+		838F2DF02E9E270300E2FC48 /* ChatInputView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 838F2DEF2E9E270300E2FC48 /* ChatInputView.swift */; };
+		83ACD8AB2E827DB500379D0E /* ConfigurationHandler.swift in Sources */ = {isa = PBXBuildFile; fileRef = 83ACD8A82E827DB500379D0E /* ConfigurationHandler.swift */; };
+		83EF04C72EB0393200D2D688 /* MarkdownTestView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 83EF04C62EB0393200D2D688 /* MarkdownTestView.swift */; };
+		8542CDA2877E4BEF8ADA8A5C001 /* AppNoticeCenter.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8542CDA2877E4BEF8ADA8A5C000 /* AppNoticeCenter.swift */; };
+		8C4210473D62873842C1D790 /* MarkdownTableView.swift in Sources */ = {isa = PBXBuildFile; fileRef = EA377AE97CC0C621896375E7 /* MarkdownTableView.swift */; };
+		A0E8AD4226A0448EA14A1E4D /* CalendarExtensions.swift in Sources */ = {isa = PBXBuildFile; fileRef = AE15643668F34C98B329A6FA /* CalendarExtensions.swift */; };
+		A1234567890ABCDEF001 /* GooseApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = A1234567890ABCDEF000 /* GooseApp.swift */; };
+		A1234567890ABCDEF003 /* ContentView.swift in Sources */ = {isa = PBXBuildFile; fileRef = A1234567890ABCDEF002 /* ContentView.swift */; };
+		A1234567890ABCDEF005 /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = A1234567890ABCDEF004 /* Assets.xcassets */; };
+		A1234567890ABCDEF008 /* Preview Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = A1234567890ABCDEF007 /* Preview Assets.xcassets */; };
+		A1234567890ABCDEF010 /* ChatView.swift in Sources */ = {isa = PBXBuildFile; fileRef = A1234567890ABCDEF009 /* ChatView.swift */; };
+		A1234567890ABCDEF012 /* Message.swift in Sources */ = {isa = PBXBuildFile; fileRef = A1234567890ABCDEF011 /* Message.swift */; };
+		A1234567890ABCDEF014 /* GooseAPIService.swift in Sources */ = {isa = PBXBuildFile; fileRef = A1234567890ABCDEF013 /* GooseAPIService.swift */; };
+		A1234567890ABCDEF018 /* SettingsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = A1234567890ABCDEF017 /* SettingsView.swift */; };
+		A1234567890ABCDEF020 /* Markdown in Frameworks */ = {isa = PBXBuildFile; productRef = A1234567890ABCDEF019 /* Markdown */; };
+		BBDDB97B3661CB27DAED17A1 /* StackedToolCallsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = FE1A3D767C87B30740AC05D2 /* StackedToolCallsView.swift */; };
+		C3E99F296500267DEFD596CA /* VoiceOutputManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = A19A6DF268C759B62CA875DB /* VoiceOutputManager.swift */; };
+		D32A017F2EAA7D6600AF9DD0 /* AssistantMessageView.swift in Sources */ = {isa = PBXBuildFile; fileRef = D32A017E2EAA7D6600AF9DD0 /* AssistantMessageView.swift */; };
+		D32A01812EAA7D7300AF9DD0 /* UserMessageView.swift in Sources */ = {isa = PBXBuildFile; fileRef = D32A01802EAA7D7300AF9DD0 /* UserMessageView.swift */; };
+		D32A01832EAA7D8100AF9DD0 /* SharedMessageComponents.swift in Sources */ = {isa = PBXBuildFile; fileRef = D32A01822EAA7D8100AF9DD0 /* SharedMessageComponents.swift */; };
+		D32A01852EAA7D8F00AF9DD0 /* ToolViews.swift in Sources */ = {isa = PBXBuildFile; fileRef = D32A01842EAA7D8F00AF9DD0 /* ToolViews.swift */; };
+		D3BC33FA2EA1597B0057E748 /* WelcomeCard.swift in Sources */ = {isa = PBXBuildFile; fileRef = D3BC33F92EA1597B0057E748 /* WelcomeCard.swift */; };
+		D3BC33FC2EA161BA0057E748 /* SafeAreaExtension.swift in Sources */ = {isa = PBXBuildFile; fileRef = D3BC33FB2EA161BA0057E748 /* SafeAreaExtension.swift */; };
+		D3BC33FE2EA16CF30057E748 /* TrialModeBanner.swift in Sources */ = {isa = PBXBuildFile; fileRef = D3BC33FD2EA16CF30057E748 /* TrialModeBanner.swift */; };
+		D3BC34002EA1713D0057E748 /* NodeMatrix.swift in Sources */ = {isa = PBXBuildFile; fileRef = D3BC33FF2EA1713D0057E748 /* NodeMatrix.swift */; };
+		D3BC34042EA19D990057E748 /* NodeFocus.swift in Sources */ = {isa = PBXBuildFile; fileRef = D3BC34032EA19D990057E748 /* NodeFocus.swift */; };
+/* End PBXBuildFile section */
+
+/* Begin PBXFileReference section */
+		0F2CBE33C0F236E880C9F178 /* VoiceInputManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = VoiceInputManager.swift; sourceTree = "<group>"; };
+		4D6CA113A6714967B9BA0CA1000 /* AppNoticeOverlay.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppNoticeOverlay.swift; sourceTree = "<group>"; };
+		832B7A0D2EA9E166000FB7AB /* TrialMode.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = TrialMode.swift; path = Goose/TrialMode.swift; sourceTree = "<group>"; };
+		8334E3602EB89C5D009094CE /* FavoriteSessionsStorage.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = FavoriteSessionsStorage.swift; path = Goose/FavoriteSessionsStorage.swift; sourceTree = "<group>"; };
+		83398FCB2EA0D47900EB958C /* TrialModeInstructionsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TrialModeInstructionsView.swift; sourceTree = "<group>"; };
+		834A2CB72E98D93A00D15D6A /* ContinuousVoiceManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = ContinuousVoiceManager.swift; path = Goose/ContinuousVoiceManager.swift; sourceTree = "<group>"; };
+		834A2CB82E98D93B00D15D6A /* EnhancedVoiceManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = EnhancedVoiceManager.swift; sourceTree = "<group>"; };
+		837D4D722EA6FAD6000A95B7 /* SessionsCard.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = SessionsCard.swift; path = Goose/SessionsCard.swift; sourceTree = "<group>"; };
+		838F2DE32E9CA43D00E2FC48 /* SplashScreenView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SplashScreenView.swift; sourceTree = "<group>"; };
+		838F2DE42E9CA43D00E2FC48 /* WelcomeView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WelcomeView.swift; sourceTree = "<group>"; };
+		838F2DE92E9E1CF700E2FC48 /* TaskDetailView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = TaskDetailView.swift; path = Goose/TaskDetailView.swift; sourceTree = "<group>"; };
+		838F2DEA2E9E1CF700E2FC48 /* ThemeManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = ThemeManager.swift; path = Goose/ThemeManager.swift; sourceTree = "<group>"; };
+		838F2DED2E9E24E200E2FC48 /* SidebarView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SidebarView.swift; sourceTree = "<group>"; };
+		838F2DEF2E9E270300E2FC48 /* ChatInputView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ChatInputView.swift; sourceTree = "<group>"; };
+		83ACD8A82E827DB500379D0E /* ConfigurationHandler.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ConfigurationHandler.swift; sourceTree = "<group>"; };
+		83ACD8A92E827DB500379D0E /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist.xml; path = Info.plist; sourceTree = "<group>"; };
+		83ACD8AC2E827FAE00379D0E /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist; path = Info.plist; sourceTree = "<group>"; };
+		83EF04C62EB0393200D2D688 /* MarkdownTestView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = MarkdownTestView.swift; path = Goose/MarkdownTestView.swift; sourceTree = "<group>"; };
+		8542CDA2877E4BEF8ADA8A5C000 /* AppNoticeCenter.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppNoticeCenter.swift; sourceTree = "<group>"; };
+		A1234567890ABCDEF000 /* GooseApp.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = GooseApp.swift; sourceTree = "<group>"; };
+		A1234567890ABCDEF002 /* ContentView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ContentView.swift; sourceTree = "<group>"; };
+		A1234567890ABCDEF004 /* Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = Assets.xcassets; sourceTree = "<group>"; };
+		A1234567890ABCDEF007 /* Preview Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = "Preview Assets.xcassets"; sourceTree = "<group>"; };
+		A1234567890ABCDEF009 /* ChatView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ChatView.swift; sourceTree = "<group>"; };
+		A1234567890ABCDEF011 /* Message.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Message.swift; sourceTree = "<group>"; };
+		A1234567890ABCDEF013 /* GooseAPIService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = GooseAPIService.swift; sourceTree = "<group>"; };
+		A1234567890ABCDEF017 /* SettingsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SettingsView.swift; sourceTree = "<group>"; };
+		A1234567890ABCDEF999 /* Goose.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = Goose.app; sourceTree = BUILT_PRODUCTS_DIR; };
+		A19A6DF268C759B62CA875DB /* VoiceOutputManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = VoiceOutputManager.swift; sourceTree = "<group>"; };
+		AE15643668F34C98B329A6FA /* CalendarExtensions.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CalendarExtensions.swift; sourceTree = "<group>"; };
+		D32A017E2EAA7D6600AF9DD0 /* AssistantMessageView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AssistantMessageView.swift; sourceTree = "<group>"; };
+		D32A01802EAA7D7300AF9DD0 /* UserMessageView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = UserMessageView.swift; sourceTree = "<group>"; };
+		D32A01822EAA7D8100AF9DD0 /* SharedMessageComponents.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SharedMessageComponents.swift; sourceTree = "<group>"; };
+		D32A01842EAA7D8F00AF9DD0 /* ToolViews.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ToolViews.swift; sourceTree = "<group>"; };
+		D3BC33F92EA1597B0057E748 /* WelcomeCard.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WelcomeCard.swift; sourceTree = "<group>"; };
+		D3BC33FB2EA161BA0057E748 /* SafeAreaExtension.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SafeAreaExtension.swift; sourceTree = "<group>"; };
+		D3BC33FD2EA16CF30057E748 /* TrialModeBanner.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TrialModeBanner.swift; sourceTree = "<group>"; };
+		D3BC33FF2EA1713D0057E748 /* NodeMatrix.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NodeMatrix.swift; sourceTree = "<group>"; };
+		D3BC34032EA19D990057E748 /* NodeFocus.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NodeFocus.swift; sourceTree = "<group>"; };
+		EA377AE97CC0C621896375E7 /* MarkdownTableView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MarkdownTableView.swift; sourceTree = "<group>"; };
+		FE1A3D767C87B30740AC05D2 /* StackedToolCallsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = StackedToolCallsView.swift; sourceTree = "<group>"; };
+/* End PBXFileReference section */
+
+/* Begin PBXFrameworksBuildPhase section */
+		A1234567890ABCDEF996 /* Frameworks */ = {
+			isa = PBXFrameworksBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				8334E35E2EB89408009094CE /* AppNoticeCenter.swift in Frameworks */,
+				8334E35F2EB89408009094CE /* AppNoticeOverlay.swift in Frameworks */,
+				A1234567890ABCDEF020 /* Markdown in Frameworks */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXFrameworksBuildPhase section */
+
+/* Begin PBXGroup section */
+		A1234567890ABCDEF006 /* Preview Content */ = {
+			isa = PBXGroup;
+			children = (
+				A1234567890ABCDEF007 /* Preview Assets.xcassets */,
+			);
+			path = "Preview Content";
+			sourceTree = "<group>";
+		};
+		A1234567890ABCDEF990 = {
+			isa = PBXGroup;
+			children = (
+				8334E3602EB89C5D009094CE /* FavoriteSessionsStorage.swift */,
+				83EF04C62EB0393200D2D688 /* MarkdownTestView.swift */,
+				832B7A0D2EA9E166000FB7AB /* TrialMode.swift */,
+				837D4D722EA6FAD6000A95B7 /* SessionsCard.swift */,
+				838F2DE92E9E1CF700E2FC48 /* TaskDetailView.swift */,
+				838F2DEA2E9E1CF700E2FC48 /* ThemeManager.swift */,
+				834A2CB72E98D93A00D15D6A /* ContinuousVoiceManager.swift */,
+				A1234567890ABCDEF991 /* Goose */,
+				A1234567890ABCDEF998 /* Products */,
+			);
+			sourceTree = "<group>";
+		};
+		A1234567890ABCDEF991 /* Goose */ = {
+			isa = PBXGroup;
+			children = (
+				D3BC33FD2EA16CF30057E748 /* TrialModeBanner.swift */,
+				D3BC33F92EA1597B0057E748 /* WelcomeCard.swift */,
+				D3BC33FB2EA161BA0057E748 /* SafeAreaExtension.swift */,
+				83398FCB2EA0D47900EB958C /* TrialModeInstructionsView.swift */,
+				838F2DEF2E9E270300E2FC48 /* ChatInputView.swift */,
+				838F2DED2E9E24E200E2FC48 /* SidebarView.swift */,
+				838F2DE32E9CA43D00E2FC48 /* SplashScreenView.swift */,
+				838F2DE42E9CA43D00E2FC48 /* WelcomeView.swift */,
+				D3BC34032EA19D990057E748 /* NodeFocus.swift */,
+				D3BC33FF2EA1713D0057E748 /* NodeMatrix.swift */,
+				83ACD8AC2E827FAE00379D0E /* Info.plist */,
+				83ACD8A82E827DB500379D0E /* ConfigurationHandler.swift */,
+				83ACD8A92E827DB500379D0E /* Info.plist */,
+				A1234567890ABCDEF000 /* GooseApp.swift */,
+				A1234567890ABCDEF002 /* ContentView.swift */,
+				8542CDA2877E4BEF8ADA8A5C000 /* AppNoticeCenter.swift */,
+				4D6CA113A6714967B9BA0CA1000 /* AppNoticeOverlay.swift */,
+				AE15643668F34C98B329A6FA /* CalendarExtensions.swift */,
+				A1234567890ABCDEF009 /* ChatView.swift */,
+				0F2CBE33C0F236E880C9F178 /* VoiceInputManager.swift */,
+				A19A6DF268C759B62CA875DB /* VoiceOutputManager.swift */,
+				834A2CB82E98D93B00D15D6A /* EnhancedVoiceManager.swift */,
+				D32A017E2EAA7D6600AF9DD0 /* AssistantMessageView.swift */,
+				FE1A3D767C87B30740AC05D2 /* StackedToolCallsView.swift */,
+				D32A01802EAA7D7300AF9DD0 /* UserMessageView.swift */,
+				D32A01822EAA7D8100AF9DD0 /* SharedMessageComponents.swift */,
+				EA377AE97CC0C621896375E7 /* MarkdownTableView.swift */,
+				D32A01842EAA7D8F00AF9DD0 /* ToolViews.swift */,
+				A1234567890ABCDEF017 /* SettingsView.swift */,
+				A1234567890ABCDEF011 /* Message.swift */,
+				A1234567890ABCDEF013 /* GooseAPIService.swift */,
+				A1234567890ABCDEF004 /* Assets.xcassets */,
+				A1234567890ABCDEF006 /* Preview Content */,
+			);
+			path = Goose;
+			sourceTree = "<group>";
+		};
+		A1234567890ABCDEF998 /* Products */ = {
+			isa = PBXGroup;
+			children = (
+				A1234567890ABCDEF999 /* Goose.app */,
+			);
+			name = Products;
+			sourceTree = "<group>";
+		};
+/* End PBXGroup section */
+
+/* Begin PBXNativeTarget section */
+		A1234567890ABCDEF995 /* Goose */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = A1234567890ABCDEF992 /* Build configuration list for PBXNativeTarget "Goose" */;
+			buildPhases = (
+				A1234567890ABCDEF994 /* Sources */,
+				A1234567890ABCDEF996 /* Frameworks */,
+				A1234567890ABCDEF997 /* Resources */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+			);
+			name = Goose;
+			packageProductDependencies = (
+				A1234567890ABCDEF019 /* Markdown */,
+			);
+			productName = Goose;
+			productReference = A1234567890ABCDEF999 /* Goose.app */;
+			productType = "com.apple.product-type.application";
+		};
+/* End PBXNativeTarget section */
+
+/* Begin PBXProject section */
+		A1234567890ABCDEF989 /* Project object */ = {
+			isa = PBXProject;
+			attributes = {
+				BuildIndependentTargetsInParallel = 1;
+				LastSwiftUpdateCheck = 1500;
+				LastUpgradeCheck = 1500;
+				TargetAttributes = {
+					A1234567890ABCDEF995 = {
+						CreatedOnToolsVersion = 15.0;
+					};
+				};
+			};
+			buildConfigurationList = A1234567890ABCDEF988 /* Build configuration list for PBXProject "Goose" */;
+			compatibilityVersion = "Xcode 14.0";
+			developmentRegion = en;
+			hasScannedForEncodings = 0;
+			knownRegions = (
+				en,
+				Base,
+			);
+			mainGroup = A1234567890ABCDEF990;
+			packageReferences = (
+				A1234567890ABCDEF021 /* XCRemoteSwiftPackageReference "swift-markdown" */,
+			);
+			productRefGroup = A1234567890ABCDEF998 /* Products */;
+			projectDirPath = "";
+			projectRoot = "";
+			targets = (
+				A1234567890ABCDEF995 /* Goose */,
+			);
+		};
+/* End PBXProject section */
+
+/* Begin PBXResourcesBuildPhase section */
+		A1234567890ABCDEF997 /* Resources */ = {
+			isa = PBXResourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				A1234567890ABCDEF008 /* Preview Assets.xcassets in Resources */,
+				A1234567890ABCDEF005 /* Assets.xcassets in Resources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXResourcesBuildPhase section */
+
+/* Begin PBXSourcesBuildPhase section */
+		A1234567890ABCDEF994 /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				8542CDA2877E4BEF8ADA8A5C001 /* AppNoticeCenter.swift in Sources */,
+				4D6CA113A6714967B9BA0CA1001 /* AppNoticeOverlay.swift in Sources */,
+				A1234567890ABCDEF003 /* ContentView.swift in Sources */,
+				838F2DF02E9E270300E2FC48 /* ChatInputView.swift in Sources */,
+				837D4D732EA6FAD6000A95B7 /* SessionsCard.swift in Sources */,
+				838F2DE52E9CA43D00E2FC48 /* SplashScreenView.swift in Sources */,
+				838F2DE62E9CA43D00E2FC48 /* WelcomeView.swift in Sources */,
+				A0E8AD4226A0448EA14A1E4D /* CalendarExtensions.swift in Sources */,
+				A1234567890ABCDEF010 /* ChatView.swift in Sources */,
+				5FB46C8A5B96A5D68C7CA66F /* VoiceInputManager.swift in Sources */,
+				D3BC34042EA19D990057E748 /* NodeFocus.swift in Sources */,
+				838F2DEB2E9E1CF700E2FC48 /* ThemeManager.swift in Sources */,
+				D3BC33FE2EA16CF30057E748 /* TrialModeBanner.swift in Sources */,
+				D32A017F2EAA7D6600AF9DD0 /* AssistantMessageView.swift in Sources */,
+				BBDDB97B3661CB27DAED17A1 /* StackedToolCallsView.swift in Sources */,
+				838F2DEC2E9E1CF700E2FC48 /* TaskDetailView.swift in Sources */,
+				83EF04C72EB0393200D2D688 /* MarkdownTestView.swift in Sources */,
+				C3E99F296500267DEFD596CA /* VoiceOutputManager.swift in Sources */,
+				D32A01832EAA7D8100AF9DD0 /* SharedMessageComponents.swift in Sources */,
+				8C4210473D62873842C1D790 /* MarkdownTableView.swift in Sources */,
+				D32A01852EAA7D8F00AF9DD0 /* ToolViews.swift in Sources */,
+				D3BC33FC2EA161BA0057E748 /* SafeAreaExtension.swift in Sources */,
+				A1234567890ABCDEF012 /* Message.swift in Sources */,
+				83398FCC2EA0D47900EB958C /* TrialModeInstructionsView.swift in Sources */,
+				83ACD8AB2E827DB500379D0E /* ConfigurationHandler.swift in Sources */,
+				834A2CB82E98D93A00D15D6A /* ContinuousVoiceManager.swift in Sources */,
+				834A2CB92E98D93B00D15D6A /* EnhancedVoiceManager.swift in Sources */,
+				A1234567890ABCDEF014 /* GooseAPIService.swift in Sources */,
+				D3BC34002EA1713D0057E748 /* NodeMatrix.swift in Sources */,
+				832B7A0E2EA9E166000FB7AB /* TrialMode.swift in Sources */,
+				838F2DEE2E9E24E200E2FC48 /* SidebarView.swift in Sources */,
+				A1234567890ABCDEF018 /* SettingsView.swift in Sources */,
+				8334E3612EB89C5D009094CE /* FavoriteSessionsStorage.swift in Sources */,
+				D3BC33FA2EA1597B0057E748 /* WelcomeCard.swift in Sources */,
+				A1234567890ABCDEF001 /* GooseApp.swift in Sources */,
+				D32A01812EAA7D7300AF9DD0 /* UserMessageView.swift in Sources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXSourcesBuildPhase section */
+
+/* Begin XCBuildConfiguration section */
+		A1234567890ABCDEF985 /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
+				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
+				CODE_SIGN_STYLE = Automatic;
+				CURRENT_PROJECT_VERSION = 1;
+				DEVELOPMENT_ASSET_PATHS = "\"Goose/Preview Content\"";
+				DEVELOPMENT_TEAM = W2L75AE9HQ;
+				ENABLE_PREVIEWS = YES;
+				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_FILE = Goose/Info.plist;
+				INFOPLIST_KEY_CFBundleDisplayName = Goose;
+				INFOPLIST_KEY_UIApplicationSceneManifest_Generation = YES;
+				INFOPLIST_KEY_UIApplicationSupportsIndirectInputEvents = YES;
+				INFOPLIST_KEY_UILaunchScreen_Generation = YES;
+				INFOPLIST_KEY_UISupportedInterfaceOrientations_iPad = "UIInterfaceOrientationPortrait UIInterfaceOrientationPortraitUpsideDown UIInterfaceOrientationLandscapeLeft UIInterfaceOrientationLandscapeRight";
+				INFOPLIST_KEY_UISupportedInterfaceOrientations_iPhone = "UIInterfaceOrientationPortrait UIInterfaceOrientationLandscapeLeft UIInterfaceOrientationLandscapeRight";
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+				);
+				MARKETING_VERSION = 1.1.4;
+				PRODUCT_BUNDLE_IDENTIFIER = com.goose.chat;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SWIFT_EMIT_LOC_STRINGS = YES;
+				SWIFT_VERSION = 5.0;
+				TARGETED_DEVICE_FAMILY = "1,2";
+			};
+			name = Release;
+		};
+		A1234567890ABCDEF986 /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ALWAYS_SEARCH_USER_PATHS = NO;
+				ASSETCATALOG_COMPILER_GENERATE_SWIFT_ASSET_SYMBOL_EXTENSIONS = YES;
+				CLANG_ANALYZER_NONNULL = YES;
+				CLANG_ANALYZER_NUMBER_OBJECT_CONVERSION = YES_AGGRESSIVE;
+				CLANG_CXX_LANGUAGE_STANDARD = "gnu++20";
+				CLANG_ENABLE_MODULES = YES;
+				CLANG_ENABLE_OBJC_ARC = YES;
+				CLANG_ENABLE_OBJC_WEAK = YES;
+				CLANG_WARN_BLOCK_CAPTURE_AUTORELEASING = YES;
+				CLANG_WARN_BOOL_CONVERSION = YES;
+				CLANG_WARN_COMMA = YES;
+				CLANG_WARN_CONSTANT_CONVERSION = YES;
+				CLANG_WARN_DEPRECATED_OBJC_IMPLEMENTATIONS = YES;
+				CLANG_WARN_DIRECT_OBJC_ISA_USAGE = YES_ERROR;
+				CLANG_WARN_DOCUMENTATION_COMMENTS = YES;
+				CLANG_WARN_EMPTY_BODY = YES;
+				CLANG_WARN_ENUM_CONVERSION = YES;
+				CLANG_WARN_INFINITE_RECURSION = YES;
+				CLANG_WARN_INT_CONVERSION = YES;
+				CLANG_WARN_NON_LITERAL_NULL_CONVERSION = YES;
+				CLANG_WARN_OBJC_IMPLICIT_RETAIN_SELF = YES;
+				CLANG_WARN_OBJC_LITERAL_CONVERSION = YES;
+				CLANG_WARN_OBJC_ROOT_CLASS = YES_ERROR;
+				CLANG_WARN_QUOTED_INCLUDE_IN_FRAMEWORK_HEADER = YES;
+				CLANG_WARN_RANGE_LOOP_ANALYSIS = YES;
+				CLANG_WARN_STRICT_PROTOTYPES = YES;
+				CLANG_WARN_SUSPICIOUS_MOVE = YES;
+				CLANG_WARN_UNGUARDED_AVAILABILITY = YES_AGGRESSIVE;
+				CLANG_WARN_UNREACHABLE_CODE = YES;
+				CLANG_WARN__DUPLICATE_METHOD_MATCH = YES;
+				COPY_PHASE_STRIP = NO;
+				DEBUG_INFORMATION_FORMAT = dwarf;
+				ENABLE_STRICT_OBJC_MSGSEND = YES;
+				ENABLE_TESTABILITY = YES;
+				ENABLE_USER_SCRIPT_SANDBOXING = YES;
+				GCC_C_LANGUAGE_STANDARD = gnu17;
+				GCC_DYNAMIC_NO_PIC = NO;
+				GCC_NO_COMMON_BLOCKS = YES;
+				GCC_OPTIMIZATION_LEVEL = 0;
+				GCC_PREPROCESSOR_DEFINITIONS = (
+					"DEBUG=1",
+					"$(inherited)",
+				);
+				GCC_WARN_64_TO_32_BIT_CONVERSION = YES;
+				GCC_WARN_ABOUT_RETURN_TYPE = YES_ERROR;
+				GCC_WARN_UNDECLARED_SELECTOR = YES;
+				GCC_WARN_UNINITIALIZED_AUTOS = YES_AGGRESSIVE;
+				GCC_WARN_UNUSED_FUNCTION = YES;
+				GCC_WARN_UNUSED_VARIABLE = YES;
+				IPHONEOS_DEPLOYMENT_TARGET = 17.0;
+				LOCALIZATION_PREFERS_STRING_CATALOGS = YES;
+				MTL_ENABLE_DEBUG_INFO = INCLUDE_SOURCE;
+				MTL_FAST_MATH = YES;
+				ONLY_ACTIVE_ARCH = YES;
+				SDKROOT = iphoneos;
+				SWIFT_ACTIVE_COMPILATION_CONDITIONS = "DEBUG $(inherited)";
+				SWIFT_OPTIMIZATION_LEVEL = "-Onone";
+			};
+			name = Debug;
+		};
+		A1234567890ABCDEF987 /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ALWAYS_SEARCH_USER_PATHS = NO;
+				ASSETCATALOG_COMPILER_GENERATE_SWIFT_ASSET_SYMBOL_EXTENSIONS = YES;
+				CLANG_ANALYZER_NONNULL = YES;
+				CLANG_ANALYZER_NUMBER_OBJECT_CONVERSION = YES_AGGRESSIVE;
+				CLANG_ENABLE_MODULES = YES;
+				CLANG_ENABLE_OBJC_ARC = YES;
+				CLANG_ENABLE_OBJC_WEAK = YES;
+				CLANG_LANGUAGE_STANDARD = "gnu++20";
+				CLANG_WARN_BLOCK_CAPTURE_AUTORELEASING = YES;
+				CLANG_WARN_BOOL_CONVERSION = YES;
+				CLANG_WARN_COMMA = YES;
+				CLANG_WARN_CONSTANT_CONVERSION = YES;
+				CLANG_WARN_DEPRECATED_OBJC_IMPLEMENTATIONS = YES;
+				CLANG_WARN_DIRECT_OBJC_ISA_USAGE = YES_ERROR;
+				CLANG_WARN_DOCUMENTATION_COMMENTS = YES;
+				CLANG_WARN_EMPTY_BODY = YES;
+				CLANG_WARN_ENUM_CONVERSION = YES;
+				CLANG_WARN_INFINITE_RECURSION = YES;
+				CLANG_WARN_INT_CONVERSION = YES;
+				CLANG_WARN_NON_LITERAL_NULL_CONVERSION = YES;
+				CLANG_WARN_OBJC_IMPLICIT_RETAIN_SELF = YES;
+				CLANG_WARN_OBJC_LITERAL_CONVERSION = YES;
+				CLANG_WARN_OBJC_ROOT_CLASS = YES_ERROR;
+				CLANG_WARN_QUOTED_INCLUDE_IN_FRAMEWORK_HEADER = YES;
+				CLANG_WARN_RANGE_LOOP_ANALYSIS = YES;
+				CLANG_WARN_STRICT_PROTOTYPES = YES;
+				CLANG_WARN_SUSPICIOUS_MOVE = YES;
+				CLANG_WARN_UNGUARDED_AVAILABILITY = YES_AGGRESSIVE;
+				CLANG_WARN_UNREACHABLE_CODE = YES;
+				CLANG_WARN__DUPLICATE_METHOD_MATCH = YES;
+				COPY_PHASE_STRIP = NO;
+				DEBUG_INFORMATION_FORMAT = "dwarf-with-dsym";
+				ENABLE_NS_ASSERTIONS = NO;
+				ENABLE_STRICT_OBJC_MSGSEND = YES;
+				ENABLE_USER_SCRIPT_SANDBOXING = YES;
+				GCC_C_LANGUAGE_STANDARD = gnu17;
+				GCC_NO_COMMON_BLOCKS = YES;
+				GCC_WARN_64_TO_32_BIT_CONVERSION = YES;
+				GCC_WARN_ABOUT_RETURN_TYPE = YES_ERROR;
+				GCC_WARN_UNDECLARED_SELECTOR = YES;
+				GCC_WARN_UNINITIALIZED_AUTOS = YES_AGGRESSIVE;
+				GCC_WARN_UNUSED_FUNCTION = YES;
+				GCC_WARN_UNUSED_VARIABLE = YES;
+				IPHONEOS_DEPLOYMENT_TARGET = 17.0;
+				LOCALIZATION_PREFERS_STRING_CATALOGS = YES;
+				MTL_ENABLE_DEBUG_INFO = NO;
+				MTL_FAST_MATH = YES;
+				SDKROOT = iphoneos;
+				SWIFT_COMPILATION_MODE = wholemodule;
+				VALIDATE_PRODUCT = YES;
+			};
+			name = Release;
+		};
+		A1234567890ABCDEF993 /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
+				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
+				CODE_SIGN_STYLE = Automatic;
+				CURRENT_PROJECT_VERSION = 1;
+				DEVELOPMENT_ASSET_PATHS = "\"Goose/Preview Content\"";
+				DEVELOPMENT_TEAM = W2L75AE9HQ;
+				ENABLE_PREVIEWS = YES;
+				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_FILE = Goose/Info.plist;
+				INFOPLIST_KEY_CFBundleDisplayName = Goose;
+				INFOPLIST_KEY_UIApplicationSceneManifest_Generation = YES;
+				INFOPLIST_KEY_UIApplicationSupportsIndirectInputEvents = YES;
+				INFOPLIST_KEY_UILaunchScreen_Generation = YES;
+				INFOPLIST_KEY_UISupportedInterfaceOrientations_iPad = "UIInterfaceOrientationPortrait UIInterfaceOrientationPortraitUpsideDown UIInterfaceOrientationLandscapeLeft UIInterfaceOrientationLandscapeRight";
+				INFOPLIST_KEY_UISupportedInterfaceOrientations_iPhone = "UIInterfaceOrientationPortrait UIInterfaceOrientationLandscapeLeft UIInterfaceOrientationLandscapeRight";
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+				);
+				MARKETING_VERSION = 1.1.4;
+				PRODUCT_BUNDLE_IDENTIFIER = com.goose.chat;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SWIFT_EMIT_LOC_STRINGS = YES;
+				SWIFT_VERSION = 5.0;
+				TARGETED_DEVICE_FAMILY = "1,2";
+			};
+			name = Debug;
+		};
+/* End XCBuildConfiguration section */
+
+/* Begin XCConfigurationList section */
+		A1234567890ABCDEF988 /* Build configuration list for PBXProject "Goose" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				A1234567890ABCDEF986 /* Debug */,
+				A1234567890ABCDEF987 /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Release;
+		};
+		A1234567890ABCDEF992 /* Build configuration list for PBXNativeTarget "Goose" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				A1234567890ABCDEF993 /* Debug */,
+				A1234567890ABCDEF985 /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Release;
+		};
+/* End XCConfigurationList section */
+
+/* Begin XCRemoteSwiftPackageReference section */
+		A1234567890ABCDEF021 /* XCRemoteSwiftPackageReference "swift-markdown" */ = {
+			isa = XCRemoteSwiftPackageReference;
+			repositoryURL = "https://github.com/apple/swift-markdown";
+			requirement = {
+				kind = upToNextMajorVersion;
+				minimumVersion = 0.3.0;
+			};
+		};
+/* End XCRemoteSwiftPackageReference section */
+
+/* Begin XCSwiftPackageProductDependency section */
+		A1234567890ABCDEF019 /* Markdown */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = A1234567890ABCDEF021 /* XCRemoteSwiftPackageReference "swift-markdown" */;
+			productName = Markdown;
+		};
+/* End XCSwiftPackageProductDependency section */
+	};
+	rootObject = A1234567890ABCDEF989 /* Project object */;
+}

@@ -3,6 +3,10 @@ name: Android Release Build
 on:
   workflow_dispatch:
 
+defaults:
+  run:
+    working-directory: goose-android-agent
+
 jobs:
   build-and-release:
     name: Build APK and Create Release
@@ -41,7 +45,7 @@ jobs:
             This is an automated build of the app.
             Commit: ${{ github.sha }}
             Date: ${{ steps.date.outputs.date }}
-          files: app/build/outputs/apk/debug/app-debug.apk
+          files: goose-android-agent/app/build/outputs/apk/debug/app-debug.apk
           draft: false
           prerelease: false
           make_latest: true
@@ -52,4 +56,4 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: app-debug
-          path: app/build/outputs/apk/debug/app-debug.apk
+          path: goose-android-agent/app/build/outputs/apk/debug/app-debug.apk

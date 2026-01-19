@@ -39,6 +39,10 @@ android {
         compose = true
     }
 
+    testOptions {
+        unitTests.isReturnDefaultValues = true
+    }
+
     lint {
         disable += setOf("ProtectedPermissions")
         abortOnError = false  // Optional: prevents build failures due to other lint issues
@@ -59,6 +63,8 @@ dependencies {
     implementation(libs.androidx.security.crypto)
     implementation(libs.androidx.appcompat)
     testImplementation(libs.junit)
+    testImplementation(libs.robolectric)
+    testImplementation(libs.kotlin.test)
     androidTestImplementation(libs.androidx.junit)
     androidTestImplementation(libs.androidx.espresso.core)
     androidTestImplementation(platform(libs.androidx.compose.bom))

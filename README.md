@@ -6,6 +6,10 @@ This project contains goose mobile implementations.
 The `goose-ios` dir is an ios client (which is an implementation of a remote protocol to access the goose agent) which connects back to your goose agent from anywhere, via a tunnel. This is available to use via the apple app store here: https://apps.apple.com/au/app/goose-ai/id6752889295 
 
 
+<img width="230" height="498" alt="image" src="https://github.com/user-attachments/assets/cdb57d53-bb7d-4ca4-9f89-a2fef38fef87" />
+
+
+
 ## Goose android agent
 The `goose-android-agent` dir contains a PoC implementaion of a full agent that runs on your android device, automating the whole device. This requires deep access to your android device and is best considered experimental.
 

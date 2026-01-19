@@ -11,7 +11,7 @@ The `goose-android-agent` dir contains a PoC implementaion of a full agent that 
 
 ![Screenshot_20250708_124558](https://github.com/user-attachments/assets/af9d7d83-54f4-4ace-ad66-9e19f86c8fb9)
 
-## Future directions and help wanted
+## Roadmap and help wanted
 
 ### Android client 
 

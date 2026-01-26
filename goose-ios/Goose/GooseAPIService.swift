@@ -353,11 +353,9 @@ class GooseAPIService: ObservableObject {
                 throw APIError.httpError(httpResponse.statusCode, errorBody)
             }
 
-            // /agent/resume returns Session but with conversation=null when not loading messages
-            // We don't need messages here anyway since we're just activating the agent
-            let session = try JSONDecoder().decode(SessionResponse.self, from: data)
-            
-            return (session.id, [])
+            let resumeResponse = try JSONDecoder().decode(ResumeAgentResponse.self, from: data)
+
+            return (resumeResponse.session.id, [])
         }
         catch let error as DecodingError {
             handleAPIError(APIError.decodingError(error), context: "Resume Agent")
@@ -714,6 +712,10 @@ struct AgentResponse: Codable {
 struct SessionResponse: Codable {
     let id: String
     let conversation: [Message]?
+}
+
+struct ResumeAgentResponse: Codable {
+    let session: SessionResponse
 }
 
 struct SessionsResponse: Codable {

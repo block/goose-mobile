@@ -144,7 +144,7 @@ class GooseAPIService: ObservableObject {
         
         let request = ChatRequest(
             userMessage: userMessage,
-            conversationSoFar: conversationHistory,
+            overrideConversation: conversationHistory,
             sessionId: actualSessionId,
             recipeName: nil,
             recipeVersion: nil
@@ -828,6 +828,9 @@ class SSEDelegate: NSObject, URLSessionDataDelegate {
                         if case .finish = event {
                         } else if case .error = event {
                             print("🚨 SSE Error event received")
+                        } else if case .unknown(let type) = event {
+                            print("⚠️ Unknown SSE event type received: \(type)")
+                            continue
                         }
 
                         DispatchQueue.main.async {

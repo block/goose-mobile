@@ -768,6 +768,8 @@ struct ChatView: View {
 
         case .ping:
             break
+        case .unknown:
+            break
         }
     }
 

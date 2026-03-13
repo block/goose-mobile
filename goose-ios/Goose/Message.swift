@@ -366,14 +366,14 @@ struct AnyCodable: Codable {
 // MARK: - Chat Request/Response Models
 struct ChatRequest: Codable {
     let userMessage: Message
-    let conversationSoFar: [Message]?
+    let overrideConversation: [Message]?
     let sessionId: String
     let recipeName: String?
     let recipeVersion: String?
     
     enum CodingKeys: String, CodingKey {
         case userMessage = "user_message"
-        case conversationSoFar = "conversation_so_far"
+        case overrideConversation = "override_conversation"
         case sessionId = "session_id"
         case recipeName = "recipe_name"
         case recipeVersion = "recipe_version"
@@ -389,6 +389,7 @@ enum SSEEvent: Codable {
     case notification(NotificationEvent)
     case updateConversation(UpdateConversationEvent)
     case ping(PingEvent)
+    case unknown(type: String)
     
     enum CodingKeys: String, CodingKey {
         case type
@@ -414,7 +415,7 @@ enum SSEEvent: Codable {
         case "Ping":
             self = .ping(try PingEvent(from: decoder))
         default:
-            throw DecodingError.dataCorruptedError(forKey: .type, in: container, debugDescription: "Unknown SSE event type: \(type)")
+            self = .unknown(type: type)
         }
     }
     
@@ -434,6 +435,9 @@ enum SSEEvent: Codable {
             try event.encode(to: encoder)
         case .ping(let event):
             try event.encode(to: encoder)
+        case .unknown(let type):
+            var container = encoder.container(keyedBy: CodingKeys.self)
+            try container.encode(type, forKey: .type)
         }
     }
 }

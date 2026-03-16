@@ -132,19 +132,16 @@ class GooseAPIService: ObservableObject {
         // Log the sessionId we're about to use
         let actualSessionId = sessionId ?? ""
         
-        // Server expects user_message (the new message) and conversation_so_far (history)
-        // The last message in the array should be the new user message
+        // Server manages conversation history — only send the new user message.
+        // override_conversation is intentionally nil; the server is the source of truth.
         guard let userMessage = messages.last else {
             onError(APIError.noData)
             return nil
         }
         
-        // All messages except the last one are the conversation history
-        let conversationHistory = messages.count > 1 ? Array(messages.dropLast()) : nil
-        
         let request = ChatRequest(
             userMessage: userMessage,
-            overrideConversation: conversationHistory,
+            overrideConversation: nil,
             sessionId: actualSessionId,
             recipeName: nil,
             recipeVersion: nil
@@ -736,6 +733,13 @@ class SSEDelegate: NSObject, URLSessionDataDelegate {
     private let maxBufferSize = 10000  // Prevent buffer overflow
     private var errorStatusCode: Int? = nil  // Track error status codes
 
+    // Batching: accumulate text chunks and flush at ~30fps to avoid choking the main thread
+    private var pendingMessageId: String?
+    private var pendingAccumulatedText: String = ""
+    private var pendingMessageTemplate: SSEEvent?
+    private var flushTimer: DispatchSourceTimer?
+    private let flushInterval: TimeInterval = 0.033 // ~30fps
+
     init(
         onEvent: @escaping (SSEEvent) -> Void, onComplete: @escaping () -> Void,
         onError: @escaping (Error) -> Void
@@ -743,6 +747,40 @@ class SSEDelegate: NSObject, URLSessionDataDelegate {
         self.onEvent = onEvent
         self.onComplete = onComplete
         self.onError = onError
+    }
+
+    private func scheduleFlush() {
+        guard flushTimer == nil else { return }
+        let timer = DispatchSource.makeTimerSource(queue: DispatchQueue.global())
+        timer.schedule(deadline: .now() + flushInterval)
+        timer.setEventHandler { [weak self] in
+            self?.flushPendingText()
+        }
+        flushTimer = timer
+        timer.resume()
+    }
+
+    fileprivate func flushPendingText() {
+        flushTimer?.cancel()
+        flushTimer = nil
+        guard let template = pendingMessageTemplate,
+              case .message(let msgEvent) = template else { return }
+        let accumulatedText = pendingAccumulatedText
+        pendingMessageTemplate = nil
+        pendingAccumulatedText = ""
+        pendingMessageId = nil
+        // Build a single event with all accumulated text
+        let mergedMessage = Message(
+            id: msgEvent.message.id,
+            role: msgEvent.message.role,
+            content: [MessageContent.text(TextContent(text: accumulatedText))],
+            created: msgEvent.message.created,
+            metadata: msgEvent.message.metadata
+        )
+        let mergedEvent = SSEEvent.message(MessageEvent(message: mergedMessage))
+        DispatchQueue.main.async {
+            self.onEvent(mergedEvent)
+        }
     }
 
     func urlSession(
@@ -833,12 +871,32 @@ class SSEDelegate: NSObject, URLSessionDataDelegate {
                             continue
                         }
 
+                        // Batch streaming text chunks to avoid flooding the main thread with re-renders.
+                        // Accumulate text and flush at ~30fps.
+                        if case .message(let msgEvent) = event,
+                           let textContent = msgEvent.message.content.first(where: { if case .text = $0 { return true } else { return false } }),
+                           case .text(let tc) = textContent {
+                            if self.pendingMessageId == msgEvent.message.id {
+                                self.pendingAccumulatedText += tc.text
+                            } else {
+                                // New message ID — flush old one first, start accumulating new
+                                self.flushPendingText()
+                                self.pendingMessageId = msgEvent.message.id
+                                self.pendingAccumulatedText = tc.text
+                            }
+                            self.pendingMessageTemplate = event
+                            self.scheduleFlush()
+                            continue
+                        }
+
                         DispatchQueue.main.async {
                             self.onEvent(event)
                         }
 
                         // Check if this is a finish event
                         if case .finish = event {
+                            // Flush any pending text before completing
+                            self.flushPendingText()
                             DispatchQueue.main.async {
                                 self.onComplete()
                             }

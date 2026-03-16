@@ -61,7 +61,7 @@ struct Message: Identifiable, Codable {
     }
     
     // Initializer without ID (generates UUID)
-    init(role: MessageRole, content: [MessageContent], created: Int64 = Int64(Date().timeIntervalSince1970 * 1000)) {
+    init(role: MessageRole, content: [MessageContent], created: Int64 = Int64(Date().timeIntervalSince1970)) {
         self.role = role
         self.content = content
         self.created = created
@@ -73,7 +73,7 @@ struct Message: Identifiable, Codable {
     }
     
     // Convenience initializer for text messages
-    init(role: MessageRole, text: String, created: Int64 = Int64(Date().timeIntervalSince1970 * 1000)) {
+    init(role: MessageRole, text: String, created: Int64 = Int64(Date().timeIntervalSince1970)) {
         self.role = role
         self.content = [MessageContent.text(TextContent(text: text))]
         self.created = created

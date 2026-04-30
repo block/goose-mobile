@@ -84,4 +84,8 @@ class SettingsStore(context: Context) {
     var userMemories: String
         get() = prefs.getString(KEY_USER_MEMORIES, "") ?: ""
         set(value) = prefs.edit { putString(KEY_USER_MEMORIES, value) }
+
+    fun requiresApiKey(provider: ModelProvider): Boolean {
+        return !provider.isOnDevice
+    }
 }

@@ -51,13 +51,14 @@ class AiModelTest {
     }
 
     @Test
-    fun getProviders_returnsAllThreeProviders() {
+    fun getProviders_returnsAllProviders() {
         val providers = AiModel.getProviders()
-        
-        assertEquals(3, providers.size)
+
+        assertEquals(ModelProvider.entries.size, providers.size)
         assertTrue(providers.contains(ModelProvider.OPENAI))
         assertTrue(providers.contains(ModelProvider.GEMINI))
         assertTrue(providers.contains(ModelProvider.OPENROUTER))
+        assertTrue(providers.contains(ModelProvider.ON_DEVICE_LITERT))
     }
 
     @Test

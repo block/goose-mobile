@@ -10,6 +10,7 @@ import androidx.navigation.navArgument
 import xyz.block.gosling.features.app.ConversationScreen
 import xyz.block.gosling.features.app.MainScreen
 import xyz.block.gosling.features.onboarding.Onboarding
+import xyz.block.gosling.features.settings.ModelManagementScreen
 import xyz.block.gosling.features.settings.SettingsScreen
 import xyz.block.gosling.features.settings.SettingsStore
 
@@ -21,6 +22,7 @@ sealed class Screen(val route: String) {
     }
 
     data object Onboarding : Screen("onboarding")
+    data object ModelManagement : Screen("model_management")
 }
 
 @Composable
@@ -50,7 +52,10 @@ fun NavGraph(
                 settingsStore = settingsStore,
                 onBack = { navController.popBackStack() },
                 openAccessibilitySettings = openAccessibilitySettings,
-                isAccessibilityEnabled = isAccessibilityEnabled
+                isAccessibilityEnabled = isAccessibilityEnabled,
+                onNavigateToModelManagement = {
+                    navController.navigate(Screen.ModelManagement.route)
+                }
             )
         }
 
@@ -87,5 +92,11 @@ fun NavGraph(
                 }
             )
         }
+
+        composable(Screen.ModelManagement.route) {
+            ModelManagementScreen(
+                onBack = { navController.popBackStack() }
+            )
+        }
     }
-} 
+}

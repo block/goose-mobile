@@ -50,12 +50,13 @@ class OpenRouterProviderTest {
     @Test
     fun testProviderSelection() {
         val providers = AiModel.getProviders()
-        
+
         assertTrue("Should include OPENAI", providers.contains(ModelProvider.OPENAI))
         assertTrue("Should include GEMINI", providers.contains(ModelProvider.GEMINI))
         assertTrue("Should include OPENROUTER", providers.contains(ModelProvider.OPENROUTER))
-        
-        assertEquals("Should have exactly 3 providers", 3, providers.size)
+        assertTrue("Should include ON_DEVICE_LITERT", providers.contains(ModelProvider.ON_DEVICE_LITERT))
+
+        assertEquals("Should have all providers", ModelProvider.entries.size, providers.size)
     }
     
     @Test

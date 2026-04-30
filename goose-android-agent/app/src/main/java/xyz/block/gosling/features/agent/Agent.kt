@@ -27,6 +27,8 @@ import org.json.JSONObject
 import xyz.block.gosling.features.accessibility.GoslingAccessibilityService
 import xyz.block.gosling.features.agent.ToolHandler.callTool
 import xyz.block.gosling.features.agent.ToolHandler.getSerializableToolDefinitions
+import xyz.block.gosling.features.agent.ondevice.OnDeviceModelManager
+import xyz.block.gosling.features.agent.providers.LiteRTProviderHandler
 import xyz.block.gosling.features.settings.SettingsStore
 import java.io.File
 import java.net.HttpURLConnection
@@ -696,22 +698,52 @@ class Agent : Service() {
     private suspend fun callLlm(messages: List<Message>, context: Context): JSONObject {
         val settings = SettingsStore(context)
         val model = AiModel.fromIdentifier(settings.llmModel)
+
+        val processedMessages = removeOutdatedPayloads(messages)
+
+        // Get the appropriate provider handler
+        val providerHandler = getProviderHandler(model.provider)
+
+        // Local inference path - no HTTP, no API key needed
+        if (providerHandler.isLocalProvider()) {
+            val toolDefinitions = getSerializableToolDefinitions(context, model.provider)
+
+            val (text, toolCalls, stats) = providerHandler.executeLocal(
+                model.identifier,
+                processedMessages,
+                toolDefinitions
+            )
+
+            // Build a synthetic JSONObject so downstream parsing in processCommand() works
+            val syntheticResponse = JSONObject()
+            syntheticResponse.put("text", text)
+            if (toolCalls != null) {
+                val tcArray = org.json.JSONArray()
+                for (tc in toolCalls) {
+                    val tcObj = JSONObject()
+                    tcObj.put("id", tc.toolId)
+                    tcObj.put("name", tc.name)
+                    tcObj.put("arguments", tc.arguments)
+                    tcArray.put(tcObj)
+                }
+                syntheticResponse.put("tool_calls", tcArray)
+            }
+            syntheticResponse.put("duration", stats["duration"] ?: 0.0)
+            return syntheticResponse
+        }
+
+        // HTTP inference path - requires API key
         val apiKey = settings.getApiKey(model.provider)
-        
+
         // Check for empty API key early
         if (apiKey.isNullOrBlank()) {
             updateStatus(AgentStatus.Error("API key is missing. Please add your API key in settings."))
             throw ApiKeyException("API key is missing. Please add your API key in settings.")
         }
 
-        val processedMessages = removeOutdatedPayloads(messages)
-
-        // Get the appropriate provider handler
-        val providerHandler = getProviderHandler(model.provider)
-        
         // Get tool definitions using the provider handler
         val toolDefinitions = getSerializableToolDefinitions(context, model.provider)
-        
+
         // Create request using provider handler
         val requestBody = providerHandler.createRequest(
             model.identifier,
@@ -719,7 +751,7 @@ class Agent : Service() {
             toolDefinitions,
             apiKey
         )
-        
+
         // Get URL and headers from provider handler
         val urlString = providerHandler.getApiUrl(model.identifier, apiKey)
         val headers = providerHandler.getHeaders(apiKey)
@@ -737,6 +769,12 @@ class Agent : Service() {
             ModelProvider.OPENAI -> xyz.block.gosling.features.agent.providers.OpenAIProviderHandler()
             ModelProvider.GEMINI -> xyz.block.gosling.features.agent.providers.GeminiProviderHandler()
             ModelProvider.OPENROUTER -> xyz.block.gosling.features.agent.providers.OpenRouterProviderHandler()
+            ModelProvider.ON_DEVICE_LITERT -> {
+                val settings = SettingsStore(this)
+                val model = AiModel.fromIdentifier(settings.llmModel)
+                val modelPath = OnDeviceModelManager.getModelPath(this, model.identifier)
+                LiteRTProviderHandler(modelPath = modelPath, cacheDir = cacheDir.path)
+            }
         }
     }
 

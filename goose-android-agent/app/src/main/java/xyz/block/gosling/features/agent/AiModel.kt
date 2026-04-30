@@ -1,9 +1,13 @@
 package xyz.block.gosling.features.agent
 
-enum class ModelProvider {
-    OPENAI,
-    GEMINI,
-    OPENROUTER
+enum class ModelProvider(val displayName: String) {
+    OPENAI("OpenAI"),
+    GEMINI("Gemini"),
+    OPENROUTER("OpenRouter"),
+    ON_DEVICE_LITERT("On-Device");
+
+    val isOnDevice: Boolean
+        get() = this == ON_DEVICE_LITERT
 }
 
 data class AiModel(
@@ -36,15 +40,29 @@ data class AiModel(
             AiModel("Cohere Command R+", "cohere/command-r-plus", ModelProvider.OPENROUTER)
         )
 
+        private val onDeviceModels = mutableListOf<AiModel>()
+
+        fun registerOnDeviceModel(model: AiModel) {
+            if (onDeviceModels.none { it.identifier == model.identifier }) {
+                onDeviceModels.add(model)
+            }
+        }
+
+        fun unregisterOnDeviceModel(identifier: String) {
+            onDeviceModels.removeAll { it.identifier == identifier }
+        }
+
+        fun getAllModels(): List<AiModel> = AVAILABLE_MODELS + onDeviceModels
+
         fun fromIdentifier(identifier: String): AiModel {
-            return AVAILABLE_MODELS.find { it.identifier == identifier }
+            return getAllModels().find { it.identifier == identifier }
                 ?: AVAILABLE_MODELS.first()
         }
 
-        fun getProviders(): List<ModelProvider> = 
-            AVAILABLE_MODELS.map { it.provider }.distinct()
-        
-        fun getModelsForProvider(provider: ModelProvider): List<AiModel> = 
-            AVAILABLE_MODELS.filter { it.provider == provider }
+        fun getProviders(): List<ModelProvider> =
+            ModelProvider.entries.toList()
+
+        fun getModelsForProvider(provider: ModelProvider): List<AiModel> =
+            getAllModels().filter { it.provider == provider }
     }
 }

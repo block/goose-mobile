@@ -12,18 +12,18 @@ import java.lang.reflect.Method
  * to handle their specific API formats and tool calling conventions.
  */
 interface LLMProviderHandler {
-    
+
     /**
      * Creates provider-specific tool definitions from generic tool methods.
-     * 
+     *
      * @param toolMethods List of annotated tool methods from ToolHandler
      * @return SerializableToolDefinitions formatted for this provider
      */
     fun createToolDefinitions(toolMethods: List<Method>): SerializableToolDefinitions
-    
+
     /**
      * Creates a provider-specific request body for the LLM API.
-     * 
+     *
      * @param modelIdentifier The specific model identifier (e.g., "gpt-4o", "gemini-2.0-flash")
      * @param messages List of conversation messages
      * @param tools Tool definitions for this provider
@@ -36,27 +36,27 @@ interface LLMProviderHandler {
         tools: SerializableToolDefinitions,
         apiKey: String?
     ): String
-    
+
     /**
      * Gets the API endpoint URL for this provider.
-     * 
+     *
      * @param modelIdentifier The specific model identifier
      * @param apiKey API key (used for providers like Gemini that include key in URL)
      * @return Complete API endpoint URL
      */
     fun getApiUrl(modelIdentifier: String, apiKey: String?): String
-    
+
     /**
      * Gets provider-specific HTTP headers.
-     * 
+     *
      * @param apiKey API key for authentication
      * @return Map of headers to include in the request
      */
     fun getHeaders(apiKey: String?): Map<String, String>
-    
+
     /**
      * Parses the provider-specific response and extracts relevant information.
-     * 
+     *
      * @param response JSON response from the provider's API
      * @param requestDurationMs Duration of the request in milliseconds
      * @return Triple of (assistant_reply, tool_calls, stats_annotation)
@@ -65,4 +65,23 @@ interface LLMProviderHandler {
         response: JSONObject,
         requestDurationMs: Double
     ): Triple<String, List<InternalToolCall>?, Map<String, Double>>
+
+    /**
+     * Whether this provider handles inference directly (not via HTTP).
+     * Default: false (use HTTP flow in Agent.callLlm).
+     */
+    fun isLocalProvider(): Boolean = false
+
+    /**
+     * Execute inference directly (for local providers).
+     * Returns same Triple as parseResponse.
+     * Only called when isLocalProvider() returns true.
+     */
+    fun executeLocal(
+        modelIdentifier: String,
+        messages: List<Message>,
+        tools: SerializableToolDefinitions
+    ): Triple<String, List<InternalToolCall>?, Map<String, Double>> {
+        throw UnsupportedOperationException("Not a local provider")
+    }
 }

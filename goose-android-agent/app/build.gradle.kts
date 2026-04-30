@@ -2,7 +2,7 @@ plugins {
     alias(libs.plugins.android.application)
     alias(libs.plugins.kotlin.android)
     alias(libs.plugins.kotlin.compose)
-    kotlin("plugin.serialization") version "1.9.22"
+    kotlin("plugin.serialization") version "2.2.0"
 }
 
 android {
@@ -41,11 +41,25 @@ android {
 
     testOptions {
         unitTests.isReturnDefaultValues = true
+        unitTests.isIncludeAndroidResources = true
     }
 
     lint {
         disable += setOf("ProtectedPermissions")
         abortOnError = false  // Optional: prevents build failures due to other lint issues
+    }
+}
+
+// Unit tests run on the debug variant only. The release variant's merged manifest
+// doesn't include the test-only ComponentActivity (contributed by the
+// debugImplementation-only ui-test-manifest aar), so Compose UI tests can't run
+// against it. Following the same pattern as NowInAndroid, Tivi, and the AndroidX
+// reference apps, we disable testReleaseUnitTest entirely.
+androidComponents {
+    beforeVariants(selector().withBuildType("release")) { variant ->
+        (variant as com.android.build.api.variant.HasHostTestsBuilder)
+            .hostTests[com.android.build.api.variant.HostTestBuilder.UNIT_TEST_TYPE]
+            ?.enable = false
     }
 }
 
@@ -66,6 +80,8 @@ dependencies {
     testImplementation(libs.robolectric)
     testImplementation(libs.kotlin.test)
     testImplementation(libs.androidx.test.core)
+    testImplementation(platform(libs.androidx.compose.bom))
+    testImplementation(libs.androidx.ui.test.junit4)
     androidTestImplementation(libs.androidx.junit)
     androidTestImplementation(libs.androidx.espresso.core)
     androidTestImplementation(platform(libs.androidx.compose.bom))
@@ -84,4 +100,7 @@ dependencies {
     
     // ML Kit for barcode scanning
     implementation("com.google.mlkit:barcode-scanning:17.2.0")
+
+    // LiteRT-LM for on-device LLM inference
+    implementation("com.google.ai.edge.litertlm:litertlm-android:0.10.0")
 }

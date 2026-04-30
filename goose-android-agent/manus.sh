@@ -86,7 +86,7 @@ if [ $START_EMULATORS -eq 1 ]; then
         adb -s $device shell am start -n xyz.block.gosling/.features.app.MainActivity
     done
 
-   echo "All apps will start. Configure them manually"
+    echo "All apps will start. Configure them manually"
 else
     echo "Using already running emulators..."
     DEVICES=$(adb devices | grep emulator | cut -f1)

@@ -22,11 +22,13 @@ import androidx.navigation.NavHostController
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.currentBackStackEntryAsState
+import xyz.block.gosling.features.settings.ModelManagementScreen
 import xyz.block.gosling.features.settings.SettingsStore
 
 sealed class OnboardingScreen(val route: String) {
     data object Welcome : OnboardingScreen("onboarding/welcome")
     data object LLMConfig : OnboardingScreen("onboarding/llm_config")
+    data object ModelManagement : OnboardingScreen("onboarding/model_management")
 }
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -48,7 +50,7 @@ fun Onboarding(
         topBar = {
             TopAppBar(
                 navigationIcon = {
-                    if (currentRoute == OnboardingScreen.LLMConfig.route) {
+                    if (currentRoute != OnboardingScreen.Welcome.route) {
                         IconButton(onClick = { navController.popBackStack() }) {
                             Icon(
                                 Icons.AutoMirrored.Filled.ArrowBack,
@@ -61,6 +63,7 @@ fun Onboarding(
                     Text(
                         when (currentRoute) {
                             OnboardingScreen.LLMConfig.route -> "LLM Configuration"
+                            OnboardingScreen.ModelManagement.route -> "Download Models"
                             else -> "Welcome"
                         }
                     )
@@ -78,6 +81,7 @@ fun Onboarding(
                     when (currentRoute) {
                         OnboardingScreen.Welcome.route -> 0.5f
                         OnboardingScreen.LLMConfig.route -> 1.0f
+                        OnboardingScreen.ModelManagement.route -> 1.0f
                         else -> 0f
                     }
                 },
@@ -102,10 +106,20 @@ fun Onboarding(
                 composable(OnboardingScreen.LLMConfig.route) {
                     LLMConfigStep(
                         settingsStore = settingsStore,
-                        onComplete = onComplete
+                        onComplete = onComplete,
+                        onNavigateToModelManagement = {
+                            navController.navigate(OnboardingScreen.ModelManagement.route)
+                        }
+                    )
+                }
+
+                composable(OnboardingScreen.ModelManagement.route) {
+                    ModelManagementScreen(
+                        onBack = { navController.popBackStack() },
+                        showTopBar = false
                     )
                 }
             }
         }
     }
-} 
+}

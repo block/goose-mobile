@@ -61,6 +61,8 @@ import kotlinx.coroutines.launch
 import xyz.block.gosling.features.agent.AgentServiceManager
 import xyz.block.gosling.features.agent.AiModel
 import xyz.block.gosling.features.agent.AppUsageStats
+import xyz.block.gosling.features.agent.ModelProvider
+import xyz.block.gosling.features.agent.ondevice.OnDeviceModelManager
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -69,6 +71,7 @@ fun SettingsScreen(
     onBack: () -> Unit,
     openAccessibilitySettings: () -> Unit,
     isAccessibilityEnabled: Boolean,
+    onNavigateToModelManagement: () -> Unit = {},
 ) {
     val context = LocalContext.current
     var isAssistantEnabled by remember { mutableStateOf(false) }
@@ -188,7 +191,7 @@ fun SettingsScreen(
     LaunchedEffect(selectedProvider) {
         val modelsForProvider = AiModel.getModelsForProvider(selectedProvider)
         val currentModelBelongsToProvider = modelsForProvider.any { it.identifier == selectedModelId }
-        
+
         if (modelsForProvider.isNotEmpty() && !currentModelBelongsToProvider) {
             selectedModelId = modelsForProvider.first().identifier
             // Update the stored model and current model
@@ -196,6 +199,9 @@ fun SettingsScreen(
             settingsStore.llmModel = selectedModelId
             currentModel = AiModel.fromIdentifier(selectedModelId)
             apiKey = settingsStore.getApiKey(currentModel.provider)
+        } else if (modelsForProvider.isEmpty()) {
+            selectedModelId = ""
+            llmModel = ""
         }
     }
 
@@ -247,7 +253,7 @@ fun SettingsScreen(
                             onExpandedChange = { providerExpanded = it }
                         ) {
                             OutlinedTextField(
-                                value = selectedProvider.name,
+                                value = selectedProvider.displayName,
                                 onValueChange = {},
                                 readOnly = true,
                                 modifier = Modifier
@@ -262,7 +268,7 @@ fun SettingsScreen(
                             ) {
                                 AiModel.getProviders().forEach { provider ->
                                     DropdownMenuItem(
-                                        text = { Text(provider.name) },
+                                        text = { Text(provider.displayName) },
                                         onClick = {
                                             selectedProvider = provider
                                             providerExpanded = false
@@ -274,35 +280,109 @@ fun SettingsScreen(
                         
                         // Model Dropdown
                         Text(text = "Model")
-                        ExposedDropdownMenuBox(
-                            expanded = modelExpanded,
-                            onExpandedChange = { modelExpanded = it }
-                        ) {
-                            OutlinedTextField(
-                                value = AiModel.getModelsForProvider(selectedProvider)
-                                    .find { it.identifier == selectedModelId }?.displayName ?: selectedModelId,
-                                onValueChange = {},
-                                readOnly = true,
-                                modifier = Modifier
-                                    .fillMaxWidth()
-                                    .menuAnchor(MenuAnchorType.PrimaryNotEditable, true),
-                                trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = modelExpanded) }
+                        if (selectedProvider.isOnDevice) {
+                            OnDeviceModelDropdown(
+                                knownModels = OnDeviceModelManager.getKnownModels(context),
+                                downloadedModels = OnDeviceModelManager.getDownloadedModels(context),
+                                selectedModelId = selectedModelId,
+                                onModelSelected = { modelInfo ->
+                                    selectedModelId = modelInfo.id
+                                    llmModel = modelInfo.id
+                                    settingsStore.llmModel = modelInfo.id
+                                    currentModel = AiModel(
+                                        displayName = modelInfo.displayName,
+                                        identifier = modelInfo.id,
+                                        provider = ModelProvider.ON_DEVICE_LITERT
+                                    )
+                                },
+                                onUndownloadedClicked = { onNavigateToModelManagement() }
                             )
-
-                            ExposedDropdownMenu(
+                        } else {
+                            val modelsForSelectedProvider = AiModel.getModelsForProvider(selectedProvider)
+                            ExposedDropdownMenuBox(
                                 expanded = modelExpanded,
-                                onDismissRequest = { modelExpanded = false }
+                                onExpandedChange = { modelExpanded = it }
                             ) {
-                                AiModel.getModelsForProvider(selectedProvider).forEach { model ->
-                                    DropdownMenuItem(
-                                        text = { Text(model.displayName) },
-                                        onClick = {
-                                            selectedModelId = model.identifier
-                                            llmModel = model.identifier
-                                            settingsStore.llmModel = model.identifier
-                                            currentModel = model
-                                            apiKey = settingsStore.getApiKey(model.provider)
-                                            modelExpanded = false
+                                OutlinedTextField(
+                                    value = modelsForSelectedProvider
+                                        .find { it.identifier == selectedModelId }?.displayName
+                                        ?: selectedModelId,
+                                    onValueChange = {},
+                                    readOnly = true,
+                                    modifier = Modifier
+                                        .fillMaxWidth()
+                                        .menuAnchor(MenuAnchorType.PrimaryNotEditable, true),
+                                    trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = modelExpanded) }
+                                )
+
+                                ExposedDropdownMenu(
+                                    expanded = modelExpanded,
+                                    onDismissRequest = { modelExpanded = false }
+                                ) {
+                                    modelsForSelectedProvider.forEach { model ->
+                                        DropdownMenuItem(
+                                            text = { Text(model.displayName) },
+                                            onClick = {
+                                                selectedModelId = model.identifier
+                                                llmModel = model.identifier
+                                                settingsStore.llmModel = model.identifier
+                                                currentModel = model
+                                                apiKey = settingsStore.getApiKey(model.provider)
+                                                modelExpanded = false
+                                            }
+                                        )
+                                    }
+                                }
+                            }
+                        }
+                    }
+
+                    // API Key (hidden for on-device provider)
+                    if (settingsStore.requiresApiKey(selectedProvider)) {
+                        Column(
+                            modifier = Modifier.fillMaxWidth(),
+                            verticalArrangement = Arrangement.spacedBy(8.dp)
+                        ) {
+                            Text(text = "API Key")
+                            Row(
+                                modifier = Modifier.fillMaxWidth(),
+                                horizontalArrangement = Arrangement.spacedBy(8.dp),
+                                verticalAlignment = Alignment.CenterVertically
+                            ) {
+                                OutlinedTextField(
+                                    value = apiKey,
+                                    onValueChange = {
+                                        apiKey = it
+                                        settingsStore.setApiKey(currentModel.provider, it)
+                                    },
+                                    modifier = Modifier.weight(1f),
+                                    visualTransformation = PasswordVisualTransformation(),
+                                    keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Password)
+                                )
+
+                                var showQRScanner by remember { mutableStateOf(false) }
+
+                                // Use Button instead of IconButton to make it more visible
+                                Button(
+                                    onClick = { showQRScanner = true },
+                                    modifier = Modifier.align(Alignment.CenterVertically)
+                                ) {
+                                    Icon(
+                                        imageVector = Icons.Default.QrCodeScanner,
+                                        contentDescription = "Scan QR Code"
+                                    )
+                                    Text(
+                                        text = "Scan",
+                                        modifier = Modifier.padding(start = 8.dp)
+                                    )
+                                }
+
+                                if (showQRScanner) {
+                                    QRCodeScannerDialog(
+                                        onDismiss = { showQRScanner = false },
+                                        onQRCodeScanned = { scannedApiKey ->
+                                            apiKey = scannedApiKey
+                                            settingsStore.setApiKey(currentModel.provider, scannedApiKey)
                                         }
                                     )
                                 }
@@ -310,53 +390,22 @@ fun SettingsScreen(
                         }
                     }
 
-                    // API Key
-                    Column(
-                        modifier = Modifier.fillMaxWidth(),
-                        verticalArrangement = Arrangement.spacedBy(8.dp)
-                    ) {
-                        Text(text = "API Key")
-                        Row(
+                    // Manage Models button for on-device provider
+                    if (selectedProvider.isOnDevice) {
+                        Column(
                             modifier = Modifier.fillMaxWidth(),
-                            horizontalArrangement = Arrangement.spacedBy(8.dp),
-                            verticalAlignment = Alignment.CenterVertically
+                            verticalArrangement = Arrangement.spacedBy(8.dp)
                         ) {
-                            OutlinedTextField(
-                                value = apiKey,
-                                onValueChange = {
-                                    apiKey = it
-                                    settingsStore.setApiKey(currentModel.provider, it)
-                                },
-                                modifier = Modifier.weight(1f),
-                                visualTransformation = PasswordVisualTransformation(),
-                                keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Password)
+                            Text(
+                                text = "On-device models run locally without internet or API keys.",
+                                style = MaterialTheme.typography.bodyMedium,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant
                             )
-                            
-                            var showQRScanner by remember { mutableStateOf(false) }
-                            
-                            // Use Button instead of IconButton to make it more visible
                             Button(
-                                onClick = { showQRScanner = true },
-                                modifier = Modifier.align(Alignment.CenterVertically)
+                                onClick = onNavigateToModelManagement,
+                                modifier = Modifier.fillMaxWidth()
                             ) {
-                                Icon(
-                                    imageVector = Icons.Default.QrCodeScanner,
-                                    contentDescription = "Scan QR Code"
-                                )
-                                Text(
-                                    text = "Scan",
-                                    modifier = Modifier.padding(start = 8.dp)
-                                )
-                            }
-                            
-                            if (showQRScanner) {
-                                QRCodeScannerDialog(
-                                    onDismiss = { showQRScanner = false },
-                                    onQRCodeScanned = { scannedApiKey ->
-                                        apiKey = scannedApiKey
-                                        settingsStore.setApiKey(currentModel.provider, scannedApiKey)
-                                    }
-                                )
+                                Text("Manage Models")
                             }
                         }
                     }

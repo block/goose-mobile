@@ -62,7 +62,7 @@ struct TrialModeInstructionsView: View {
                             number: 2,
                             title: "Enable Tunneling",
                             description:
-                                "Open Goose desktop, go to Settings → App, and turn on the Tunneling option.",
+                                "Open Goose desktop, go to Settings → Session → Mobile App, and start the tunnel.",
                             icon: "network"
                         )
 

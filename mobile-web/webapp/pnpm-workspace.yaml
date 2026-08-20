@@ -1,0 +1,6 @@
+# Standalone pnpm root (do not fold into any parent workspace).
+# esbuild needs its postinstall to fetch the platform binary vite runs on.
+packages:
+  - .
+allowBuilds:
+  esbuild: true

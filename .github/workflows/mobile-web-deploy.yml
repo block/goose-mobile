@@ -1,0 +1,89 @@
+name: Mobile Web Build & Deploy
+
+on:
+  push:
+    branches: ["main"]
+    paths: ["mobile-web/**", ".github/workflows/mobile-web-deploy.yml"]
+  pull_request:
+    branches: ["main"]
+    paths: ["mobile-web/**", ".github/workflows/mobile-web-deploy.yml"]
+  workflow_dispatch:
+
+defaults:
+  run:
+    working-directory: mobile-web
+
+jobs:
+  build:
+    name: Build web client
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install LLVM (wasm-capable clang for ring)
+        run: sudo apt-get update && sudo apt-get install -y clang llvm
+
+      - name: Install Rust wasm toolchain
+        run: |
+          rustup toolchain install 1.96.1
+          rustup target add wasm32-unknown-unknown --toolchain 1.96.1
+
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 9
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+
+      - name: Build wasm + JS bindings
+        env:
+          ROAM_WASM_RUST_VERSION: "1.96.1"
+          CC: clang
+        run: ./build-web.sh
+
+      - name: Install web deps
+        working-directory: mobile-web/webapp
+        run: pnpm install --frozen-lockfile=false
+
+      - name: Typecheck
+        working-directory: mobile-web/webapp
+        run: pnpm run typecheck
+
+      - name: Build static site
+        working-directory: mobile-web/webapp
+        run: pnpm run build
+
+      - name: Upload build artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: mobile-web-dist
+          path: mobile-web/webapp/dist
+
+  deploy:
+    name: Publish to roam-web (GitHub Pages)
+    needs: build
+    if: github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          name: mobile-web-dist
+          path: dist
+
+      - name: Publish dist to roam-web branch
+        working-directory: dist
+        run: |
+          touch .nojekyll
+          git init -q
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git remote add origin "https://x-access-token:${GITHUB_TOKEN}@github.com/${GITHUB_REPOSITORY}.git"
+          git checkout -q -b roam-web
+          git add -A
+          git commit -q -m "deploy: mobile-web build ${GITHUB_SHA}"
+          git push -f origin roam-web
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

@@ -33,3 +33,16 @@ Push messaging would be very useful for long running agentic workloads, this is 
 
 * https://github.com/michaelneale/goose-ios for original source for ios client
 * https://github.com/michaelneale/lapstone-tunnel for code that helps the goose agent be accessed remotely
+
+## Spectator phone (Build Remote Agent)
+
+goose-ios remains the first-party remote client (orchestrator via tunnel). If you want a **spectator** phone on the **desktop goose host** instead, pair [Build Remote Agent](https://grokbuildremote.com/) through the free MIT [`gbr-agent`](https://github.com/LinespottingOrg/GrokBuildRemote-Agents). Protocol `gbr/1`. Phone is spectator + veto, not orchestrator. Independent product — not affiliated with xAI or SpaceX. Do not merge this with the goose-ios tunnel.
+
+```bash
+curl -fsSL https://grokbuildremote.com/install.sh | bash
+gbr-agent version          # need v0.6.0+
+gbr-agent pair && gbr-agent run
+curl -sS http://127.0.0.1:8788/health
+```
+
+Attach only `http://127.0.0.1:8788` (Bot API) or stdio `gbr-mcp`. Unpair in the phone app before switching PCs. Never commit mailbox keys.
